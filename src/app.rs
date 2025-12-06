@@ -9,7 +9,7 @@ use bladvak::{
 use std::fmt::Debug;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 #[serde(default)]
 pub struct WombatApp {
     /// Binary file data
@@ -21,13 +21,6 @@ pub struct WombatApp {
 
     /// Sidebar as window
     pub sidebar_as_window: bool,
-}
-
-impl Debug for WombatApp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut debug_fmt = f.debug_struct("WombatApp");
-        debug_fmt.finish()
-    }
 }
 
 /// default file (wombat icon)
@@ -50,13 +43,7 @@ impl WombatApp {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
         egui_extras::install_image_loaders(&cc.egui_ctx);
-        // Load previous app state (if any).
-        // Note that you must enable the `persistence` feature for this to work.
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
-        }
-
-        Default::default()
+        bladvak::utils::get_saved_app_state::<Self>(cc)
     }
     /// Create a new Wombat App with an image
     /// # Errors
@@ -84,7 +71,7 @@ impl BladvakApp for WombatApp {
         ui.separator();
         ui.checkbox(&mut self.sidebar_as_window, "Viewer settings windows");
         ui.separator();
-        if ui.button("Default image").clicked() {
+        if ui.button("Default file").clicked() {
             let binary = Self::load_default_file();
             if let Err(err) = self.handle_file(&binary) {
                 error_manager.add_error(err);
