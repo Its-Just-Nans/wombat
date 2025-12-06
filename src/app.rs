@@ -38,7 +38,7 @@ impl Default for WombatApp {
         let binary_file = Self::load_default_file();
         Self {
             binary_file,
-            bytes_per_line: 16,
+            bytes_per_line: 32,
             sidebar_as_window: false,
         }
     }
