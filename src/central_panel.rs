@@ -1,0 +1,164 @@
+//! Central panel
+use bladvak::eframe::egui::{self, FontFamily, FontId, ScrollArea, TextStyle, Vec2};
+use bladvak::errors::ErrorManager;
+
+use crate::WombatApp;
+
+impl WombatApp {
+    /// Show the central panel
+    pub(crate) fn app_central_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        _error_manager: &mut ErrorManager,
+    ) {
+        let start_ascii_printable = 0x21_u8;
+        let bytes_per_line = self.bytes_per_line;
+        ScrollArea::vertical().show_viewport(ui, |ui, viewport| {
+            // 1) compute text metrics: row height using monospace TextStyle if available
+            let text_style = TextStyle::Monospace;
+            let row_height = ui.text_style_height(&text_style).max(14.0); // fallback
+
+            // total lines we'll render
+            let lines_total = self.binary_file.len().div_ceil(bytes_per_line);
+
+            // total content height in points
+            let total_height = (lines_total as f32) * row_height;
+
+            // Reserve the space for the whole content (so scrollbar knows the full size)
+            // We don't actually draw all rows, only the visible ones.
+            let _rect = ui.allocate_space(egui::vec2(viewport.width(), total_height));
+
+            // 2) find visible line range from viewport
+            // viewport.rect.top() is the y of the top of the visible area in "world coordinates".
+            // Convert to a line index
+            let top_y = viewport.top() - row_height; // visible area's top in world coords
+            let bottom_y = viewport.bottom() + row_height; // visible area's bottom
+
+            // Ensure we clamp negatives
+            let first_line = (top_y / row_height).floor().max(0.0) as usize;
+            let last_line = (bottom_y / row_height).ceil().max(0.0) as usize;
+
+            // clamp to valid range
+            let first_line = first_line.min(lines_total);
+            let last_line = last_line.min(lines_total);
+
+            // 3) painter + font
+            let painter = ui.painter();
+            // Choose a monospace font id. Use the style's size for monospace if available:
+            let font_size = ui
+                .style()
+                .text_styles
+                .get(&text_style)
+                .map(|s| s.size)
+                .unwrap_or(14.0);
+            let font_id = FontId::new(font_size, FontFamily::Monospace);
+
+            // padding from left inside the viewport
+            let left = viewport.left() + 4.0;
+            let mut y = first_line as f32 * row_height;
+
+            // we'll draw 3 columns: offset, hex bytes, ascii
+            // Choose x positions relative to `left`
+            let offset_col_width = 80.0; // "00000000:" width
+            let hex_col_x = left + offset_col_width;
+            // For hex column width estimate: bytes_per_line * 3 chars ("xx ") maybe plus small gap
+            let hex_col_width = (bytes_per_line as f32) * 3.0 * (font_size * 0.6); // rough estimate
+            let ascii_col_x = hex_col_x + hex_col_width + 8.0;
+
+            for line in first_line..last_line {
+                if line >= lines_total {
+                    break;
+                }
+                let offset = line * bytes_per_line;
+                let slice_end = (offset + bytes_per_line).min(self.binary_file.len());
+                let slice = &self.binary_file[offset..slice_end];
+
+                // formatted offset
+                let offset_text = format!("{offset:08X}:");
+
+                // hex text: group each byte as two hex digits separated by a space
+                let mut hex_buf = String::with_capacity(bytes_per_line * 3);
+                for b in slice {
+                    hex_buf.push_str(&format!("{b:02X} "));
+                }
+                // pad last bytes so columns align even on short last line
+                if slice.len() < bytes_per_line {
+                    let missing = bytes_per_line - slice.len();
+                    for _ in 0..missing {
+                        hex_buf.push_str("   "); // 3 spaces to match "xx "
+                    }
+                }
+
+                // ascii text: printable ascii or '.'
+                let mut ascii_buf = String::with_capacity(bytes_per_line);
+                for b in slice {
+                    let c = match *b {
+                        x if x >= start_ascii_printable && x <= 0x7E => x as char,
+                        _ => '.',
+                    };
+                    ascii_buf.push(c);
+                }
+
+                // draw using painter at explicit positions so alignment stays correct
+                let origin = ui.min_rect().min;
+                painter.text(
+                    origin + Vec2::new(left, y),
+                    egui::Align2::LEFT_TOP,
+                    offset_text,
+                    font_id.clone(),
+                    ui.visuals().text_color(),
+                );
+                painter.text(
+                    origin + Vec2::new(hex_col_x, y),
+                    egui::Align2::LEFT_TOP,
+                    hex_buf,
+                    font_id.clone(),
+                    ui.visuals().text_color(),
+                );
+                painter.text(
+                    origin + Vec2::new(ascii_col_x, y),
+                    egui::Align2::LEFT_TOP,
+                    ascii_buf,
+                    font_id.clone(),
+                    ui.visuals().text_color(),
+                );
+
+                let char_width = ui.fonts_mut(|f| f.glyph_width(&font_id, '0'));
+                let hex_group_width = char_width * 3.0; // "FF " is 3 chars
+
+                for (i, b) in slice.iter().enumerate() {
+                    let bx = hex_col_x + (i as f32) * hex_group_width;
+
+                    let byte_rect = egui::Rect::from_min_size(
+                        origin + Vec2::new(bx, y),
+                        egui::vec2(hex_group_width, row_height),
+                    );
+
+                    let resp =
+                        ui.interact(byte_rect, ui.id().with((line, i)), egui::Sense::hover());
+
+                    if resp.hovered() {
+                        let ascii_char =  match *b {
+                            x if x >= start_ascii_printable && x <= 0x7E => &(*b as char).to_string(),
+                            _ => "unprintable",
+                        };
+                        resp.on_hover_text(format!(
+                            "hex:   0x{b:02X}\noctal: 0o{b:03o}\nbin:   0b{b:08b}\nascci:    {ascii_char}"
+                        ));
+                    }
+                }
+                y += row_height;
+            }
+        });
+
+        {
+            let mut open = self.sidebar_as_window;
+            egui::Window::new("Image info")
+                .open(&mut open)
+                .show(ui.ctx(), |window_ui| {
+                    self.file_info(window_ui);
+                });
+            self.sidebar_as_window = open;
+        }
+    }
+}

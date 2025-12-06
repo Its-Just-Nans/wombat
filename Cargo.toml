@@ -1,0 +1,30 @@
+[package]
+name = "wombat"
+version = "1.0.0"
+authors = ["n4n5 <its.just.n4n5@gmail.com>"]
+edition = "2021"
+description = "File hexe viewer"
+license = "MIT"
+rust-version = "1.88"
+homepage = "https://wombat.n4n5.dev/"
+repository = "https://github.com/Its-Just-Nans/wombat"
+documentation = "https://docs.rs/wombat"
+keywords = ["file", "viewer", "hex"]
+categories = ["visualization", "multimedia"]
+include = ["LICENSE", "**/*.rs", "Cargo.toml", "assets/*", "./index.html"]
+
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+[dependencies]
+bladvak = "1.1.2"
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+opt-level = 2 # fast and small wasm
+
+# Optimize all dependencies even in debug builds:
+[profile.dev.package."*"]
+opt-level = 2
