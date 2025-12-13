@@ -108,6 +108,10 @@ impl BladvakApp for WombatApp {
         env!("CARGO_PKG_NAME").to_string()
     }
 
+    fn version() -> String {
+        env!("CARGO_PKG_VERSION").to_string()
+    }
+
     fn repo_url() -> String {
         "https://github.com/Its-Just-Nans/wombat".to_string()
     }
