@@ -66,7 +66,7 @@ impl WombatApp {
     }
 }
 
-impl BladvakApp for WombatApp {
+impl BladvakApp<'_> for WombatApp {
     fn settings(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         ui.separator();
         ui.checkbox(&mut self.sidebar_as_window, "Viewer settings windows");
@@ -114,6 +114,10 @@ impl BladvakApp for WombatApp {
 
     fn repo_url() -> String {
         "https://github.com/Its-Just-Nans/wombat".to_string()
+    }
+
+    fn icon() -> &'static [u8] {
+        &include_bytes!("../assets/icon-256.png")[..]
     }
 
     fn side_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
