@@ -1,5 +1,7 @@
 //! Central panel
-use bladvak::eframe::egui::{self, FontFamily, FontId, ScrollArea, TextStyle, Vec2};
+use bladvak::eframe::egui::{
+    self, Color32, FontFamily, FontId, ScrollArea, TextStyle, Theme, Vec2,
+};
 use bladvak::errors::ErrorManager;
 
 use crate::WombatApp;
@@ -31,8 +33,8 @@ impl WombatApp {
             // 2) find visible line range from viewport
             // viewport.rect.top() is the y of the top of the visible area in "world coordinates".
             // Convert to a line index
-            let top_y = viewport.top() - row_height; // visible area's top in world coords
-            let bottom_y = viewport.bottom() + row_height; // visible area's bottom
+            let top_y = viewport.top() ; // visible area's top in world coords
+            let bottom_y = viewport.bottom(); // visible area's bottom
 
             // Ensure we clamp negatives
             let first_line = (top_y / row_height).floor().max(0.0) as usize;
@@ -77,20 +79,20 @@ impl WombatApp {
                 let offset_text = format!("{offset:08X}:");
 
                 // hex text: group each byte as two hex digits separated by a space
-                let mut hex_buf = String::with_capacity(bytes_per_line * 3);
+                let mut hex_buf = Vec::with_capacity(bytes_per_line);
                 for b in slice {
-                    hex_buf.push_str(&format!("{b:02X} "));
+                    hex_buf.push(format!("{b:02X} "));
                 }
                 // pad last bytes so columns align even on short last line
-                if slice.len() < bytes_per_line {
-                    let missing = bytes_per_line - slice.len();
-                    for _ in 0..missing {
-                        hex_buf.push_str("   "); // 3 spaces to match "xx "
-                    }
-                }
+                // if slice.len() < bytes_per_line {
+                //     let missing = bytes_per_line - slice.len();
+                //     for _ in 0..missing {
+                //         hex_buf.push_str("   "); // 3 spaces to match "xx "
+                //     }
+                // }
 
                 // ascii text: printable ascii or '.'
-                let mut ascii_buf = String::with_capacity(bytes_per_line);
+                let mut ascii_buf = Vec::with_capacity(bytes_per_line);
                 for b in slice {
                     let c = match *b {
                         x if x >= start_ascii_printable && x <= 0x7E => x as char,
@@ -108,26 +110,39 @@ impl WombatApp {
                     font_id.clone(),
                     ui.visuals().text_color(),
                 );
-                painter.text(
-                    origin + Vec2::new(hex_col_x, y),
-                    egui::Align2::LEFT_TOP,
-                    hex_buf,
-                    font_id.clone(),
-                    ui.visuals().text_color(),
-                );
-                painter.text(
-                    origin + Vec2::new(ascii_col_x, y),
-                    egui::Align2::LEFT_TOP,
-                    ascii_buf,
-                    font_id.clone(),
-                    ui.visuals().text_color(),
-                );
+                for (idx, (hex, ascii)) in std::iter::zip(&hex_buf, &ascii_buf).enumerate() {
+                    let x_pos = (idx as f32) * 3.0* (font_size * 0.6);
+                    let color = if self.selection.is_some_and(|s| (s.0..=s.1).contains(&(offset+idx))) {
+                        if ui.ctx().theme() == Theme::Dark {
+                            Color32::GOLD
+                        }else{
+                            Color32::ORANGE
+                        }
+                    }else{
+                        ui.visuals().text_color()
+                    };
+                    painter.text(
+                        origin + Vec2::new(hex_col_x + x_pos, y),
+                        egui::Align2::LEFT_TOP,
+                        hex,
+                        font_id.clone(),
+                        color,
+                    );
+                    let hex_pos = (idx as f32) * (font_size * 0.6);
+                    painter.text(
+                        origin + Vec2::new(ascii_col_x + hex_pos, y),
+                        egui::Align2::LEFT_TOP,
+                        ascii,
+                        font_id.clone(),
+                        color,
+                    );
+                }
 
                 let char_width = ui.fonts_mut(|f| f.glyph_width(&font_id, '0'));
                 let hex_group_width = char_width * 3.0; // "FF " is 3 chars
 
-                for (i, b) in slice.iter().enumerate() {
-                    let bx = hex_col_x + (i as f32) * hex_group_width;
+                for (idx, b) in slice.iter().enumerate() {
+                    let bx = hex_col_x + (idx as f32) * hex_group_width;
 
                     let byte_rect = egui::Rect::from_min_size(
                         origin + Vec2::new(bx, y),
@@ -135,8 +150,9 @@ impl WombatApp {
                     );
 
                     let resp =
-                        ui.interact(byte_rect, ui.id().with((line, i)), egui::Sense::hover());
+                        ui.interact(byte_rect, ui.id().with((line, idx)), egui::Sense::click());
 
+                    let is_clicked = resp.clicked();
                     if resp.hovered() {
                         let ascii_char =  match *b {
                             x if x >= start_ascii_printable && x <= 0x7E => &(*b as char).to_string(),
@@ -145,6 +161,10 @@ impl WombatApp {
                         resp.on_hover_text(format!(
                             "hex:   0x{b:02X}\noctal: 0o{b:03o}\nbin:   0b{b:08b}\nascci:    {ascii_char}"
                         ));
+                    }
+                    if is_clicked {
+                        let current_idx = offset  + idx;
+                        self.selection = Some((current_idx, current_idx));
                     }
                 }
                 y += row_height;

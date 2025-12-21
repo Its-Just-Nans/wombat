@@ -1,12 +1,13 @@
 //! Wombat App
 use bladvak::eframe::egui;
 use bladvak::eframe::{self, CreationContext};
-use bladvak::egui_extras;
 use bladvak::{
     app::BladvakApp,
     errors::{AppError, ErrorManager},
 };
+use bladvak::{egui_extras, File};
 use std::fmt::Debug;
+use std::path::PathBuf;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -16,11 +17,18 @@ pub struct WombatApp {
     #[serde(skip)]
     pub binary_file: Vec<u8>,
 
+    /// Filename of the file
+    #[serde(skip)]
+    pub filename: PathBuf,
+
     /// Bytes per line
     pub bytes_per_line: usize,
 
     /// Sidebar as window
     pub sidebar_as_window: bool,
+
+    /// Selection
+    pub selection: Option<(usize, usize)>,
 }
 
 /// default file (wombat icon)
@@ -28,11 +36,13 @@ const LOGO_ASSET: &[u8] = include_bytes!("../assets/icon-1024.png");
 
 impl Default for WombatApp {
     fn default() -> Self {
-        let binary_file = Self::load_default_file();
+        let File { data, path } = Self::load_default_file();
         Self {
-            binary_file,
+            binary_file: data,
+            filename: path,
             bytes_per_line: 32,
             sidebar_as_window: false,
+            selection: None,
         }
     }
 }
@@ -61,8 +71,11 @@ impl WombatApp {
     }
 
     /// Load the default file (wombat icon)
-    pub fn load_default_file() -> Vec<u8> {
-        LOGO_ASSET.to_vec()
+    pub fn load_default_file() -> File {
+        File {
+            data: LOGO_ASSET.to_vec(),
+            path: PathBuf::from("wombat.png"),
+        }
     }
 }
 
@@ -72,8 +85,8 @@ impl BladvakApp<'_> for WombatApp {
         ui.checkbox(&mut self.sidebar_as_window, "Viewer settings windows");
         ui.separator();
         if ui.button("Default file").clicked() {
-            let binary = Self::load_default_file();
-            if let Err(err) = self.handle_file(&binary) {
+            let default_file = Self::load_default_file();
+            if let Err(err) = self.handle_file(default_file) {
                 error_manager.add_error(err);
             }
         }
@@ -87,8 +100,9 @@ impl BladvakApp<'_> for WombatApp {
         true
     }
 
-    fn handle_file(&mut self, bytes: &[u8]) -> Result<(), AppError> {
-        self.binary_file = bytes.to_vec();
+    fn handle_file(&mut self, file: File) -> Result<(), AppError> {
+        self.binary_file = file.data;
+        self.filename = file.path;
         Ok(())
     }
 

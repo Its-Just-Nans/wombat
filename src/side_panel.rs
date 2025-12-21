@@ -17,5 +17,15 @@ impl WombatApp {
         ui.heading("File");
         ui.label("Binary length");
         ui.add(egui::Slider::new(&mut self.bytes_per_line, 1..=64));
+
+        if let Some((select1, select2)) = self.selection.as_mut() {
+            ui.label("Selection");
+            ui.horizontal(|ui| {
+                ui.add(egui::DragValue::new(select1).range(0..=*select2));
+                ui.add(egui::DragValue::new(select2).range(*select1..=self.binary_file.len()));
+            });
+        } else {
+            ui.label("No selection");
+        }
     }
 }
