@@ -1,4 +1,10 @@
 //! Wombat
+//!
+//! ```sh
+//! cargo install wombat --locked
+//!
+//! wombat
+//! ```
 
 #![warn(clippy::all, rust_2018_idioms)]
 #![deny(
@@ -7,7 +13,9 @@
     clippy::missing_docs_in_private_items,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
-    clippy::cargo
+    clippy::cargo,
+    clippy::unwrap_used,
+    clippy::expect_used
 )]
 #![warn(clippy::multiple_crate_versions)]
 

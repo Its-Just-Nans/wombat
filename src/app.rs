@@ -1,11 +1,11 @@
 //! Wombat App
 use bladvak::eframe::egui;
 use bladvak::eframe::{self, CreationContext};
+use bladvak::{File, egui_extras};
 use bladvak::{
     app::BladvakApp,
     errors::{AppError, ErrorManager},
 };
-use bladvak::{egui_extras, File};
 use std::fmt::Debug;
 use std::path::PathBuf;
 
@@ -64,6 +64,7 @@ impl WombatApp {
             let bytes = std::fs::read(path)?;
             let mut app = Self::new_app(cc);
             app.binary_file = bytes;
+            app.filename = PathBuf::from(path);
             Ok(app)
         } else {
             Ok(WombatApp::new_app(cc))

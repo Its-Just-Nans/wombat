@@ -164,7 +164,27 @@ impl WombatApp {
                     }
                     if is_clicked {
                         let current_idx = offset  + idx;
-                        self.selection = Some((current_idx, current_idx));
+                        if let Some((select1, select2)) = self.selection {
+                            let is_alt = ui.ctx().input(|i| {
+                                i.modifiers.shift
+                            });
+                            if is_alt {
+                            if select1 == current_idx {
+                                    self.selection = Some((current_idx, current_idx));
+                                } else if current_idx < select1 {
+                                    self.selection = Some((current_idx, select2));
+                                } else if select1 > current_idx {
+                                    self.selection = Some((current_idx, select1));
+                                } else if current_idx > select2 || (select1 < current_idx && current_idx < select2) {
+                                    self.selection = Some((select1, current_idx));
+                                }
+                            }else{
+                                self.selection = Some((current_idx, current_idx));
+                            }
+                        }else{
+                            // no pr
+                            self.selection = Some((current_idx, current_idx));
+                        }
                     }
                 }
                 y += row_height;

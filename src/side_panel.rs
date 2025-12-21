@@ -22,7 +22,8 @@ impl WombatApp {
             ui.label("Selection");
             ui.horizontal(|ui| {
                 ui.add(egui::DragValue::new(select1).range(0..=*select2));
-                ui.add(egui::DragValue::new(select2).range(*select1..=self.binary_file.len()));
+                let max = self.binary_file.len() - 1;
+                ui.add(egui::DragValue::new(select2).range(*select1..=max));
             });
         } else {
             ui.label("No selection");
