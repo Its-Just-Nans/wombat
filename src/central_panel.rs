@@ -162,9 +162,12 @@ impl WombatApp {
                             }
                             _ => "unprintable",
                         };
-                        resp.on_hover_text(format!(
-                            "hex:   0x{b:02X}\noctal: 0o{b:03o}\nbin:   0b{b:08b}\nascci:    {ascii_char}"
-                        ));
+                        let mut str_display = String::new();
+                        str_display.push_str(&format!("hex:   0x{b:02X}\n"));
+                        str_display.push_str(&format!("octal: 0o{b:03o}\n"));
+                        str_display.push_str(&format!("bin:   0b{b:08b}\n"));
+                        str_display.push_str(&format!("ascci:    {ascii_char}"));
+                        resp.on_hover_text(str_display);
                     }
                     if is_clicked {
                         let current_idx = offset + idx;
