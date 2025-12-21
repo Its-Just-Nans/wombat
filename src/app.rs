@@ -15,20 +15,23 @@ use std::path::PathBuf;
 pub struct WombatApp {
     /// Binary file data
     #[serde(skip)]
-    pub binary_file: Vec<u8>,
+    pub(crate) binary_file: Vec<u8>,
 
     /// Filename of the file
     #[serde(skip)]
-    pub filename: PathBuf,
+    pub(crate) filename: PathBuf,
+
+    /// first ascii printable char
+    pub(crate) start_ascii_printable: u8,
 
     /// Bytes per line
-    pub bytes_per_line: usize,
+    pub(crate) bytes_per_line: usize,
 
     /// Sidebar as window
-    pub sidebar_as_window: bool,
+    pub(crate) sidebar_as_window: bool,
 
     /// Selection
-    pub selection: Option<(usize, usize)>,
+    pub(crate) selection: Option<(usize, usize)>,
 }
 
 /// default file (wombat icon)
@@ -40,6 +43,7 @@ impl Default for WombatApp {
         Self {
             binary_file: data,
             filename: path,
+            start_ascii_printable: 0x21_u8,
             bytes_per_line: 32,
             sidebar_as_window: false,
             selection: None,

@@ -13,9 +13,8 @@ impl WombatApp {
         ui: &mut egui::Ui,
         _error_manager: &mut ErrorManager,
     ) {
-        let start_ascii_printable = 0x21_u8;
         let bytes_per_line = self.bytes_per_line;
-        ScrollArea::vertical().show_viewport(ui, |ui, viewport| {
+        ScrollArea::vertical().show_viewport(ui, |ui: &mut egui::Ui, viewport: egui::Rect| {
             // 1) compute text metrics: row height using monospace TextStyle if available
             let text_style = TextStyle::Monospace;
             let row_height = ui.text_style_height(&text_style).max(14.0); // fallback
@@ -33,7 +32,7 @@ impl WombatApp {
             // 2) find visible line range from viewport
             // viewport.rect.top() is the y of the top of the visible area in "world coordinates".
             // Convert to a line index
-            let top_y = viewport.top() ; // visible area's top in world coords
+            let top_y = viewport.top(); // visible area's top in world coords
             let bottom_y = viewport.bottom(); // visible area's bottom
 
             // Ensure we clamp negatives
@@ -95,7 +94,7 @@ impl WombatApp {
                 let mut ascii_buf = Vec::with_capacity(bytes_per_line);
                 for b in slice {
                     let c = match *b {
-                        x if x >= start_ascii_printable && x <= 0x7E => x as char,
+                        x if x >= self.start_ascii_printable && x <= 0x7E => x as char,
                         _ => '.',
                     };
                     ascii_buf.push(c);
@@ -111,14 +110,17 @@ impl WombatApp {
                     ui.visuals().text_color(),
                 );
                 for (idx, (hex, ascii)) in std::iter::zip(&hex_buf, &ascii_buf).enumerate() {
-                    let x_pos = (idx as f32) * 3.0* (font_size * 0.6);
-                    let color = if self.selection.is_some_and(|s| (s.0..=s.1).contains(&(offset+idx))) {
+                    let x_pos = (idx as f32) * 3.0 * (font_size * 0.6);
+                    let color = if self
+                        .selection
+                        .is_some_and(|s| (s.0..=s.1).contains(&(offset + idx)))
+                    {
                         if ui.ctx().theme() == Theme::Dark {
                             Color32::GOLD
-                        }else{
+                        } else {
                             Color32::ORANGE
                         }
-                    }else{
+                    } else {
                         ui.visuals().text_color()
                     };
                     painter.text(
@@ -154,8 +156,10 @@ impl WombatApp {
 
                     let is_clicked = resp.clicked();
                     if resp.hovered() {
-                        let ascii_char =  match *b {
-                            x if x >= start_ascii_printable && x <= 0x7E => &(*b as char).to_string(),
+                        let ascii_char = match *b {
+                            x if x >= self.start_ascii_printable && x <= 0x7E => {
+                                &(*b as char).to_string()
+                            }
                             _ => "unprintable",
                         };
                         resp.on_hover_text(format!(
@@ -163,26 +167,30 @@ impl WombatApp {
                         ));
                     }
                     if is_clicked {
-                        let current_idx = offset  + idx;
+                        let current_idx = offset + idx;
                         if let Some((select1, select2)) = self.selection {
-                            let is_alt = ui.ctx().input(|i| {
-                                i.modifiers.shift
-                            });
+                            let is_alt = ui.ctx().input(|i| i.modifiers.shift);
                             if is_alt {
-                            if select1 == current_idx {
+                                if select1 == current_idx {
                                     self.selection = Some((current_idx, current_idx));
                                 } else if current_idx < select1 {
                                     self.selection = Some((current_idx, select2));
                                 } else if select1 > current_idx {
                                     self.selection = Some((current_idx, select1));
-                                } else if current_idx > select2 || (select1 < current_idx && current_idx < select2) {
+                                } else if current_idx > select2
+                                    || (select1 < current_idx && current_idx < select2)
+                                {
                                     self.selection = Some((select1, current_idx));
                                 }
-                            }else{
+                            } else if select1 == current_idx {
+                                // unselect
+                                self.selection = None;
+                            } else {
+                                // no alt - set a single selection
                                 self.selection = Some((current_idx, current_idx));
                             }
-                        }else{
-                            // no pr
+                        } else {
+                            // no previous selection - create new selection
                             self.selection = Some((current_idx, current_idx));
                         }
                     }
