@@ -85,11 +85,20 @@ impl WombatApp {
 }
 
 impl BladvakApp<'_> for WombatApp {
-    fn settings(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+    fn settings_list(&self) -> Vec<String> {
+        vec!["File info".to_string()]
+    }
+
+    /// Show settings for the selected menu
+    fn show_setting_for(
+        &mut self,
+        _selected: &str,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+    ) {
+        ui.checkbox(&mut self.sidebar_as_window, "Viewer settings as windows");
         ui.separator();
-        ui.checkbox(&mut self.sidebar_as_window, "Viewer settings windows");
-        ui.separator();
-        if ui.button("Default file").clicked() {
+        if ui.button("Reset default file").clicked() {
             let default_file = Self::load_default_file();
             if let Err(err) = self.handle_file(default_file) {
                 error_manager.add_error(err);
