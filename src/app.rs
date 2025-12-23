@@ -108,6 +108,16 @@ impl BladvakApp<'_> for WombatApp {
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
         self.binary_file = file.data;
         self.filename = file.path;
+        if self.binary_file.is_empty() {
+            self.selection = None;
+        } else if let Some((select1, select2)) = self.selection.as_mut() {
+            if *select1 > self.binary_file.len() {
+                *select1 = self.binary_file.len() - 1;
+            }
+            if *select2 > self.binary_file.len() {
+                *select2 = self.binary_file.len() - 1;
+            }
+        }
         Ok(())
     }
 
