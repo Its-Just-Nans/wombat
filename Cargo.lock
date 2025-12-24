@@ -540,9 +540,9 @@ dependencies = [
 
 [[package]]
 name = "bladvak"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c5650729587ea03603c8ee8954d905ca18e451cacc8227906615e3dcabfd65"
+checksum = "305a8e1f67a7b508e726a3b5f99659e0a0df27171b9595eb96aa9f7d6d208fc2"
 dependencies = [
  "eframe",
  "egui_extras",
@@ -552,6 +552,7 @@ dependencies = [
  "poll-promise",
  "rfd",
  "serde",
+ "serde_json",
  "wasm-bindgen-futures",
  "web-sys",
 ]

@@ -74,6 +74,12 @@ impl BladvakApp<'_> for WombatApp {
         vec![Box::new(FileInfo)]
     }
 
+    fn side_panel(&mut self, ui: &mut egui::Ui, func_ui: impl FnOnce(&mut egui::Ui, &mut Self)) {
+        egui::Frame::central_panel(&ui.ctx().style()).show(ui, |ui| {
+            func_ui(ui, self);
+        });
+    }
+
     fn is_side_panel(&self) -> bool {
         true
     }
