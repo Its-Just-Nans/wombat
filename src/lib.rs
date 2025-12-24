@@ -21,7 +21,7 @@
 
 mod app;
 mod central_panel;
-mod side_panel;
+mod panels;
 mod top_panel;
 
 pub use app::WombatApp;

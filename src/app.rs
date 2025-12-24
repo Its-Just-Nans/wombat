@@ -1,6 +1,8 @@
 //! Wombat App
+use bladvak::app::BladvakPanel;
 use bladvak::eframe::egui;
 use bladvak::eframe::{self, CreationContext};
+use bladvak::utils::is_native;
 use bladvak::{File, egui_extras};
 use bladvak::{
     app::BladvakApp,
@@ -8,6 +10,8 @@ use bladvak::{
 };
 use std::fmt::Debug;
 use std::path::PathBuf;
+
+use crate::panels::FileInfo;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -27,9 +31,6 @@ pub struct WombatApp {
     /// Bytes per line
     pub(crate) bytes_per_line: usize,
 
-    /// Sidebar as window
-    pub(crate) sidebar_as_window: bool,
-
     /// Selection
     pub(crate) selection: Option<(usize, usize)>,
 }
@@ -45,7 +46,6 @@ impl Default for WombatApp {
             filename: path,
             start_ascii_printable: 0x21_u8,
             bytes_per_line: 32,
-            sidebar_as_window: false,
             selection: None,
         }
     }
@@ -53,26 +53,11 @@ impl Default for WombatApp {
 
 impl WombatApp {
     /// Called once before the first frame.
-    fn new_app(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new_app(saved_state: Self, cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
         egui_extras::install_image_loaders(&cc.egui_ctx);
-        bladvak::utils::get_saved_app_state::<Self>(cc)
-    }
-    /// Create a new Wombat App with an image
-    /// # Errors
-    /// Return error if fail to load image
-    pub fn new_app_with_args(cc: &CreationContext<'_>, args: &[String]) -> Result<Self, AppError> {
-        if args.len() > 1 {
-            let path = &args[1];
-            let bytes = std::fs::read(path)?;
-            let mut app = Self::new_app(cc);
-            app.binary_file = bytes;
-            app.filename = PathBuf::from(path);
-            Ok(app)
-        } else {
-            Ok(WombatApp::new_app(cc))
-        }
+        saved_state
     }
 
     /// Load the default file (wombat icon)
@@ -85,29 +70,12 @@ impl WombatApp {
 }
 
 impl BladvakApp<'_> for WombatApp {
-    fn settings_list(&self) -> Vec<String> {
-        vec!["File info".to_string()]
-    }
-
-    /// Show settings for the selected menu
-    fn show_setting_for(
-        &mut self,
-        _selected: &str,
-        ui: &mut egui::Ui,
-        error_manager: &mut ErrorManager,
-    ) {
-        ui.checkbox(&mut self.sidebar_as_window, "Viewer settings as windows");
-        ui.separator();
-        if ui.button("Reset default file").clicked() {
-            let default_file = Self::load_default_file();
-            if let Err(err) = self.handle_file(default_file) {
-                error_manager.add_error(err);
-            }
-        }
+    fn panel_list(&self) -> Vec<Box<dyn BladvakPanel<App = WombatApp>>> {
+        vec![Box::new(FileInfo)]
     }
 
     fn is_side_panel(&self) -> bool {
-        !self.sidebar_as_window
+        true
     }
 
     fn is_open_button(&self) -> bool {
@@ -158,18 +126,20 @@ impl BladvakApp<'_> for WombatApp {
         &include_bytes!("../assets/icon-256.png")[..]
     }
 
-    fn side_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
-        egui::Frame::central_panel(&ui.ctx().style()).show(ui, |parent_ui| {
-            self.app_side_panel(parent_ui, error_manager)
-        });
-    }
-
-    fn new(cc: &eframe::CreationContext<'_>) -> Result<Self, AppError> {
-        Ok(WombatApp::new_app(cc))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn new_with_args(cc: &CreationContext<'_>, args: &[String]) -> Result<Self, AppError> {
-        WombatApp::new_app_with_args(cc, args)
+    fn try_new_with_args(
+        saved_state: Self,
+        cc: &CreationContext<'_>,
+        args: &[String],
+    ) -> Result<Self, AppError> {
+        if is_native() && args.len() > 1 {
+            let path = &args[1];
+            let bytes = std::fs::read(path)?;
+            let mut app = Self::new_app(saved_state, cc);
+            app.binary_file = bytes;
+            app.filename = PathBuf::from(path);
+            Ok(app)
+        } else {
+            Ok(Self::new_app(saved_state, cc))
+        }
     }
 }

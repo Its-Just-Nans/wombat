@@ -201,15 +201,5 @@ impl WombatApp {
                 y += row_height;
             }
         });
-
-        {
-            let mut open = self.sidebar_as_window;
-            egui::Window::new("Image info")
-                .open(&mut open)
-                .show(ui.ctx(), |window_ui| {
-                    self.file_info(window_ui);
-                });
-            self.sidebar_as_window = open;
-        }
     }
 }
