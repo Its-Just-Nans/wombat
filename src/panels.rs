@@ -13,7 +13,7 @@ pub(crate) struct FileInfo;
 
 impl BladvakPanel for FileInfo {
     type App = WombatApp;
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "File info"
     }
     fn has_ui(&self) -> bool {
@@ -24,21 +24,18 @@ impl BladvakPanel for FileInfo {
     }
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         ui.label(format!("File: {}", app.filename.display()));
-
+        let binary_len = app.binary_file.len();
         ui.label(format!("{} bytes", app.binary_file.len()));
 
-        let size_kb = app.binary_file.len() as f32 / 1000.0;
-        if size_kb > 1.0 {
-            ui.label(format!("{:.3} KiB", app.binary_file.len() as f32 / 1024.0));
-            ui.label(format!("{:.3} KB", size_kb));
+        let size_kb = binary_len / 1000;
+        if size_kb > 1 {
+            ui.label(format!("{:.3} KiB", binary_len / 1024));
+            ui.label(format!("{size_kb:.3} KB"));
         }
-        let size_mb = app.binary_file.len() as f32 / 1000.0 / 1000.0;
-        if size_mb > 1.0 {
-            ui.label(format!(
-                "{:.3} MiB",
-                app.binary_file.len() as f32 / 1024.0 / 1024.0
-            ));
-            ui.label(format!("{:.3} MB", size_mb));
+        let size_megab = binary_len / 1000 / 1000;
+        if size_megab > 1 {
+            ui.label(format!("{:.3} MiB", binary_len / 1024 / 1024));
+            ui.label(format!("{size_megab:.3} MB"));
         }
 
         ui.separator();
@@ -63,7 +60,7 @@ impl BladvakPanel for FileInfo {
                     _ => "unprintable",
                 };
                 ui.separator();
-                ui.label(format!("byte at index {}", select1));
+                ui.label(format!("byte at index {select1}"));
                 TableBuilder::new(ui)
                     .column(Column::auto().resizable(true))
                     .column(Column::remainder())

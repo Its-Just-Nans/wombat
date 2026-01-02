@@ -15,13 +15,13 @@
     clippy::missing_panics_doc,
     clippy::cargo,
     clippy::unwrap_used,
-    clippy::expect_used
+    clippy::expect_used,
+    clippy::pedantic
 )]
 #![warn(clippy::multiple_crate_versions)]
 
 mod app;
 mod central_panel;
 mod panels;
-mod top_panel;
 
 pub use app::WombatApp;

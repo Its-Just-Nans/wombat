@@ -61,6 +61,7 @@ impl WombatApp {
     }
 
     /// Load the default file (wombat icon)
+    #[must_use]
     pub fn load_default_file() -> File {
         File {
             data: LOGO_ASSET.to_vec(),
@@ -104,16 +105,15 @@ impl BladvakApp<'_> for WombatApp {
         Ok(())
     }
 
-    fn top_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
-        self.app_top_panel(ui, error_manager);
+    fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+        ui.separator();
+        ui.label(format!("File: {}", self.filename.display()));
     }
 
-    fn menu_file(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
-        self.app_menu_file(ui, error_manager)
-    }
+    fn menu_file(&mut self, _ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {}
 
     fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
-        self.app_central_panel(ui, error_manager)
+        self.app_central_panel(ui, error_manager);
     }
 
     fn name() -> String {
