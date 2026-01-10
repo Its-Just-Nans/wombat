@@ -172,9 +172,9 @@ impl WombatApp {
                         _ => "unprintable",
                     };
                     let mut str_display = String::new();
-                    writeln!(str_display, "hex:   0x{b:02X}\n")?;
-                    writeln!(str_display, "octal: 0o{b:03o}\n")?;
-                    writeln!(str_display, "bin:   0b{b:08b}\n")?;
+                    writeln!(str_display, "hex:   0x{b:02X}")?;
+                    writeln!(str_display, "octal: 0o{b:03o}")?;
+                    writeln!(str_display, "bin:   0b{b:08b}")?;
                     writeln!(str_display, "ascci:    {ascii_char}")?;
                     resp.on_hover_text(str_display);
                 }
