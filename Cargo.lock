@@ -1294,6 +1294,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "file-format"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0eab8aa2fba5f39f494000a22f44bf3c755b7d7f8ffad3f36c6d507893074159"
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4463,6 +4469,7 @@ name = "wombat"
 version = "1.0.6"
 dependencies = [
  "bladvak",
+ "file-format",
  "serde",
 ]
 

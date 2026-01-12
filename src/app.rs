@@ -11,7 +11,7 @@ use bladvak::{
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-use crate::panels::FileInfo;
+use crate::panels::{FileInfo, FileInfoData, FileSelection};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -33,6 +33,10 @@ pub struct WombatApp {
 
     /// Selection
     pub(crate) selection: Option<(usize, usize)>,
+
+    /// File info
+    #[serde(skip)]
+    pub(crate) file_format: Option<FileInfoData>,
 }
 
 /// default file (wombat icon)
@@ -47,6 +51,7 @@ impl Default for WombatApp {
             start_ascii_printable: 0x21_u8,
             bytes_per_line: 32,
             selection: None,
+            file_format: None,
         }
     }
 }
@@ -72,7 +77,7 @@ impl WombatApp {
 
 impl BladvakApp<'_> for WombatApp {
     fn panel_list(&self) -> Vec<Box<dyn BladvakPanel<App = WombatApp>>> {
-        vec![Box::new(FileInfo)]
+        vec![Box::new(FileInfo), Box::new(FileSelection)]
     }
 
     fn side_panel(&mut self, ui: &mut egui::Ui, func_ui: impl FnOnce(&mut egui::Ui, &mut Self)) {
@@ -92,6 +97,7 @@ impl BladvakApp<'_> for WombatApp {
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
         self.binary_file = file.data;
         self.filename = file.path;
+        self.file_format = None;
         if self.binary_file.is_empty() {
             self.selection = None;
         } else if let Some((select1, select2)) = self.selection.as_mut() {

@@ -4,12 +4,26 @@ use bladvak::app::BladvakPanel;
 use bladvak::eframe::egui;
 use bladvak::egui_extras::{Column, TableBuilder};
 use bladvak::errors::ErrorManager;
+use file_format::FileFormat;
 
 use crate::WombatApp;
 
 /// File info
 #[derive(Debug, Default)]
 pub(crate) struct FileInfo;
+
+/// File info
+#[derive(Debug)]
+pub struct FileInfoData {
+    /// Kind of file
+    kind: file_format::Kind,
+    /// Type of file
+    file_type: String,
+    /// Extension of file format
+    extension: String,
+    /// format name
+    name: String,
+}
 
 impl BladvakPanel for FileInfo {
     type App = WombatApp;
@@ -38,10 +52,60 @@ impl BladvakPanel for FileInfo {
             ui.label(format!("{size_megab:.3} MB"));
         }
 
+        if let Some(fmt) = &app.file_format {
+            ui.collapsing("File info", |ui| {
+                ui.label(format!("Kind: {:?}", fmt.kind));
+                ui.label(format!("Type: {}", fmt.file_type));
+                ui.label(format!("Name: {}", fmt.name));
+                ui.label(format!("Extension: .{}", fmt.extension));
+            });
+        } else if ui.button("Get file info").clicked() {
+            let file_fmt = FileFormat::from_bytes(&app.binary_file);
+            let data = FileInfoData {
+                kind: file_fmt.kind(),
+                file_type: file_fmt.media_type().to_string(),
+                extension: file_fmt.extension().to_string(),
+                name: file_fmt.name().to_string(),
+            };
+            app.file_format = Some(data);
+        }
+
         ui.separator();
         ui.label("Binary length");
         ui.add(egui::Slider::new(&mut app.bytes_per_line, 1..=64));
+    }
 
+    fn ui_settings(
+        &self,
+        app: &mut WombatApp,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+    ) {
+        if ui.button("Reset default file").clicked() {
+            let default_file = WombatApp::load_default_file();
+            if let Err(err) = app.handle_file(default_file) {
+                error_manager.add_error(err);
+            }
+        }
+    }
+}
+
+/// File info
+#[derive(Debug, Default)]
+pub(crate) struct FileSelection;
+
+impl BladvakPanel for FileSelection {
+    type App = WombatApp;
+    fn name(&self) -> &'static str {
+        "File selection"
+    }
+    fn has_ui(&self) -> bool {
+        true
+    }
+    fn has_settings(&self) -> bool {
+        false
+    }
+    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         if let Some((select1, select2)) = app.selection.as_mut() {
             ui.label("Selection");
             ui.horizontal(|ui| {
@@ -80,6 +144,9 @@ impl BladvakPanel for FileInfo {
                             });
                         });
                     });
+            } else {
+                let nb_selected = (*select2 as u64) - (*select1 as u64) + 1;
+                ui.label(format!("{nb_selected} bytes selected"));
             }
         } else {
             ui.label("No selection");
@@ -88,15 +155,9 @@ impl BladvakPanel for FileInfo {
 
     fn ui_settings(
         &self,
-        app: &mut WombatApp,
-        ui: &mut egui::Ui,
-        error_manager: &mut ErrorManager,
+        _app: &mut WombatApp,
+        _ui: &mut egui::Ui,
+        _error_manager: &mut ErrorManager,
     ) {
-        if ui.button("Reset default file").clicked() {
-            let default_file = WombatApp::load_default_file();
-            if let Err(err) = app.handle_file(default_file) {
-                error_manager.add_error(err);
-            }
-        }
     }
 }
