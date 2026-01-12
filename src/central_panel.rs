@@ -175,7 +175,7 @@ impl WombatApp {
                     writeln!(str_display, "hex:   0x{b:02X}")?;
                     writeln!(str_display, "octal: 0o{b:03o}")?;
                     writeln!(str_display, "bin:   0b{b:08b}")?;
-                    writeln!(str_display, "ascci:    {ascii_char}")?;
+                    write!(str_display, "ascci:    {ascii_char}")?;
                     resp.on_hover_text(str_display);
                 }
                 if is_clicked {

@@ -5,6 +5,7 @@ use bladvak::eframe::egui;
 use bladvak::egui_extras::{Column, TableBuilder};
 use bladvak::errors::ErrorManager;
 use file_format::FileFormat;
+use std::path::PathBuf;
 
 use crate::WombatApp;
 
@@ -105,7 +106,7 @@ impl BladvakPanel for FileSelection {
     fn has_settings(&self) -> bool {
         false
     }
-    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         if let Some((select1, select2)) = app.selection.as_mut() {
             ui.label("Selection");
             ui.horizontal(|ui| {
@@ -147,6 +148,30 @@ impl BladvakPanel for FileSelection {
             } else {
                 let nb_selected = (*select2 as u64) - (*select1 as u64) + 1;
                 ui.label(format!("{nb_selected} bytes selected"));
+                let range = *select1..=*select2;
+                if let Some(slice) = app.binary_file.get(range) {
+                    ui.collapsing("Export selection", |ui| {
+                        if ui.button("Export as binary").clicked()
+                            && let Err(e) =
+                                bladvak::utils::save_file(slice, &PathBuf::from("exported.bin"))
+                        {
+                            error_manager.add_error(e);
+                        }
+                        if ui.button("Export as hex").clicked() {
+                            let file_as_hex = slice
+                                .iter()
+                                .map(|byte| format!("{byte:02X}"))
+                                .collect::<Vec<String>>()
+                                .join(" ");
+                            if let Err(e) = bladvak::utils::save_file(
+                                file_as_hex.as_bytes(),
+                                &PathBuf::from("exported.hex"),
+                            ) {
+                                error_manager.add_error(e);
+                            }
+                        }
+                    });
+                }
             }
         } else {
             ui.label("No selection");
