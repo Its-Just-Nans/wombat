@@ -17,7 +17,7 @@ pub(crate) struct Histogram {
     pub(crate) is_open: bool,
     /// histogram values
     data: Option<HashMap<u8, usize>>,
-    /// vertical or horitzontal
+    /// vertical or horizontal
     vertical: bool,
 }
 
@@ -149,7 +149,7 @@ pub(crate) struct Importer {
     pub(crate) is_open: bool,
     /// current value
     value: String,
-    /// vertical or horitzontal
+    /// value type
     value_type: ImportType,
     /// import error
     import_error: Option<String>,
