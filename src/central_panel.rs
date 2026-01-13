@@ -172,6 +172,7 @@ impl WombatApp {
                         _ => "unprintable",
                     };
                     let mut str_display = String::new();
+                    writeln!(str_display, "dec:   {b}")?;
                     writeln!(str_display, "hex:   0x{b:02X}")?;
                     writeln!(str_display, "octal: 0o{b:03o}")?;
                     writeln!(str_display, "bin:   0b{b:08b}")?;

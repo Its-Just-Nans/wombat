@@ -12,6 +12,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 use crate::panels::{FileInfo, FileInfoData, FileSelection};
+use crate::windows::{Histogram, WindowsData};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -37,6 +38,10 @@ pub struct WombatApp {
     /// File info
     #[serde(skip)]
     pub(crate) file_format: Option<FileInfoData>,
+
+    /// Windows
+    #[serde(skip)]
+    pub(crate) windows_data: WindowsData,
 }
 
 /// default file (wombat icon)
@@ -52,6 +57,7 @@ impl Default for WombatApp {
             bytes_per_line: 32,
             selection: None,
             file_format: None,
+            windows_data: WindowsData::new(),
         }
     }
 }
@@ -96,22 +102,33 @@ impl BladvakApp<'_> for WombatApp {
 
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
         self.binary_file = file.data;
+        let file_len = self.binary_file.len();
         self.filename = file.path;
         self.file_format = None;
+        self.windows_data.histogram = Histogram::new();
+
         if self.binary_file.is_empty() {
             self.selection = None;
         } else if let Some((select1, select2)) = self.selection.as_mut() {
-            if *select1 > self.binary_file.len() {
-                *select1 = self.binary_file.len() - 1;
+            if *select1 > file_len {
+                *select1 = file_len - 1;
             }
-            if *select2 > self.binary_file.len() {
-                *select2 = self.binary_file.len() - 1;
+            if *select2 > file_len {
+                *select2 = file_len - 1;
             }
         }
         Ok(())
     }
 
     fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+        ui.menu_button("Windows", |ui| {
+            if ui.button("Histogram").clicked() {
+                self.windows_data.histogram.is_open = true;
+            }
+            if ui.button("Import").clicked() {
+                self.windows_data.importer.is_open = true;
+            }
+        });
         ui.separator();
         ui.label(format!("File: {}", self.filename.display()));
     }
@@ -120,6 +137,7 @@ impl BladvakApp<'_> for WombatApp {
 
     fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         self.app_central_panel(ui, error_manager);
+        self.ui_windows(ui, error_manager);
     }
 
     fn name() -> String {

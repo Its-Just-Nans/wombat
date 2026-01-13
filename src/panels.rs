@@ -132,12 +132,14 @@ impl BladvakPanel for FileSelection {
                     .body(|mut body| {
                         body.row(30.0, |mut row| {
                             row.col(|ui| {
+                                ui.label("decimal");
                                 ui.label("hex");
                                 ui.label("octal");
                                 ui.label("bin");
                                 ui.label("ascci");
                             });
                             row.col(|ui| {
+                                ui.label(format!("{current}"));
                                 ui.label(format!("0x{current:02X}"));
                                 ui.label(format!("0o{current:03o}"));
                                 ui.label(format!("0b{current:08b}"));
@@ -151,7 +153,7 @@ impl BladvakPanel for FileSelection {
                 let range = *select1..=*select2;
                 if let Some(slice) = app.binary_file.get(range) {
                     ui.collapsing("Export selection", |ui| {
-                        if ui.button("Export as binary").clicked()
+                        if ui.button("Export as raw").clicked()
                             && let Err(e) =
                                 bladvak::utils::save_file(slice, &PathBuf::from("exported.bin"))
                         {
@@ -169,6 +171,14 @@ impl BladvakPanel for FileSelection {
                             ) {
                                 error_manager.add_error(e);
                             }
+                        }
+                        if ui.button("Copy as hex").clicked() {
+                            let file_as_hex = slice
+                                .iter()
+                                .map(|byte| format!("{byte:02X}"))
+                                .collect::<Vec<String>>()
+                                .join(" ");
+                            ui.ctx().copy_text(file_as_hex);
                         }
                     });
                 }

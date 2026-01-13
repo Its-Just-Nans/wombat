@@ -19,6 +19,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [dependencies]
 bladvak = "1.2.2"
+egui_plot = "0.34.0"
 file-format = "0.28.0"
 # bladvak = { path = "../bladvak" }
 serde = { version = "1", features = ["derive"] }
