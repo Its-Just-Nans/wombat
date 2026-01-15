@@ -176,17 +176,17 @@ impl Importer {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
+                    let previous_import_type = self.value_type;
                     ui.horizontal(|ui| {
-                        let previous_import_type = self.value_type;
                         ui.label("Import from:");
                         ui.selectable_value(&mut self.value_type, ImportType::String, "String");
                         ui.selectable_value(&mut self.value_type, ImportType::Hex, "Hex");
                         ui.selectable_value(&mut self.value_type, ImportType::Binary, "Binary");
                         ui.selectable_value(&mut self.value_type, ImportType::Octal, "Octal");
-                        if previous_import_type != self.value_type {
-                            self.import_error = None;
-                        }
                     });
+                    if previous_import_type != self.value_type {
+                        self.import_error = None;
+                    }
                     if ui.button("Import").clicked() {
                         ret = Some(Self::import(&self.value, &self.value_type));
                     }
