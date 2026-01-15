@@ -176,7 +176,7 @@ impl Importer {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    let previous_import_type = self.value_type;
+                    let previous_import_type = &self.value_type;
                     ui.horizontal(|ui| {
                         ui.label("Import from:");
                         ui.selectable_value(&mut self.value_type, ImportType::String, "String");
