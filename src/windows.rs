@@ -130,7 +130,7 @@ impl WindowsData {
 }
 
 /// import type
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum ImportType {
     /// hex import
     Hex,
@@ -176,7 +176,7 @@ impl Importer {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    let previous_import_type = &self.value_type;
+                    let previous_import_type = self.value_type.clone();
                     ui.horizontal(|ui| {
                         ui.label("Import from:");
                         ui.selectable_value(&mut self.value_type, ImportType::String, "String");
@@ -184,7 +184,7 @@ impl Importer {
                         ui.selectable_value(&mut self.value_type, ImportType::Binary, "Binary");
                         ui.selectable_value(&mut self.value_type, ImportType::Octal, "Octal");
                     });
-                    if *previous_import_type != self.value_type {
+                    if previous_import_type != self.value_type {
                         self.import_error = None;
                     }
                     if ui.button("Import").clicked() {
