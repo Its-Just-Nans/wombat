@@ -184,7 +184,7 @@ impl Importer {
                         ui.selectable_value(&mut self.value_type, ImportType::Binary, "Binary");
                         ui.selectable_value(&mut self.value_type, ImportType::Octal, "Octal");
                     });
-                    if previous_import_type != self.value_type {
+                    if *previous_import_type != self.value_type {
                         self.import_error = None;
                     }
                     if ui.button("Import").clicked() {
