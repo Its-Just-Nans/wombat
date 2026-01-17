@@ -19,6 +19,8 @@ pub(crate) struct Histogram {
     data: Option<HashMap<u8, usize>>,
     /// vertical or horizontal
     vertical: bool,
+    /// bar width
+    bar_width: f64,
 }
 
 impl Histogram {
@@ -28,6 +30,7 @@ impl Histogram {
             is_open: false,
             data: None,
             vertical: false,
+            bar_width: 1.0,
         }
     }
 
@@ -57,6 +60,10 @@ impl Histogram {
                             ui.selectable_value(&mut self.vertical, true, "Vertical");
                             ui.selectable_value(&mut self.vertical, false, "Horizontal");
                         });
+                        ui.horizontal(|ui| {
+                            ui.label("Bar width");
+                            ui.add(egui::Slider::new(&mut self.bar_width, 0.001..=2.0));
+                        });
                         self.show_plot(ui);
                     });
                 self.is_open = is_open;
@@ -85,6 +92,7 @@ impl Histogram {
                 })
                 .collect(),
         )
+        .width(self.bar_width)
         .color(egui::Color32::LIGHT_BLUE);
 
         if !self.vertical {
