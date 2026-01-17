@@ -496,12 +496,13 @@ dependencies = [
 
 [[package]]
 name = "bladvak"
-version = "1.2.4"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ddccd1d6038aa1b38af8f1b3bc3c3b68098d0f704a7dfd986bba8bcf38d6616"
+checksum = "20f5c50933c607defc96b03f9969f1d76377f11d6043296149b4e5e720fa639f"
 dependencies = [
  "eframe",
  "egui_extras",
+ "egui_plot",
  "env_logger",
  "js-sys",
  "log",
@@ -4364,7 +4365,6 @@ name = "wombat"
 version = "1.0.7"
 dependencies = [
  "bladvak",
- "egui_plot",
  "file-format",
  "serde",
 ]
