@@ -39,18 +39,23 @@ impl BladvakPanel for FileInfo {
     }
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         ui.label(format!("File: {}", app.filename.display()));
-        let binary_len = app.binary_file.len();
         ui.label(format!("{} bytes", app.binary_file.len()));
+        #[allow(clippy::cast_precision_loss)]
+        let binary_len = app.binary_file.len() as f64;
 
-        let size_kb = binary_len / 1000;
-        if size_kb > 1 {
-            ui.label(format!("{:.3} KiB", binary_len / 1024));
-            ui.label(format!("{size_kb:.3} KB"));
+        let size_kb = binary_len / 1000.0;
+        if size_kb > 1.0 {
+            ui.label(format!("{:.3} KiB", binary_len / 1024.0))
+                .on_hover_text(format!("{binary_len} / 1024"));
+            ui.label(format!("{size_kb:.3} KB"))
+                .on_hover_text(format!("{binary_len} / 1000"));
         }
-        let size_megab = binary_len / 1000 / 1000;
-        if size_megab > 1 {
-            ui.label(format!("{:.3} MiB", binary_len / 1024 / 1024));
-            ui.label(format!("{size_megab:.3} MB"));
+        let size_megab = binary_len / 1000.0 / 1000.0;
+        if size_megab > 1.0 {
+            ui.label(format!("{:.3} MiB", binary_len / 1024.0 / 1024.0))
+                .on_hover_text(format!("{binary_len} / (1024^2)"));
+            ui.label(format!("{size_megab:.3} MB"))
+                .on_hover_text(format!("{binary_len} / (1000^2)"));
         }
 
         if let Some(fmt) = &app.file_format {
