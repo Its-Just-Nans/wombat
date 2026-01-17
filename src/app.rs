@@ -253,12 +253,12 @@ mod test {
             let text = WombatApp::ascii_to_string(i);
             if i > 127 {
                 // extended ASCII
-                assert_eq!(text, "unprintable", "{i}");
+                assert_eq!(text, "extended ASCII", "{i}");
             } else {
                 if i == 32 {
                     // space
                 }
-                assert_ne!(text, "unprintable", "{i}");
+                assert_ne!(text, "extended ASCII", "{i}"); // not equal
             }
         }
     }
