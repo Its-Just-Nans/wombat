@@ -1,64 +1,7 @@
-//! Detection
-
-use std::ops::RangeInclusive;
+//! PNG
 
 use bladvak::eframe::egui;
-use bladvak::errors::ErrorManager;
-
-use crate::panels::FileInfoData;
-
-/// Histogram data
-#[derive(Debug)]
-pub(crate) struct Detection {
-    /// is open
-    pub(crate) is_open: bool,
-}
-
-impl Detection {
-    /// New import data
-    pub(crate) fn new() -> Self {
-        Self { is_open: false }
-    }
-
-    /// Show the detection ui
-    pub(crate) fn ui(
-        &mut self,
-        binary_data: &[u8],
-        file_info: &FileInfoData,
-        ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
-    ) -> Option<RangeInclusive<usize>> {
-        if self.is_open {
-            let mut is_open = self.is_open;
-            let mut ret = None;
-            egui::Window::new("Detection")
-                .open(&mut is_open)
-                .vscroll(true)
-                .show(ui.ctx(), |ui| {
-                    ui.label(format!(
-                        "Name: {} ({}) - {}",
-                        file_info.name, file_info.file_type, file_info.extension
-                    ));
-                    ui.separator();
-                    match file_info.kind {
-                        file_format::Kind::Image => {
-                            if file_info.extension == "png" {
-                                ret = show_png_chunks(ui, binary_data);
-                            } else {
-                                ui.label(format!("Image {}", file_info.extension));
-                            }
-                        }
-                        _ => {
-                            ui.label(format!("Kind: {:?}", file_info.kind));
-                        }
-                    }
-                });
-            self.is_open = is_open;
-            return ret;
-        }
-        None
-    }
-}
+use std::ops::RangeInclusive;
 
 /// CRC32 (IEEE) implementation
 fn crc32(data: &[u8]) -> u32 {
