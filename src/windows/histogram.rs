@@ -42,7 +42,12 @@ impl Histogram {
     }
 
     /// Show the histogram ui
-    pub(crate)  fn ui(&mut self, binary_data: &[u8], ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    pub(crate) fn ui(
+        &mut self,
+        binary_data: &[u8],
+        ui: &mut egui::Ui,
+        _error_manager: &mut ErrorManager,
+    ) {
         if self.is_open {
             if self.data.is_some() {
                 let mut is_open = self.is_open;
