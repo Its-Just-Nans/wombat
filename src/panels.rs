@@ -1,8 +1,8 @@
 //! Side panel
+
 use bladvak::BladvakApp;
 use bladvak::app::BladvakPanel;
 use bladvak::eframe::egui;
-use bladvak::egui_extras::{Column, TableBuilder};
 use bladvak::errors::ErrorManager;
 use file_format::FileFormat;
 use std::path::PathBuf;
@@ -118,35 +118,9 @@ impl BladvakPanel for FileSelection {
             if select1 == select2
                 && let Some(current) = app.binary_file.get(*select1)
             {
-                let ascii_char = match *current {
-                    x if x >= app.start_ascii_printable && x <= 0x7E => {
-                        &(*current as char).to_string()
-                    }
-                    _ => "unprintable",
-                };
                 ui.separator();
                 ui.label(format!("byte at index {select1}"));
-                TableBuilder::new(ui)
-                    .column(Column::auto().resizable(true))
-                    .column(Column::remainder())
-                    .body(|mut body| {
-                        body.row(30.0, |mut row| {
-                            row.col(|ui| {
-                                ui.label("decimal");
-                                ui.label("hex");
-                                ui.label("octal");
-                                ui.label("bin");
-                                ui.label("ascci");
-                            });
-                            row.col(|ui| {
-                                ui.label(format!("{current}"));
-                                ui.label(format!("0x{current:02X}"));
-                                ui.label(format!("0o{current:03o}"));
-                                ui.label(format!("0b{current:08b}"));
-                                ui.label(ascii_char);
-                            });
-                        });
-                    });
+                WombatApp::ui_table_u8(ui, *current);
             } else {
                 let nb_selected = (*select2 as u64) - (*select1 as u64) + 1;
                 ui.label(format!("{nb_selected} bytes selected"));

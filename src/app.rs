@@ -1,7 +1,9 @@
 //! Wombat App
+
 use bladvak::app::BladvakPanel;
 use bladvak::eframe::egui;
 use bladvak::eframe::{self, CreationContext};
+use bladvak::egui_extras::{Column, TableBuilder};
 use bladvak::utils::is_native;
 use bladvak::{File, egui_extras};
 use bladvak::{
@@ -9,6 +11,7 @@ use bladvak::{
     errors::{AppError, ErrorManager},
 };
 use std::fmt::Debug;
+use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
 use crate::panels::{FileInfo, FileInfoData, FileSelection};
@@ -25,9 +28,6 @@ pub struct WombatApp {
     /// Filename of the file
     #[serde(skip)]
     pub(crate) filename: PathBuf,
-
-    /// first ascii printable char
-    pub(crate) start_ascii_printable: u8,
 
     /// Bytes per line
     pub(crate) bytes_per_line: usize,
@@ -53,7 +53,6 @@ impl Default for WombatApp {
         Self {
             binary_file: data,
             filename: path,
-            start_ascii_printable: 0x21_u8,
             bytes_per_line: 32,
             selection: None,
             file_format: None,
@@ -63,6 +62,8 @@ impl Default for WombatApp {
 }
 
 impl WombatApp {
+    /// start ASCII printable char (after space)
+    pub(crate) const RANGE_ASCII_PRINTABLE: RangeInclusive<u8> = 0x21_u8..=0x7E;
     /// Called once before the first frame.
     fn new_app(saved_state: Self, cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
@@ -78,6 +79,74 @@ impl WombatApp {
             data: LOGO_ASSET.to_vec(),
             path: PathBuf::from("wombat.png"),
         }
+    }
+
+    /// ascii u8 to string
+    pub(crate) fn ascii_to_string(c: u8) -> String {
+        match c {
+            0x0 => "NUL (Null character)".to_string(),
+            0x01 => "SOH (Start of Heading)".to_string(),
+            0x02 => "STX (Start of Text)".to_string(),
+            0x03 => "ETX (End of Text)".to_string(),
+            0x04 => "EOT (End of Transmission)".to_string(),
+            0x05 => "ENQ (Enquiry)".to_string(),
+            0x06 => "ACK (Acknowledge)".to_string(),
+            0x07 => "BEL (Bell, Alert)".to_string(),
+            0x08 => "BS (Backspace)".to_string(),
+            0x09 => "HT (Horizontal Tab)".to_string(),
+            0x0A => "LF (Line Feed)".to_string(),
+            0x0B => "VT (Vertical Tabulation)".to_string(),
+            0x0C => "FF (Form Feed)".to_string(),
+            0x0D => "CR (Carriage Return)".to_string(),
+            0x0E => "SO (Shift Out)".to_string(),
+            0x0F => "SI (Shift In)".to_string(),
+            0x10 => "DLE (Data Link Escape)".to_string(),
+            0x11 => "DC1 (Device Control One (XON))".to_string(),
+            0x12 => "DC2 (Device Control Two)".to_string(),
+            0x13 => "DC3 (Device Control Three (XOFF))".to_string(),
+            0x14 => "DC4 (Device Control Four)".to_string(),
+            0x15 => "NAK (Negative Acknowledge)".to_string(),
+            0x16 => "SYN (Synchronous Idle)".to_string(),
+            0x17 => "ETB (End of Transmission Block)".to_string(),
+            0x18 => "CAN (Cancel)".to_string(),
+            0x19 => "EM (End of medium)".to_string(),
+            0x1A => "SUB (Substitute)".to_string(),
+            0x1B => "ESC (Escape)".to_string(),
+            0x1C => "FS (File Separator)".to_string(),
+            0x1D => "GS (Group Separator)".to_string(),
+            0x1E => "RS (Record Separator)".to_string(),
+            0x1F => "US (Unit Separator)".to_string(),
+            0x20 => "SP (Space)".to_string(),
+            x if Self::RANGE_ASCII_PRINTABLE.contains(&x) => (c as char).to_string(),
+            0x7F => "DEL (Delete)".to_string(),
+            _ => "extended ASCII".to_string(),
+        }
+    }
+
+    /// Ui for the table representation of a u8
+    pub(crate) fn ui_table_u8(ui: &mut egui::Ui, current: u8) {
+        TableBuilder::new(ui)
+            .column(Column::auto().resizable(true))
+            .column(Column::remainder())
+            .body(|mut body| {
+                body.row(30.0, |mut row| {
+                    row.col(|ui| {
+                        ui.label("decimal");
+                        ui.label("hex");
+                        ui.label("octal");
+                        ui.label("bin");
+                        ui.label("ASCII");
+                    });
+                    row.col(|ui| {
+                        ui.label(format!("{current}"));
+                        ui.label(format!("0x{current:02X}"));
+                        ui.label(format!("0o{current:03o}"));
+                        ui.label(format!("0b{current:08b}"));
+                        let ascii_char = WombatApp::ascii_to_string(current);
+                        ui.label(ascii_char);
+                    });
+                });
+            });
     }
 }
 
@@ -170,6 +239,27 @@ impl BladvakApp<'_> for WombatApp {
             Ok(app)
         } else {
             Ok(Self::new_app(saved_state, cc))
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::WombatApp;
+
+    #[test]
+    fn test_to_ascii() {
+        for i in 0u8..=u8::MAX {
+            let text = WombatApp::ascii_to_string(i);
+            if i > 127 {
+                // extended ASCII
+                assert_eq!(text, "unprintable", "{i}");
+            } else {
+                if i == 32 {
+                    // space
+                }
+                assert_ne!(text, "unprintable", "{i}");
+            }
         }
     }
 }

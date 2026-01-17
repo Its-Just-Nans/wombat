@@ -1,9 +1,9 @@
 //! Central panel
+
 use bladvak::eframe::egui::{
     self, Color32, FontFamily, FontId, ScrollArea, TextStyle, Theme, Vec2,
 };
 use bladvak::errors::ErrorManager;
-use std::fmt::Write;
 
 use crate::WombatApp;
 
@@ -15,7 +15,7 @@ impl WombatApp {
     pub(crate) fn app_central_panel(
         &mut self,
         ui: &mut egui::Ui,
-        error_manager: &mut ErrorManager,
+        _error_manager: &mut ErrorManager,
     ) {
         ScrollArea::vertical().show_viewport(ui, |ui: &mut egui::Ui, viewport: egui::Rect| {
             // 1) compute text metrics: row height using monospace TextStyle if available
@@ -51,11 +51,7 @@ impl WombatApp {
             let last_line = last_line.min(lines_total);
             // padding from left inside the viewport
             let left = viewport.left() + 4.0;
-            if let Err(err) =
-                self.show_lines(ui, left, font_size, row_height, (first_line, last_line))
-            {
-                error_manager.add_error(err.to_string());
-            }
+            self.show_lines(ui, left, font_size, row_height, (first_line, last_line));
         });
     }
 
@@ -71,7 +67,7 @@ impl WombatApp {
         font_size: f32,
         row_height: f32,
         (first_line, last_line): (usize, usize),
-    ) -> Result<(), std::fmt::Error> {
+    ) {
         let font_id = FontId::new(font_size, FontFamily::Monospace);
 
         // 3) painter + font
@@ -104,7 +100,7 @@ impl WombatApp {
             let mut ascii_buf = Vec::with_capacity(self.bytes_per_line);
             for b in slice {
                 let c = match *b {
-                    x if x >= self.start_ascii_printable && x <= 0x7E => x as char,
+                    x if Self::RANGE_ASCII_PRINTABLE.contains(&x) => x as char,
                     _ => '.',
                 };
                 ascii_buf.push(c);
@@ -165,19 +161,7 @@ impl WombatApp {
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
-                    let ascii_char = match *b {
-                        x if x >= self.start_ascii_printable && x <= 0x7E => {
-                            &(*b as char).to_string()
-                        }
-                        _ => "unprintable",
-                    };
-                    let mut str_display = String::new();
-                    writeln!(str_display, "dec:   {b}")?;
-                    writeln!(str_display, "hex:   0x{b:02X}")?;
-                    writeln!(str_display, "octal: 0o{b:03o}")?;
-                    writeln!(str_display, "bin:   0b{b:08b}")?;
-                    write!(str_display, "ascci:    {ascii_char}")?;
-                    resp.on_hover_text(str_display);
+                    resp.on_hover_ui(|ui| Self::ui_table_u8(ui, *b));
                 }
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);
@@ -186,7 +170,6 @@ impl WombatApp {
             }
             y += row_height;
         }
-        Ok(())
     }
 
     /// Handle selection click
