@@ -17,13 +17,13 @@ pub(crate) struct FileInfo;
 #[derive(Debug)]
 pub struct FileInfoData {
     /// Kind of file
-    kind: file_format::Kind,
+    pub(crate) kind: file_format::Kind,
     /// Type of file
-    file_type: String,
+    pub(crate) file_type: String,
     /// Extension of file format
-    extension: String,
+    pub(crate) extension: String,
     /// format name
-    name: String,
+    pub(crate) name: String,
 }
 
 impl BladvakPanel for FileInfo {
@@ -127,9 +127,13 @@ impl BladvakPanel for FileSelection {
                 ui.label(format!("byte at index {select1}"));
                 WombatApp::ui_table_u8(ui, *current);
             } else {
-                let nb_selected = (*select2 as u64) - (*select1 as u64) + 1;
+                let nb_selected = select2.checked_sub(*select1).map_or(0, |d| d as u64 + 1);
                 ui.label(format!("{nb_selected} bytes selected"));
                 let range = *select1..=*select2;
+                if ui.button("Delete selection").clicked() {
+                    app.binary_file.drain(range.clone());
+                    *select2 = select1.checked_sub(1).unwrap_or(0);
+                }
                 if let Some(slice) = app.binary_file.get(range) {
                     ui.collapsing("Export selection", |ui| {
                         if ui.button("Export as raw").clicked()

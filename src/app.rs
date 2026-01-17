@@ -15,7 +15,7 @@ use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
 use crate::panels::{FileInfo, FileInfoData, FileSelection};
-use crate::windows::{Histogram, WindowsData};
+use crate::windows::WindowsData;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -174,7 +174,7 @@ impl BladvakApp<'_> for WombatApp {
         let file_len = self.binary_file.len();
         self.filename = file.path;
         self.file_format = None;
-        self.windows_data.histogram = Histogram::new();
+        self.windows_data = WindowsData::new();
 
         if self.binary_file.is_empty() {
             self.selection = None;
@@ -191,12 +191,7 @@ impl BladvakApp<'_> for WombatApp {
 
     fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         ui.menu_button("Windows", |ui| {
-            if ui.button("Histogram").clicked() {
-                self.windows_data.histogram.is_open = true;
-            }
-            if ui.button("Import").clicked() {
-                self.windows_data.importer.is_open = true;
-            }
+            self.windows_data.ui_top_bar(ui);
         });
         ui.separator();
         ui.label(format!("File: {}", self.filename.display()));
