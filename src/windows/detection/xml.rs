@@ -3,9 +3,26 @@
 use bladvak::eframe::egui::{self, CollapsingHeader};
 use roxmltree::{Document, Node};
 
+/// xml cached data
+#[derive(Debug)]
+pub(crate) struct XmlData {
+    /// inner xmld string
+    inner: String,
+}
+
+impl XmlData {
+    /// parse the data
+    pub(crate) fn parse(binary_data: &[u8]) -> XmlData {
+        let xml_str = String::from_utf8_lossy(binary_data);
+        XmlData {
+            inner: xml_str.to_string(),
+        }
+    }
+}
+
 /// Show XML tree
-pub fn xml_tree_ui(ui: &mut egui::Ui, xml: &str) {
-    match Document::parse(xml) {
+pub fn xml_tree_ui(ui: &mut egui::Ui, xml: &XmlData) {
+    match Document::parse(&xml.inner) {
         Ok(doc) => {
             let root = doc.root_element();
             draw_node(ui, root, 0);

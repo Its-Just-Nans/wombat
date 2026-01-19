@@ -5,24 +5,82 @@ mod xml;
 
 use std::ops::RangeInclusive;
 
-use bladvak::eframe::egui::{self, TextBuffer};
+use bladvak::eframe::egui::{self};
 use bladvak::errors::ErrorManager;
 
 use crate::panels::FileInfoData;
-use crate::windows::detection::png::show_png_chunks;
-use crate::windows::detection::xml::xml_tree_ui;
+use crate::windows::detection::png::{PngData, show_png_chunks};
+use crate::windows::detection::xml::{XmlData, xml_tree_ui};
+
+/// Histogram data cache
+#[derive(Debug)]
+enum DetectionCache {
+    /// png data cached
+    Png(PngData),
+
+    /// xml data cached
+    Xml(XmlData),
+    /// no cache
+    None,
+}
+
+impl DetectionCache {
+    /// Show the ui of cached data
+    fn show(&self, ui: &mut egui::Ui, file_info: &FileInfoData) -> Option<RangeInclusive<usize>> {
+        match self {
+            DetectionCache::Png(data) => show_png_chunks(ui, data),
+            DetectionCache::Xml(xml_str) => {
+                xml_tree_ui(ui, xml_str);
+                None
+            }
+            DetectionCache::None => {
+                ui.label(format!("Kind: {:?}", file_info.kind));
+                None
+            }
+        }
+    }
+
+    /// parse to create cache
+    fn parse(binary_data: &[u8], file_info: &FileInfoData) -> DetectionCache {
+        match file_info.extension.as_str() {
+            "png" => {
+                if let Some(data) = PngData::parse(binary_data) {
+                    DetectionCache::Png(data)
+                } else {
+                    DetectionCache::None
+                }
+            }
+            "xml" => {
+                let data = XmlData::parse(binary_data);
+                DetectionCache::Xml(data)
+            }
+            _ => DetectionCache::None,
+        }
+    }
+}
 
 /// Histogram data
 #[derive(Debug)]
 pub(crate) struct Detection {
     /// is open
     pub(crate) is_open: bool,
+
+    /// cached data
+    cache: DetectionCache,
 }
 
 impl Detection {
     /// New import data
     pub(crate) fn new() -> Self {
-        Self { is_open: false }
+        Self {
+            is_open: false,
+            cache: DetectionCache::None,
+        }
+    }
+
+    /// reset data
+    pub(crate) fn reset(&mut self) {
+        self.cache = DetectionCache::None;
     }
 
     /// Show the detection ui
@@ -45,18 +103,10 @@ impl Detection {
                         file_info.name, file_info.file_type, file_info.extension
                     ));
                     ui.separator();
-                    match file_info.extension.as_str() {
-                        "png" => {
-                            ret = show_png_chunks(ui, binary_data);
-                        }
-                        "xml" => {
-                            let xml_str = String::from_utf8_lossy(binary_data);
-                            xml_tree_ui(ui, xml_str.as_str());
-                        }
-                        _ => {
-                            ui.label(format!("Kind: {:?}", file_info.kind));
-                        }
+                    if matches!(self.cache, DetectionCache::None) {
+                        self.cache = DetectionCache::parse(binary_data, file_info);
                     }
+                    ret = self.cache.show(ui, file_info);
                 });
             self.is_open = is_open;
             return ret;

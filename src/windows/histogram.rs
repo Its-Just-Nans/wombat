@@ -29,6 +29,11 @@ impl Histogram {
         }
     }
 
+    /// reset data
+    pub(crate) fn reset(&mut self) {
+        self.data = None;
+    }
+
     /// Calculate the histogram
     fn calculate_histogram(binary_data: &[u8]) -> HashMap<u8, usize> {
         let mut map = binary_data.iter().fold(HashMap::new(), |mut map, &byte| {

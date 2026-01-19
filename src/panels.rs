@@ -113,6 +113,7 @@ impl BladvakPanel for FileSelection {
     }
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         if let Some((select1, select2)) = app.selection.as_mut() {
+            let mut mark_stale = false;
             ui.label("Selection");
             ui.horizontal(|ui| {
                 ui.add(egui::DragValue::new(select1).range(0..=*select2));
@@ -133,6 +134,7 @@ impl BladvakPanel for FileSelection {
                 if ui.button("Delete selection").clicked() {
                     app.binary_file.drain(range.clone());
                     *select2 = select1.checked_sub(1).unwrap_or(0);
+                    mark_stale = true;
                 }
                 if let Some(slice) = app.binary_file.get(range) {
                     ui.collapsing("Export selection", |ui| {
@@ -165,6 +167,9 @@ impl BladvakPanel for FileSelection {
                         }
                     });
                 }
+            }
+            if mark_stale {
+                app.stale();
             }
         } else {
             ui.label("No selection");

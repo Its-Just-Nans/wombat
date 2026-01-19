@@ -34,6 +34,13 @@ impl WindowsData {
         }
     }
 
+    /// reset data
+    pub(crate) fn reset(&mut self) {
+        self.histogram.reset();
+        self.importer.reset();
+        self.detection.reset();
+    }
+
     /// Ui top bar
     pub(crate) fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         if ui.button("Histogram").clicked() {

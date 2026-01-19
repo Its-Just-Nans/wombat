@@ -148,6 +148,12 @@ impl WombatApp {
                 });
             });
     }
+
+    /// Mark data as stale
+    pub(crate) fn stale(&mut self) {
+        self.file_format = None;
+        self.windows_data.reset();
+    }
 }
 
 impl BladvakApp<'_> for WombatApp {
@@ -173,8 +179,7 @@ impl BladvakApp<'_> for WombatApp {
         self.binary_file = file.data;
         let file_len = self.binary_file.len();
         self.filename = file.path;
-        self.file_format = None;
-        self.windows_data = WindowsData::new();
+        self.stale();
 
         if self.binary_file.is_empty() {
             self.selection = None;

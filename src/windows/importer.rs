@@ -40,6 +40,13 @@ impl Importer {
             import_error: None,
         }
     }
+
+    /// reset data
+    pub(crate) fn reset(&mut self) {
+        self.value = String::new();
+        self.import_error = None;
+    }
+
     /// Import
     /// # Errors
     /// return error if fails to parse the `value`
