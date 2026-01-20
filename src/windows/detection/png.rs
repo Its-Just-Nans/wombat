@@ -25,6 +25,8 @@ struct PngChunk {
 pub(crate) struct PngData {
     /// png chunks
     chunks: Vec<PngChunk>,
+    /// png signature
+    signature: String,
 }
 
 /// png signature
@@ -37,7 +39,16 @@ impl PngData {
             return None;
         }
 
-        let mut png_data = PngData { chunks: vec![] };
+        let signature_hex = PNG_SIGNATURE
+            .iter()
+            .map(|b| format!("{b:02X}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let mut png_data = PngData {
+            chunks: vec![],
+            signature: signature_hex,
+        };
         let mut offset = 8;
         while offset + 12 <= binary_data.len() {
             let chunk_start = offset;
@@ -91,14 +102,21 @@ impl PngData {
 
             let crc_ok = stored_crc == computed_crc;
 
-            let chunk_end = data_end + 3; // inclusive
+            let end = data_end + 3; // inclusive
+
+            let crc = stored_crc
+                .to_be_bytes()
+                .iter()
+                .map(|b| format!("{b:02X}"))
+                .collect::<Vec<_>>()
+                .join(" ");
 
             let new_chunk = PngChunk {
                 size: length,
                 chunk_type,
                 start: chunk_start,
-                end: chunk_end,
-                crc: format!("{stored_crc:08X}"),
+                end,
+                crc,
                 crc_valid: crc_ok,
             };
             png_data.chunks.push(new_chunk);
@@ -121,10 +139,26 @@ fn crc32(data: &[u8]) -> u32 {
 }
 
 /// show PNG chunks
-pub fn show_png_chunks(ui: &mut egui::Ui, png_data: &PngData) -> Option<RangeInclusive<usize>> {
+pub fn show_png_chunks(
+    ui: &mut egui::Ui,
+    png_data: Option<&PngData>,
+) -> Option<RangeInclusive<usize>> {
+    let Some(png_data) = png_data else {
+        ui.label("Failed to parse png");
+        return None;
+    };
+
     ui.label("PNG Chunks");
 
     let mut return_range = None;
+
+    ui.horizontal(|ui| {
+        ui.label(format!("png signature: {}", png_data.signature));
+        if ui.button("Show").clicked() {
+            let range = 0..=(PNG_SIGNATURE.len() - 1);
+            return_range = Some(range);
+        }
+    });
 
     egui::Grid::new("png_chunks_table")
         .striped(true)

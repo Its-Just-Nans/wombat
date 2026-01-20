@@ -21,7 +21,11 @@ impl XmlData {
 }
 
 /// Show XML tree
-pub fn xml_tree_ui(ui: &mut egui::Ui, xml: &XmlData) {
+pub fn xml_tree_ui(ui: &mut egui::Ui, xml: Option<&XmlData>) {
+    let Some(xml) = xml else {
+        ui.label("Failed to parse xml");
+        return;
+    };
     match Document::parse(&xml.inner) {
         Ok(doc) => {
             let root = doc.root_element();

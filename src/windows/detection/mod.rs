@@ -16,25 +16,26 @@ use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 #[derive(Debug)]
 enum DetectionCache {
     /// png data cached
-    Png(PngData),
+    Png(Option<PngData>),
 
     /// xml data cached
-    Xml(XmlData),
+    Xml(Option<XmlData>),
     /// no cache
-    None,
+    Empty,
 }
 
 impl DetectionCache {
     /// Show the ui of cached data
     fn show(&self, ui: &mut egui::Ui, file_info: &FileInfoData) -> Option<RangeInclusive<usize>> {
         match self {
-            DetectionCache::Png(data) => show_png_chunks(ui, data),
+            DetectionCache::Png(data) => show_png_chunks(ui, data.as_ref()),
             DetectionCache::Xml(xml_str) => {
-                xml_tree_ui(ui, xml_str);
+                xml_tree_ui(ui, xml_str.as_ref());
                 None
             }
-            DetectionCache::None => {
+            DetectionCache::Empty => {
                 ui.label(format!("Kind: {:?}", file_info.kind));
+                ui.label("No data");
                 None
             }
         }
@@ -44,17 +45,14 @@ impl DetectionCache {
     fn parse(binary_data: &[u8], file_info: &FileInfoData) -> DetectionCache {
         match file_info.extension.as_str() {
             "png" => {
-                if let Some(data) = PngData::parse(binary_data) {
-                    DetectionCache::Png(data)
-                } else {
-                    DetectionCache::None
-                }
+                let parsed = PngData::parse(binary_data);
+                DetectionCache::Png(parsed)
             }
             "xml" => {
-                let data = XmlData::parse(binary_data);
-                DetectionCache::Xml(data)
+                let parsed = XmlData::parse(binary_data);
+                DetectionCache::Xml(Some(parsed))
             }
-            _ => DetectionCache::None,
+            _ => DetectionCache::Empty,
         }
     }
 }
@@ -74,13 +72,13 @@ impl Detection {
     pub(crate) fn new() -> Self {
         Self {
             is_open: false,
-            cache: DetectionCache::None,
+            cache: DetectionCache::Empty,
         }
     }
 
     /// reset data
     pub(crate) fn reset(&mut self) {
-        self.cache = DetectionCache::None;
+        self.cache = DetectionCache::Empty;
     }
 
     /// Show the detection ui
@@ -103,7 +101,7 @@ impl Detection {
                         file_info.name, file_info.file_type, file_info.extension
                     ));
                     ui.separator();
-                    if matches!(self.cache, DetectionCache::None) {
+                    if matches!(self.cache, DetectionCache::Empty) {
                         self.cache = DetectionCache::parse(binary_data, file_info);
                     }
                     ret = self.cache.show(ui, file_info);

@@ -43,15 +43,9 @@ impl WindowsData {
 
     /// Ui top bar
     pub(crate) fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
-        if ui.button("Histogram").clicked() {
-            self.histogram.is_open = true;
-        }
-        if ui.button("Import").clicked() {
-            self.importer.is_open = true;
-        }
-        if ui.button("Detection").clicked() {
-            self.detection.is_open = true;
-        }
+        ui.toggle_value(&mut self.histogram.is_open, "Histogram");
+        ui.toggle_value(&mut self.importer.is_open, "Import");
+        ui.toggle_value(&mut self.detection.is_open, "Detection");
     }
 }
 
