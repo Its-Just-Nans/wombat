@@ -1,11 +1,10 @@
 //! Central panel
 
-use bladvak::eframe::egui::{
-    self, Color32, FontFamily, FontId, ScrollArea, TextStyle, Theme, Vec2,
-};
+use bladvak::eframe::egui::{self, FontFamily, FontId, ScrollArea, TextStyle, Theme, Vec2};
 use bladvak::errors::ErrorManager;
 
 use crate::WombatApp;
+use crate::app::Accent;
 
 impl WombatApp {
     /// Show the central panel
@@ -60,6 +59,7 @@ impl WombatApp {
     /// Fails if a something happens during render
     #[allow(clippy::cast_possible_truncation)]
     #[allow(clippy::cast_precision_loss)]
+    #[allow(clippy::too_many_lines)]
     fn show_lines(
         &mut self,
         ui: &mut egui::Ui,
@@ -119,12 +119,13 @@ impl WombatApp {
                 let x_pos = (idx as f32) * 3.0 * (font_size * 0.6);
                 let color = if self
                     .selection
+                    .range
                     .is_some_and(|s| (s.0..=s.1).contains(&(offset + idx)))
                 {
-                    if ui.ctx().theme() == Theme::Dark {
-                        Color32::GOLD
+                    if ui.ctx().theme() == Theme::Light {
+                        self.selection.color.0
                     } else {
-                        Color32::ORANGE
+                        self.selection.color.1
                     }
                 } else {
                     ui.visuals().text_color()
@@ -157,15 +158,41 @@ impl WombatApp {
                     egui::vec2(hex_group_width, row_height),
                 );
 
-                let resp = ui.interact(byte_rect, ui.id().with((line, idx)), egui::Sense::click());
+                let resp = ui.interact(
+                    byte_rect,
+                    ui.id().with(("hex", line, idx)),
+                    egui::Sense::click(),
+                );
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
-                    resp.on_hover_ui(|ui| Self::ui_table_u8(ui, *b));
+                    resp.on_hover_ui(|ui| Self::ui_table_u8(ui, *b, &Accent::Hex));
                 }
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);
-                    self.selection = self.handle_selection_click(offset, idx, is_alt);
+                    self.selection.range = self.handle_selection_click(offset, idx, is_alt);
+                }
+
+                let bx = ascii_col_x + (idx as f32) * (font_size * 0.6);
+
+                let byte_rect = egui::Rect::from_min_size(
+                    origin + Vec2::new(bx, y),
+                    egui::vec2(hex_group_width, row_height),
+                );
+
+                let resp = ui.interact(
+                    byte_rect,
+                    ui.id().with(("ascii", line, idx)),
+                    egui::Sense::click(),
+                );
+
+                let is_clicked = resp.clicked();
+                if resp.hovered() {
+                    resp.on_hover_ui(|ui| Self::ui_table_u8(ui, *b, &Accent::Ascii));
+                }
+                if is_clicked {
+                    let is_alt = ui.ctx().input(|i| i.modifiers.shift);
+                    self.selection.range = self.handle_selection_click(offset, idx, is_alt);
                 }
             }
             y += row_height;
@@ -180,7 +207,7 @@ impl WombatApp {
         is_alt: bool,
     ) -> Option<(usize, usize)> {
         let current_idx = offset + idx;
-        if let Some((select1, select2)) = self.selection {
+        if let Some((select1, select2)) = self.selection.range {
             if is_alt {
                 if select1 == current_idx {
                     return Some((current_idx, current_idx));

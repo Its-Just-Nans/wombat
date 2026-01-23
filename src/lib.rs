@@ -23,6 +23,7 @@
 mod app;
 mod central_panel;
 mod panels;
+mod selection;
 mod windows;
 
 pub use app::WombatApp;

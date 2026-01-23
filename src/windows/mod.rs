@@ -81,7 +81,7 @@ impl WombatApp {
                     .detection
                     .ui(&self.binary_file, infos, ui, error_manager)
         {
-            self.selection = Some((*range.start(), *range.end()));
+            self.selection.range = Some((*range.start(), *range.end()));
         }
     }
 }

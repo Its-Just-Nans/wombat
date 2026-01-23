@@ -1,7 +1,7 @@
 //! Wombat App
 
 use bladvak::app::BladvakPanel;
-use bladvak::eframe::egui;
+use bladvak::eframe::egui::{self, Color32, RichText, Theme};
 use bladvak::eframe::{self, CreationContext};
 use bladvak::egui_extras::{Column, TableBuilder};
 use bladvak::utils::is_native;
@@ -14,7 +14,8 @@ use std::fmt::Debug;
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
-use crate::panels::{FileInfo, FileInfoData, FileSelection};
+use crate::panels::{FileInfo, FileInfoData};
+use crate::selection::{PanelSelection, Selection};
 use crate::windows::WindowsData;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -33,7 +34,7 @@ pub struct WombatApp {
     pub(crate) bytes_per_line: usize,
 
     /// Selection
-    pub(crate) selection: Option<(usize, usize)>,
+    pub(crate) selection: Selection,
 
     /// File info
     #[serde(skip)]
@@ -54,11 +55,26 @@ impl Default for WombatApp {
             binary_file: data,
             filename: path,
             bytes_per_line: 32,
-            selection: None,
+            selection: Selection::default(),
             file_format: None,
             windows_data: WindowsData::new(),
         }
     }
+}
+
+/// Accent type
+#[derive(Debug, PartialEq)]
+pub(crate) enum Accent {
+    /// decimal
+    Decimal,
+    /// hexe
+    Hex,
+    /// octal
+    Octal,
+    /// binary
+    Binary,
+    /// ascii
+    Ascii,
 }
 
 impl WombatApp {
@@ -124,7 +140,7 @@ impl WombatApp {
     }
 
     /// Ui for the table representation of a u8
-    pub(crate) fn ui_table_u8(ui: &mut egui::Ui, current: u8) {
+    pub(crate) fn ui_table_u8(ui: &mut egui::Ui, current: u8, accent_ui: &Accent) {
         TableBuilder::new(ui)
             .column(Column::auto().resizable(true))
             .column(Column::remainder())
@@ -138,12 +154,26 @@ impl WombatApp {
                         ui.label("ASCII");
                     });
                     row.col(|ui| {
-                        ui.label(format!("{current}"));
-                        ui.label(format!("0x{current:02X}"));
-                        ui.label(format!("0o{current:03o}"));
-                        ui.label(format!("0b{current:08b}"));
+                        let accent = if ui.ctx().theme() == Theme::Light {
+                            Color32::BLACK
+                        } else {
+                            Color32::WHITE
+                        };
+
+                        let accent_label =
+                            |ui: &mut egui::Ui, current_accent: Accent, text: String| {
+                                if accent_ui == &current_accent {
+                                    ui.monospace(RichText::new(text).color(accent));
+                                } else {
+                                    ui.monospace(text);
+                                }
+                            };
+                        accent_label(ui, Accent::Decimal, format!("{current}"));
+                        accent_label(ui, Accent::Hex, format!("0x{current:02X}"));
+                        accent_label(ui, Accent::Octal, format!("0o{current:03o}"));
+                        accent_label(ui, Accent::Binary, format!("0b{current:08b}"));
                         let ascii_char = WombatApp::ascii_to_string(current);
-                        ui.label(ascii_char);
+                        accent_label(ui, Accent::Ascii, ascii_char);
                     });
                 });
             });
@@ -158,7 +188,7 @@ impl WombatApp {
 
 impl BladvakApp<'_> for WombatApp {
     fn panel_list(&self) -> Vec<Box<dyn BladvakPanel<App = WombatApp>>> {
-        vec![Box::new(FileInfo), Box::new(FileSelection)]
+        vec![Box::new(FileInfo), Box::new(PanelSelection)]
     }
 
     fn side_panel(&mut self, ui: &mut egui::Ui, func_ui: impl FnOnce(&mut egui::Ui, &mut Self)) {
@@ -182,8 +212,8 @@ impl BladvakApp<'_> for WombatApp {
         self.stale();
 
         if self.binary_file.is_empty() {
-            self.selection = None;
-        } else if let Some((select1, select2)) = self.selection.as_mut() {
+            self.selection.reset();
+        } else if let Some((select1, select2)) = self.selection.range.as_mut() {
             if *select1 > file_len {
                 *select1 = file_len - 1;
             }
