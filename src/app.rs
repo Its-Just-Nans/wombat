@@ -30,9 +30,8 @@ pub struct WombatApp {
     #[serde(skip)]
     pub(crate) filename: PathBuf,
 
-    /// Bytes per line
-    pub(crate) bytes_per_line: usize,
-
+    /// Display settings
+    pub(crate) display_settings: DisplaySettings,
     /// Selection
     pub(crate) selection: Selection,
 
@@ -54,10 +53,28 @@ impl Default for WombatApp {
         Self {
             binary_file: data,
             filename: path,
-            bytes_per_line: 32,
+            display_settings: DisplaySettings::default(),
             selection: Selection::default(),
             file_format: None,
             windows_data: WindowsData::new(),
+        }
+    }
+}
+
+/// Display setting
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+pub(crate) struct DisplaySettings {
+    /// Little endian
+    pub(crate) display_lsb: bool,
+    /// Bytes per line
+    pub(crate) bytes_per_line: usize,
+}
+
+impl Default for DisplaySettings {
+    fn default() -> Self {
+        Self {
+            display_lsb: false,
+            bytes_per_line: 32,
         }
     }
 }

@@ -77,7 +77,10 @@ impl BladvakPanel for FileInfo {
 
         ui.separator();
         ui.label("Binary length");
-        ui.add(egui::Slider::new(&mut app.bytes_per_line, 1..=64));
+        ui.add(egui::Slider::new(
+            &mut app.display_settings.bytes_per_line,
+            1..=64,
+        ));
     }
 
     fn ui_settings(
@@ -92,5 +95,9 @@ impl BladvakPanel for FileInfo {
                 error_manager.add_error(err);
             }
         }
+        ui.checkbox(
+            &mut app.display_settings.display_lsb,
+            "Least Significant Bit",
+        );
     }
 }
