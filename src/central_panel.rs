@@ -1,8 +1,6 @@
 //! Central panel
 
-use bladvak::eframe::egui::{
-    self, Color32, FontFamily, FontId, ScrollArea, Stroke, TextStyle, Theme, Vec2,
-};
+use bladvak::eframe::egui::{self, FontFamily, FontId, ScrollArea, TextStyle, Theme, Vec2};
 use bladvak::errors::ErrorManager;
 
 use crate::WombatApp;
@@ -174,6 +172,7 @@ impl WombatApp {
                     egui::Sense::click(),
                 );
                 // debug
+                // use bladvak::eframe::egui::{Color32, Stroke};
                 // painter.rect(
                 //     byte_rect,
                 //     1.0,
@@ -206,6 +205,7 @@ impl WombatApp {
                     egui::Sense::click(),
                 );
                 // debug
+                // use bladvak::eframe::egui::{Color32, Stroke};
                 // painter.rect(
                 //     byte_rect,
                 //     1.0,
