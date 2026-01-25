@@ -97,7 +97,7 @@ impl BladvakPanel for FileInfo {
         }
         ui.checkbox(
             &mut app.display_settings.display_lsb,
-            "Least Significant Bit",
+            "Show as Least Significant Bit",
         );
     }
 }

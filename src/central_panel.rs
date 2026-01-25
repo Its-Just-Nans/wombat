@@ -173,13 +173,14 @@ impl WombatApp {
                     ui.id().with(("hex", line, idx)),
                     egui::Sense::click(),
                 );
-                painter.rect(
-                    byte_rect,
-                    1.0,
-                    Color32::TRANSPARENT,
-                    Stroke::new(0.5, Color32::BLACK),
-                    egui::StrokeKind::Middle,
-                );
+                // debug
+                // painter.rect(
+                //     byte_rect,
+                //     1.0,
+                //     Color32::TRANSPARENT,
+                //     Stroke::new(0.5, Color32::BLACK),
+                //     egui::StrokeKind::Middle,
+                // );
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
