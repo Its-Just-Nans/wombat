@@ -112,7 +112,7 @@ impl WombatApp {
                 } else {
                     *b
                 };
-                let c = match *b {
+                let c = match b {
                     x if Self::RANGE_ASCII_PRINTABLE.contains(&x) => x as char,
                     _ => '.',
                 };
