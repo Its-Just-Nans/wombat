@@ -52,7 +52,15 @@ impl BladvakPanel for PanelSelection {
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         if let Some((select1, select2)) = app.selection.range.as_mut() {
             let mut mark_stale = false;
-            ui.label("Selection");
+            ui.horizontal(|ui| {
+                ui.label("Selection");
+                let color_to_edit = if ui.ctx().theme() == Theme::Light {
+                    &mut app.selection.color.0
+                } else {
+                    &mut app.selection.color.1
+                };
+                ui.color_edit_button_srgba(color_to_edit);
+            });
             ui.horizontal(|ui| {
                 ui.add(egui::DragValue::new(select1).range(0..=*select2));
                 let max = app.binary_file.len() - 1;
@@ -70,13 +78,23 @@ impl BladvakPanel for PanelSelection {
                 ui.label(format!("{nb_selected} bytes selected"));
                 let range = *select1..=*select2;
 
+                if nb_selected == 4
+                    && let Some(slice) = app.binary_file.get(range.clone())
+                    && let Ok(bytes) = <[u8; 4]>::try_from(slice)
+                {
+                    let range_u32 = u32::from_le_bytes(bytes);
+
+                    if let Some(charac) = std::char::from_u32(range_u32) {
+                        ui.label(format!("Unicode le {charac}"));
+                    }
+                    let range_u32 = u32::from_be_bytes(bytes);
+
+                    if let Some(charac) = std::char::from_u32(range_u32) {
+                        ui.label(format!("Unicode be {charac}"));
+                    }
+                }
+
                 ui.collapsing("More", |ui| {
-                    let color_to_edit = if ui.ctx().theme() == Theme::Light {
-                        &mut app.selection.color.0
-                    } else {
-                        &mut app.selection.color.1
-                    };
-                    ui.color_edit_button_srgba(color_to_edit);
                     if ui.button("Delete selection").clicked() {
                         app.binary_file.drain(range.clone());
                         *select2 = select1.checked_sub(1).unwrap_or(0);

@@ -1,5 +1,7 @@
 //! XML
 
+use std::ops::RangeInclusive;
+
 use bladvak::eframe::egui::{self, CollapsingHeader};
 use roxmltree::{Document, Node};
 
@@ -21,25 +23,28 @@ impl XmlData {
 }
 
 /// Show XML tree
-pub fn xml_tree_ui(ui: &mut egui::Ui, xml: Option<&XmlData>) {
+pub fn xml_tree_ui(ui: &mut egui::Ui, xml: Option<&XmlData>) -> Option<RangeInclusive<usize>> {
     let Some(xml) = xml else {
         ui.label("Failed to parse xml");
-        return;
+        return None;
     };
+    let mut return_range = None;
     match Document::parse(&xml.inner) {
         Ok(doc) => {
             let root = doc.root_element();
-            draw_node(ui, root, 0);
+            return_range = draw_node(ui, root, 0);
         }
         Err(err) => {
             ui.colored_label(egui::Color32::RED, err.to_string());
         }
     }
+    return_range
 }
 
 /// Draw node
-fn draw_node(ui: &mut egui::Ui, node: Node<'_, '_>, idx: usize) {
+fn draw_node(ui: &mut egui::Ui, node: Node<'_, '_>, idx: usize) -> Option<RangeInclusive<usize>> {
     let mut count = idx;
+    let mut return_range = None;
     match node.node_type() {
         roxmltree::NodeType::Element => {
             let label = format_element_label(node);
@@ -48,6 +53,13 @@ fn draw_node(ui: &mut egui::Ui, node: Node<'_, '_>, idx: usize) {
                 .id_salt(format!("{label}-{idx}-{count}"))
                 .default_open(false)
                 .show(ui, |ui| {
+                    let range = node.range();
+                    if ui
+                        .button(format!("Position {}-{}", range.start, range.end - 1))
+                        .clicked()
+                    {
+                        return_range = Some(range.start..=range.end - 1);
+                    }
                     // Attributes
                     for attr in node.attributes() {
                         ui.label(format!("@{}=\"{}\"", attr.name(), attr.value()));
@@ -56,7 +68,9 @@ fn draw_node(ui: &mut egui::Ui, node: Node<'_, '_>, idx: usize) {
                     // Children
                     for child in node.children() {
                         count += 1;
-                        draw_node(ui, child, count);
+                        if let Some(range) = draw_node(ui, child, count) {
+                            return_range = Some(range);
+                        }
                     }
                 });
         }
@@ -74,6 +88,7 @@ fn draw_node(ui: &mut egui::Ui, node: Node<'_, '_>, idx: usize) {
 
         _ => {}
     }
+    return_range
 }
 
 /// Format element label

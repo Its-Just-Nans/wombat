@@ -29,10 +29,7 @@ impl DetectionCache {
     fn show(&self, ui: &mut egui::Ui, file_info: &FileInfoData) -> Option<RangeInclusive<usize>> {
         match self {
             DetectionCache::Png(data) => show_png_chunks(ui, data.as_ref()),
-            DetectionCache::Xml(xml_str) => {
-                xml_tree_ui(ui, xml_str.as_ref());
-                None
-            }
+            DetectionCache::Xml(xml_str) => xml_tree_ui(ui, xml_str.as_ref()),
             DetectionCache::Empty => {
                 ui.label(format!("Kind: {:?}", file_info.kind));
                 ui.label("No data");
