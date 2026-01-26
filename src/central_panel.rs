@@ -110,7 +110,7 @@ impl WombatApp {
                 let b = if self.display_settings.display_lsb {
                     b.reverse_bits()
                 } else {
-                    b
+                    *b
                 };
                 let c = match *b {
                     x if Self::RANGE_ASCII_PRINTABLE.contains(&x) => x as char,
