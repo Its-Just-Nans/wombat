@@ -90,6 +90,7 @@ impl Importer {
                     }
                     if TextEdit::multiline(&mut self.value)
                         .min_size(ui.available_size())
+                        .desired_width(f32::INFINITY)
                         .ui(ui)
                         .changed()
                     {
