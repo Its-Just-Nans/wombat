@@ -4,10 +4,9 @@ mod cert;
 mod png;
 mod xml;
 
-use std::ops::RangeInclusive;
-
 use bladvak::eframe::egui::{self};
 use bladvak::errors::ErrorManager;
+use std::ops::RangeInclusive;
 
 use crate::panels::FileInfoData;
 use crate::windows::detection::cert::{CertData, show_certs};
@@ -29,7 +28,12 @@ enum DetectionCache {
 
 impl DetectionCache {
     /// Show the ui of cached data
-    fn show(&self, ui: &mut egui::Ui, file_info: &FileInfoData) -> Option<RangeInclusive<usize>> {
+    fn show(
+        &self,
+        ui: &mut egui::Ui,
+        _binary_data: &[u8],
+        file_info: &FileInfoData,
+    ) -> Option<RangeInclusive<usize>> {
         match self {
             DetectionCache::Png(data) => show_png_chunks(ui, data.as_ref()),
             DetectionCache::Xml(xml_str) => xml_tree_ui(ui, xml_str.as_ref()),
@@ -54,7 +58,11 @@ impl DetectionCache {
                 DetectionCache::Xml(Some(parsed))
             }
             "crt" => {
-                let parsed = CertData::parse(binary_data);
+                let parsed = CertData::parse(binary_data, false);
+                DetectionCache::Cert(parsed)
+            }
+            "der" => {
+                let parsed = CertData::parse(binary_data, true);
                 DetectionCache::Cert(parsed)
             }
             _ => DetectionCache::Empty,
@@ -109,7 +117,7 @@ impl Detection {
                     if matches!(self.cache, DetectionCache::Empty) {
                         self.cache = DetectionCache::parse(binary_data, file_info);
                     }
-                    ret = self.cache.show(ui, file_info);
+                    ret = self.cache.show(ui, binary_data, file_info);
                 });
             self.is_open = is_open;
             return ret;

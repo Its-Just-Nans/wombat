@@ -2,9 +2,10 @@
 
 use bladvak::eframe::egui;
 use std::{fmt::Write, ops::RangeInclusive};
-use x509_parser::pem::Pem;
+use x509_parser::prelude::X509Certificate;
+use x509_parser::{pem::Pem, prelude::FromDer};
 
-/// png data
+/// pem data
 #[derive(Debug)]
 pub(crate) struct CertData {
     /// pem files
@@ -13,16 +14,30 @@ pub(crate) struct CertData {
 
 impl CertData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8]) -> Option<Self> {
-        let pems: Vec<Pem> = Pem::iter_from_buffer(binary_data)
-            .collect::<Result<_, _>>()
-            .ok()?;
+    pub(crate) fn parse(binary_data: &[u8], is_der: bool) -> Option<Self> {
+        let pems: Vec<Pem> = if is_der {
+            let mut reader = binary_data;
+            let mut pems = Vec::new();
+            while !reader.is_empty() {
+                let (rem, cert) = X509Certificate::from_der(reader).ok()?;
+                pems.push(Pem {
+                    label: "CERTIFICATE".to_string(),
+                    contents: cert.as_raw().to_vec(),
+                });
+                reader = rem;
+            }
+            pems
+        } else {
+            Pem::iter_from_buffer(binary_data)
+                .collect::<Result<Vec<_>, _>>()
+                .ok()?
+        };
 
         Some(Self { pems })
     }
 }
 
-/// show PNG chunks
+/// show certificates
 pub fn show_certs(ui: &mut egui::Ui, opt_data: Option<&CertData>) -> Option<RangeInclusive<usize>> {
     let Some(data) = opt_data else {
         ui.label("Failed to parse pem certificates");
