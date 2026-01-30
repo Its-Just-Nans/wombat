@@ -59,9 +59,9 @@ pub fn show_certs(ui: &mut egui::Ui, opt_data: Option<&CertData>) -> Option<Rang
                 ui.label(x509.issuer().to_string());
                 ui.end_row();
                 let is_valid = if x509.tbs_certificate.validity().is_valid() {
-                    "certificate is currenlty valid"
+                    "certificate is currently valid"
                 } else {
-                    "certificate is currenlty invalid"
+                    "certificate is currently invalid"
                 };
                 ui.label("Validity (not before)");
                 ui.label(format!(
