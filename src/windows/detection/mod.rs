@@ -1,5 +1,6 @@
 //! Detection
 
+mod cert;
 mod png;
 mod xml;
 
@@ -9,6 +10,7 @@ use bladvak::eframe::egui::{self};
 use bladvak::errors::ErrorManager;
 
 use crate::panels::FileInfoData;
+use crate::windows::detection::cert::{CertData, show_certs};
 use crate::windows::detection::png::{PngData, show_png_chunks};
 use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 
@@ -17,9 +19,10 @@ use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 enum DetectionCache {
     /// png data cached
     Png(Option<PngData>),
-
     /// xml data cached
     Xml(Option<XmlData>),
+    /// cert data cached
+    Cert(Option<CertData>),
     /// no cache
     Empty,
 }
@@ -30,6 +33,7 @@ impl DetectionCache {
         match self {
             DetectionCache::Png(data) => show_png_chunks(ui, data.as_ref()),
             DetectionCache::Xml(xml_str) => xml_tree_ui(ui, xml_str.as_ref()),
+            DetectionCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
             DetectionCache::Empty => {
                 ui.label(format!("Kind: {:?}", file_info.kind));
                 ui.label("No data");
@@ -48,6 +52,10 @@ impl DetectionCache {
             "xml" => {
                 let parsed = XmlData::parse(binary_data);
                 DetectionCache::Xml(Some(parsed))
+            }
+            "crt" => {
+                let parsed = CertData::parse(binary_data);
+                DetectionCache::Cert(parsed)
             }
             _ => DetectionCache::Empty,
         }

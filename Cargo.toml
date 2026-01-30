@@ -23,6 +23,7 @@ bladvak = "1.2.7"
 file-format = "0.28.0"
 roxmltree = { version = "0.21.1", features = ["positions"] }
 serde = { version = "1", features = ["derive"] }
+x509-parser = "0.18.0"
 
 [profile.release]
 opt-level = 2 # fast and small wasm

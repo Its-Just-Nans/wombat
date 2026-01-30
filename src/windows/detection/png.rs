@@ -34,7 +34,7 @@ const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
 
 impl PngData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8]) -> Option<PngData> {
+    pub(crate) fn parse(binary_data: &[u8]) -> Option<Self> {
         if binary_data.len() < 8 || &binary_data[..8] != PNG_SIGNATURE {
             return None;
         }
@@ -45,7 +45,7 @@ impl PngData {
             .collect::<Vec<_>>()
             .join(" ");
 
-        let mut png_data = PngData {
+        let mut png_data = Self {
             chunks: vec![],
             signature: signature_hex,
         };

@@ -14,9 +14,9 @@ pub(crate) struct XmlData {
 
 impl XmlData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8]) -> XmlData {
+    pub(crate) fn parse(binary_data: &[u8]) -> Self {
         let xml_str = String::from_utf8_lossy(binary_data);
-        XmlData {
+        Self {
             inner: xml_str.to_string(),
         }
     }
