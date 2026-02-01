@@ -3411,6 +3411,7 @@ checksum = "9da98b7d9b7dad93488a84b8248efc35352b0b2657397d4167e7ad67e5d535e5"
 dependencies = [
  "deranged",
  "itoa",
+ "js-sys",
  "num-conv",
  "powerfmt",
  "serde_core",
@@ -4495,6 +4496,7 @@ dependencies = [
  "file-format",
  "roxmltree 0.21.1",
  "serde",
+ "time",
  "x509-parser",
 ]
 

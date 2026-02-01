@@ -25,6 +25,10 @@ roxmltree = { version = "0.21.1", features = ["positions"] }
 serde = { version = "1", features = ["derive"] }
 x509-parser = "0.18.0"
 
+# temp fix https://github.com/rusticata/x509-parser/pull/231
+time = { version = "0.3.46", features = ["wasm-bindgen"] }
+
+
 [profile.release]
 opt-level = 2 # fast and small wasm
 
