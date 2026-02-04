@@ -19,15 +19,21 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [dependencies]
 # bladvak = { path = "../bladvak" }
-bladvak = "1.2.7"
+bladvak = "1.2.8"
 file-format = "0.28.0"
 roxmltree = { version = "0.21.1", features = ["positions"] }
 serde = { version = "1", features = ["derive"] }
 x509-parser = "0.18.0"
+sha1 = { version = "0.10.6", optional = true }
+sha2 = { version = "0.10.9", optional = true }
+md-5 = { version = "0.10.6", optional = true }
 
 # temp fix https://github.com/rusticata/x509-parser/pull/231
 time = { version = "0.3.46", features = ["wasm-bindgen"] }
 
+[features]
+default = ["hashing"]
+hashing = ["dep:sha1", "dep:sha2", "dep:md-5"]
 
 [profile.release]
 opt-level = 2 # fast and small wasm

@@ -1,6 +1,8 @@
 //! Wombat windows
 
 mod detection;
+#[cfg(feature = "hashing")]
+mod hashing;
 mod histogram;
 mod importer;
 
@@ -22,6 +24,9 @@ pub struct WindowsData {
     pub(crate) importer: Importer,
     /// detection
     pub(crate) detection: Detection,
+    #[cfg(feature = "hashing")]
+    /// hashing
+    pub(crate) hashing: hashing::Hashing,
 }
 
 impl WindowsData {
@@ -31,6 +36,8 @@ impl WindowsData {
             histogram: Histogram::new(),
             importer: Importer::new(),
             detection: Detection::new(),
+            #[cfg(feature = "hashing")]
+            hashing: hashing::Hashing::new(),
         }
     }
 
@@ -39,6 +46,8 @@ impl WindowsData {
         self.histogram.reset();
         self.importer.reset();
         self.detection.reset();
+        #[cfg(feature = "hashing")]
+        self.hashing.reset();
     }
 
     /// Ui top bar
@@ -46,6 +55,8 @@ impl WindowsData {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.importer.is_open, "Import");
         ui.toggle_value(&mut self.detection.is_open, "Detection");
+        #[cfg(feature = "hashing")]
+        ui.toggle_value(&mut self.hashing.is_open, "Hashing");
     }
 }
 
@@ -56,6 +67,10 @@ impl WombatApp {
         use std::path::PathBuf;
         self.windows_data
             .histogram
+            .ui(&self.binary_file, ui, error_manager);
+        #[cfg(feature = "hashing")]
+        self.windows_data
+            .hashing
             .ui(&self.binary_file, ui, error_manager);
         if let Some(data) = self.windows_data.importer.ui(ui, error_manager)
             && let Err(e) = self.handle_file(File {
