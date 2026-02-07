@@ -1,10 +1,11 @@
 //! Side panel
 
-use bladvak::BladvakApp;
 use bladvak::app::BladvakPanel;
 use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
+use bladvak::{BladvakApp, File};
 use file_format::FileFormat;
+use std::path::PathBuf;
 
 use crate::WombatApp;
 
@@ -95,9 +96,22 @@ impl BladvakPanel for FileInfo {
                 error_manager.add_error(err);
             }
         }
+        if ui.button("Load ASCII").clicked() {
+            let ascii_file = File {
+                data: (0..=255).collect(),
+                path: PathBuf::from("ascii.bin"),
+            };
+            if let Err(err) = app.handle_file(ascii_file) {
+                error_manager.add_error(err);
+            }
+        }
         ui.checkbox(
             &mut app.display_settings.display_lsb,
             "Show as Least Significant Bit",
+        );
+        ui.checkbox(
+            &mut app.display_settings.limit_to_base_ascii,
+            "Limit to base ASCII",
         );
     }
 }

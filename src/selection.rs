@@ -50,6 +50,9 @@ impl BladvakPanel for PanelSelection {
         false
     }
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+        if app.binary_file.is_empty() {
+            app.selection.range = None;
+        }
         if let Some((select1, select2)) = app.selection.range.as_mut() {
             let mut mark_stale = false;
             ui.horizontal(|ui| {
@@ -63,7 +66,11 @@ impl BladvakPanel for PanelSelection {
             });
             ui.horizontal(|ui| {
                 ui.add(egui::DragValue::new(select1).range(0..=*select2));
-                let max = app.binary_file.len() - 1;
+                let max = if app.binary_file.is_empty() {
+                    0
+                } else {
+                    app.binary_file.len() - 1
+                };
                 ui.label("->");
                 ui.add(egui::DragValue::new(select2).range(*select1..=max));
             });
@@ -72,7 +79,7 @@ impl BladvakPanel for PanelSelection {
             {
                 ui.separator();
                 ui.label(format!("byte at index {select1}"));
-                WombatApp::ui_table_u8(ui, *current, &Accent::Hex);
+                app.ui_table_u8(ui, *current, &Accent::Hex);
             } else {
                 let nb_selected = select2.checked_sub(*select1).map_or(0, |d| d as u64 + 1);
                 ui.label(format!("{nb_selected} bytes selected"));
@@ -133,6 +140,9 @@ impl BladvakPanel for PanelSelection {
             }
             if mark_stale {
                 app.stale();
+            }
+            if app.binary_file.is_empty() {
+                app.selection.range = None;
             }
         } else {
             ui.label("No selection");

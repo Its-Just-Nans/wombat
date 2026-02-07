@@ -114,7 +114,13 @@ impl WombatApp {
                 };
                 let c = match b {
                     x if Self::RANGE_ASCII_PRINTABLE.contains(&x) => x as char,
-                    _ => '.',
+                    c => {
+                        if self.display_settings.limit_to_base_ascii {
+                            '.'
+                        } else {
+                            c as char
+                        }
+                    }
                 };
                 ascii_buf.push(c);
             }
@@ -188,7 +194,7 @@ impl WombatApp {
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
-                    resp.on_hover_ui(|ui| Self::ui_table_u8(ui, *b, &Accent::Hex));
+                    resp.on_hover_ui(|ui| self.ui_table_u8(ui, *b, &Accent::Hex));
                 }
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);
@@ -221,7 +227,7 @@ impl WombatApp {
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
-                    resp.on_hover_ui(|ui| Self::ui_table_u8(ui, *b, &Accent::Ascii));
+                    resp.on_hover_ui(|ui| self.ui_table_u8(ui, *b, &Accent::Ascii));
                 }
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);

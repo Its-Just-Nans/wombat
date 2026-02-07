@@ -68,6 +68,8 @@ pub(crate) struct DisplaySettings {
     pub(crate) display_lsb: bool,
     /// Bytes per line
     pub(crate) bytes_per_line: usize,
+    /// limit ascii
+    pub(crate) limit_to_base_ascii: bool,
 }
 
 impl Default for DisplaySettings {
@@ -75,6 +77,7 @@ impl Default for DisplaySettings {
         Self {
             display_lsb: false,
             bytes_per_line: 32,
+            limit_to_base_ascii: true,
         }
     }
 }
@@ -115,7 +118,7 @@ impl WombatApp {
     }
 
     /// ascii u8 to string
-    pub(crate) fn ascii_to_string(c: u8) -> String {
+    pub(crate) fn ascii_to_string(&self, c: u8) -> String {
         match c {
             0x0 => "NUL (Null character)".to_string(),
             0x01 => "SOH (Start of Heading)".to_string(),
@@ -152,12 +155,18 @@ impl WombatApp {
             0x20 => "SP (Space)".to_string(),
             x if Self::RANGE_ASCII_PRINTABLE.contains(&x) => (c as char).to_string(),
             0x7F => "DEL (Delete)".to_string(),
-            _ => "extended ASCII".to_string(),
+            c => {
+                if self.display_settings.limit_to_base_ascii {
+                    "extended ASCII".to_string()
+                } else {
+                    format!("{} (extended ASCII)", c as char)
+                }
+            }
         }
     }
 
     /// Ui for the table representation of a u8
-    pub(crate) fn ui_table_u8(ui: &mut egui::Ui, current: u8, accent_ui: &Accent) {
+    pub(crate) fn ui_table_u8(&self, ui: &mut egui::Ui, current: u8, accent_ui: &Accent) {
         TableBuilder::new(ui)
             .column(Column::auto().resizable(true))
             .column(Column::remainder())
@@ -189,7 +198,7 @@ impl WombatApp {
                         accent_label(ui, Accent::Hex, format!("0x{current:02X}"));
                         accent_label(ui, Accent::Octal, format!("0o{current:03o}"));
                         accent_label(ui, Accent::Binary, format!("0b{current:08b}"));
-                        let ascii_char = WombatApp::ascii_to_string(current);
+                        let ascii_char = self.ascii_to_string(current);
                         accent_label(ui, Accent::Ascii, ascii_char);
                     });
                 });
@@ -296,8 +305,10 @@ mod test {
 
     #[test]
     fn test_to_ascii() {
+        let wombat = WombatApp::default();
+
         for i in 0u8..=u8::MAX {
-            let text = WombatApp::ascii_to_string(i);
+            let text = wombat.ascii_to_string(i);
             if i > 127 {
                 // extended ASCII
                 assert_eq!(text, "extended ASCII", "{i}");
