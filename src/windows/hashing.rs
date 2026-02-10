@@ -75,7 +75,7 @@ impl Hashing {
         if self.is_open {
             if let Some(data) = &self.data {
                 let mut is_open = self.is_open;
-                egui::Window::new("Histogram")
+                egui::Window::new("Hashing")
                     .open(&mut is_open)
                     .vscroll(true)
                     .show(ui.ctx(), |ui| {
