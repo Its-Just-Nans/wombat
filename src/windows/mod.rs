@@ -16,7 +16,7 @@ use histogram::Histogram;
 use importer::Importer;
 
 /// File info
-#[derive(Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct WindowsData {
     /// Histogram info
     pub(crate) histogram: Histogram,

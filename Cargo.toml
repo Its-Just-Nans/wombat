@@ -19,7 +19,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [dependencies]
 # bladvak = { path = "../bladvak" }
-bladvak = "1.2.9"
+bladvak = "1.2.10"
 file-format = "0.28.0"
 roxmltree = { version = "0.21.1", features = ["positions"] }
 serde = { version = "1", features = ["derive"] }

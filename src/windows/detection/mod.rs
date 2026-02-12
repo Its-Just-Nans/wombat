@@ -14,7 +14,7 @@ use crate::windows::detection::png::{PngData, show_png_chunks};
 use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 
 /// Histogram data cache
-#[derive(Debug)]
+#[derive(Default, Debug)]
 enum DetectionCache {
     /// png data cached
     Png(Option<PngData>),
@@ -22,7 +22,9 @@ enum DetectionCache {
     Xml(Option<XmlData>),
     /// cert data cached
     Cert(Option<CertData>),
+
     /// no cache
+    #[default]
     Empty,
 }
 
@@ -71,11 +73,12 @@ impl DetectionCache {
 }
 
 /// Histogram data
-#[derive(Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub(crate) struct Detection {
     /// is open
     pub(crate) is_open: bool,
 
+    #[serde(skip)]
     /// cached data
     cache: DetectionCache,
 }

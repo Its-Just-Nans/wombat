@@ -6,10 +6,12 @@ use bladvak::egui_plot::{Bar, BarChart, Legend, Plot};
 use bladvak::errors::ErrorManager;
 
 /// Histogram data
-#[derive(Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub(crate) struct Histogram {
     /// is open
     pub(crate) is_open: bool,
+
+    #[serde(skip)]
     /// histogram values
     data: Option<HashMap<u8, usize>>,
     /// vertical or horizontal

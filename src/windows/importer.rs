@@ -5,7 +5,7 @@ use bladvak::eframe::egui::{Color32, Widget};
 use bladvak::errors::ErrorManager;
 
 /// import type
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) enum ImportType {
     /// hex import
     Hex,
@@ -18,14 +18,18 @@ pub(crate) enum ImportType {
 }
 
 /// Histogram data
-#[derive(Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub(crate) struct Importer {
     /// is open
     pub(crate) is_open: bool,
+
+    #[serde(skip)]
     /// current value
     value: String,
     /// value type
     pub(crate) value_type: ImportType,
+
+    #[serde(skip)]
     /// import error
     import_error: Option<String>,
 }

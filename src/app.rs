@@ -40,7 +40,6 @@ pub struct WombatApp {
     pub(crate) file_format: Option<FileInfoData>,
 
     /// Windows
-    #[serde(skip)]
     pub(crate) windows_data: WindowsData,
 }
 

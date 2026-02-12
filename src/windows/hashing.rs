@@ -20,11 +20,12 @@ struct Hashes {
 }
 
 /// Hashing data
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct Hashing {
     /// is open
     pub(crate) is_open: bool,
 
+    #[serde(skip)]
     /// optional data hashes
     data: Option<Hashes>,
 }
