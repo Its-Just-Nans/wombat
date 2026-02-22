@@ -1,12 +1,13 @@
 //! Wombat windows
 
 mod detection;
+mod exporter;
 #[cfg(feature = "hashing")]
 mod hashing;
 mod histogram;
 mod importer;
 
-use crate::{WombatApp, panels::FileInfoData};
+use crate::{WombatApp, panels::FileInfoData, windows::exporter::Exporter};
 
 use bladvak::{ErrorManager, eframe::egui};
 
@@ -27,6 +28,8 @@ pub struct WindowsData {
     #[cfg(feature = "hashing")]
     /// hashing
     pub(crate) hashing: hashing::Hashing,
+    /// exporter
+    pub(crate) exporter: Exporter,
 }
 
 impl WindowsData {
@@ -35,6 +38,7 @@ impl WindowsData {
         Self {
             histogram: Histogram::new(),
             importer: Importer::new(),
+            exporter: exporter::Exporter::new(),
             detection: Detection::new(),
             #[cfg(feature = "hashing")]
             hashing: hashing::Hashing::new(),
@@ -46,6 +50,7 @@ impl WindowsData {
         self.histogram.reset();
         self.importer.reset();
         self.detection.reset();
+        self.exporter.reset();
         #[cfg(feature = "hashing")]
         self.hashing.reset();
     }
@@ -54,6 +59,7 @@ impl WindowsData {
     pub(crate) fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.importer.is_open, "Import");
+        ui.toggle_value(&mut self.exporter.is_open, "Exporter");
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
         ui.toggle_value(&mut self.hashing.is_open, "Hashing");
@@ -67,6 +73,9 @@ impl WombatApp {
         use std::path::PathBuf;
         self.windows_data
             .histogram
+            .ui(&self.binary_file, ui, error_manager);
+        self.windows_data
+            .exporter
             .ui(&self.binary_file, ui, error_manager);
         #[cfg(feature = "hashing")]
         self.windows_data

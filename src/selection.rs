@@ -100,43 +100,44 @@ impl BladvakPanel for PanelSelection {
                         ui.label(format!("Unicode be {charac}"));
                     }
                 }
-
-                ui.collapsing("More", |ui| {
-                    if ui.button("Delete selection").clicked() {
-                        app.binary_file.drain(range.clone());
-                        *select2 = select1.checked_sub(1).unwrap_or(0);
-                        mark_stale = true;
-                    }
-                    if let Some(slice) = app.binary_file.get(range) {
-                        if ui.button("Export as raw").clicked()
-                            && let Err(e) =
-                                bladvak::utils::save_file(slice, &PathBuf::from("exported.bin"))
-                        {
-                            error_manager.add_error(e);
+                if app.binary_file.get(range.clone()).is_some() {
+                    ui.collapsing("More", |ui| {
+                        if ui.button("Delete selection").clicked() {
+                            app.binary_file.drain(range.clone());
+                            *select2 = select1.checked_sub(1).unwrap_or(0);
+                            mark_stale = true;
                         }
-                        if ui.button("Export as hex").clicked() {
-                            let file_as_hex = slice
-                                .iter()
-                                .map(|byte| format!("{byte:02X}"))
-                                .collect::<Vec<String>>()
-                                .join(" ");
-                            if let Err(e) = bladvak::utils::save_file(
-                                file_as_hex.as_bytes(),
-                                &PathBuf::from("exported.hex"),
-                            ) {
+                        if let Some(slice) = app.binary_file.get(range) {
+                            if ui.button("Export as raw").clicked()
+                                && let Err(e) =
+                                    bladvak::utils::save_file(slice, &PathBuf::from("exported.bin"))
+                            {
                                 error_manager.add_error(e);
                             }
+                            if ui.button("Export as hex").clicked() {
+                                let file_as_hex = slice
+                                    .iter()
+                                    .map(|byte| format!("{byte:02X}"))
+                                    .collect::<Vec<String>>()
+                                    .join(" ");
+                                if let Err(e) = bladvak::utils::save_file(
+                                    file_as_hex.as_bytes(),
+                                    &PathBuf::from("exported.hex"),
+                                ) {
+                                    error_manager.add_error(e);
+                                }
+                            }
+                            if ui.button("Copy as hex").clicked() {
+                                let file_as_hex = slice
+                                    .iter()
+                                    .map(|byte| format!("{byte:02X}"))
+                                    .collect::<Vec<String>>()
+                                    .join(" ");
+                                ui.ctx().copy_text(file_as_hex);
+                            }
                         }
-                        if ui.button("Copy as hex").clicked() {
-                            let file_as_hex = slice
-                                .iter()
-                                .map(|byte| format!("{byte:02X}"))
-                                .collect::<Vec<String>>()
-                                .join(" ");
-                            ui.ctx().copy_text(file_as_hex);
-                        }
-                    }
-                });
+                    });
+                }
             }
             if mark_stale {
                 app.stale();
