@@ -6,12 +6,9 @@ mod exporter;
 mod hashing;
 mod histogram;
 mod importer;
-
-#[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+#[cfg(feature = "yara")]
 mod yara;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
-use crate::windows::yara::Yara;
 use crate::{WombatApp, panels::FileInfoData, windows::exporter::Exporter};
 
 use bladvak::{ErrorManager, eframe::egui};
@@ -22,7 +19,7 @@ use histogram::Histogram;
 use importer::Importer;
 
 /// File info
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct WindowsData {
     /// Histogram info
     pub(crate) histogram: Histogram,
@@ -36,7 +33,7 @@ pub struct WindowsData {
     /// exporter
     pub(crate) exporter: Exporter,
     /// yara
-    #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+    #[cfg(feature = "yara")]
     pub(crate) yara: yara::Yara,
 }
 
@@ -50,7 +47,7 @@ impl WindowsData {
             detection: Detection::new(),
             #[cfg(feature = "hashing")]
             hashing: hashing::Hashing::new(),
-            #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+            #[cfg(feature = "yara")]
             yara: yara::Yara::new(),
         }
     }
@@ -63,7 +60,7 @@ impl WindowsData {
         self.exporter.reset();
         #[cfg(feature = "hashing")]
         self.hashing.reset();
-        #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+        #[cfg(feature = "yara")]
         self.yara.reset();
     }
 
@@ -75,8 +72,8 @@ impl WindowsData {
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
         ui.toggle_value(&mut self.hashing.is_open, "Hashing");
-        #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
-        ui.toggle_value(&mut self.yara.is_open, Yara::window_title());
+        #[cfg(feature = "yara")]
+        ui.toggle_value(&mut self.yara.is_open, yara::Yara::window_title());
     }
 }
 
@@ -95,7 +92,7 @@ impl WombatApp {
         self.windows_data
             .hashing
             .ui(&self.binary_file, ui, error_manager);
-        #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+        #[cfg(feature = "yara")]
         self.windows_data
             .yara
             .ui(&self.binary_file, ui, error_manager);
