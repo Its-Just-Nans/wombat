@@ -71,7 +71,7 @@ impl WindowsData {
         ui.toggle_value(&mut self.exporter.is_open, "Exporter");
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
-        ui.toggle_value(&mut self.hashing.is_open, "Hashing");
+        ui.toggle_value(&mut self.hashing.is_open, hashing::Hashing::window_title());
         #[cfg(feature = "yara")]
         ui.toggle_value(&mut self.yara.is_open, yara::Yara::window_title());
     }

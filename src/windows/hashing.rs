@@ -44,6 +44,11 @@ impl Hashing {
         self.data = None;
     }
 
+    /// Window title
+    pub(crate) fn window_title() -> &'static str {
+        "Hashing"
+    }
+
     /// Calculate the histogram
     fn calculate_hashes(binary_data: &[u8]) -> Hashes {
         let mut hasher = Sha1::new();
@@ -76,7 +81,7 @@ impl Hashing {
         if self.is_open {
             if let Some(data) = &self.data {
                 let mut is_open = self.is_open;
-                egui::Window::new("Hashing")
+                egui::Window::new(Self::window_title())
                     .open(&mut is_open)
                     .vscroll(true)
                     .show(ui.ctx(), |ui| {
