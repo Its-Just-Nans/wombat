@@ -7,6 +7,11 @@ mod hashing;
 mod histogram;
 mod importer;
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+mod yara;
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+use crate::windows::yara::Yara;
 use crate::{WombatApp, panels::FileInfoData, windows::exporter::Exporter};
 
 use bladvak::{ErrorManager, eframe::egui};
@@ -30,6 +35,9 @@ pub struct WindowsData {
     pub(crate) hashing: hashing::Hashing,
     /// exporter
     pub(crate) exporter: Exporter,
+    /// yara
+    #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+    pub(crate) yara: yara::Yara,
 }
 
 impl WindowsData {
@@ -42,6 +50,8 @@ impl WindowsData {
             detection: Detection::new(),
             #[cfg(feature = "hashing")]
             hashing: hashing::Hashing::new(),
+            #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+            yara: yara::Yara::new(),
         }
     }
 
@@ -53,6 +63,8 @@ impl WindowsData {
         self.exporter.reset();
         #[cfg(feature = "hashing")]
         self.hashing.reset();
+        #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+        self.yara.reset();
     }
 
     /// Ui top bar
@@ -63,6 +75,8 @@ impl WindowsData {
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
         ui.toggle_value(&mut self.hashing.is_open, "Hashing");
+        #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+        ui.toggle_value(&mut self.yara.is_open, Yara::window_title());
     }
 }
 
@@ -80,6 +94,10 @@ impl WombatApp {
         #[cfg(feature = "hashing")]
         self.windows_data
             .hashing
+            .ui(&self.binary_file, ui, error_manager);
+        #[cfg(all(not(target_arch = "wasm32"), feature = "yara"))]
+        self.windows_data
+            .yara
             .ui(&self.binary_file, ui, error_manager);
         if let Some(data) = self.windows_data.importer.ui(ui, error_manager)
             && let Err(e) = self.handle_file(File {
