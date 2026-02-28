@@ -4,6 +4,8 @@ use bladvak::eframe::egui::{self, FontId, RichText, TextEdit};
 use bladvak::eframe::egui::{Color32, Widget};
 use bladvak::errors::ErrorManager;
 
+use crate::selection::Selection;
+
 /// export type
 #[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) enum ExportType {
@@ -88,7 +90,8 @@ impl Exporter {
     /// Show the exporter ui
     pub(crate) fn ui(
         &mut self,
-        selection: &[u8],
+        binary_file: &[u8],
+        selection: &Selection,
         ui: &mut egui::Ui,
         _error_manager: &mut ErrorManager,
     ) -> Option<Vec<u8>> {
@@ -120,7 +123,7 @@ impl Exporter {
                     ui.horizontal(|ui| {
                         if ui.button("Copy to clipboard").clicked() {
                             let data = Self::format_export(
-                                selection,
+                                binary_file,
                                 &self.value_type,
                                 self.prefix,
                                 &self.separator,
@@ -131,14 +134,23 @@ impl Exporter {
                         //     // TODO
                         // }
                     });
+                    let (selected, is_file) = match selection.range {
+                        Some(range) => {
+                            let stop = range.1.min(range.0 + 49);
+                            (range.0..=stop, false)
+                        }
+                        None => (0..=49, true),
+                    };
                     ui.horizontal(|ui| {
-                        ui.label("Preview on 50 bytes");
+                        ui.label(format!(
+                            "Preview on 50 bytes (of {})",
+                            if is_file { "file" } else { "selection" }
+                        ));
                         if let Some(err) = &self.export_error {
                             ui.label(RichText::new(err).color(Color32::LIGHT_RED));
                         }
                     });
-                    let max_preview = 50.min(selection.len());
-                    if let Some(preview_value) = selection.get(0..max_preview) {
+                    if let Some(preview_value) = binary_file.get(selected) {
                         let mut formatted = Self::format_export(
                             preview_value,
                             &self.value_type,
