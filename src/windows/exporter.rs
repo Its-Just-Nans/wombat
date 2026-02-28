@@ -120,48 +120,61 @@ impl Exporter {
                     if self.value_type != ExportType::Decimal {
                         ui.checkbox(&mut self.prefix, "Prefix");
                     }
-                    ui.horizontal(|ui| {
-                        if ui.button("Copy to clipboard").clicked() {
-                            let data = Self::format_export(
-                                binary_file,
+                    if binary_file.is_empty() {
+                        ui.label("File is empty - no selection");
+                    } else {
+                        ui.horizontal(|ui| {
+                            if ui.button("Copy to clipboard").clicked() {
+                                let export_selection = match selection.range {
+                                    Some(curr_select) => curr_select.0..=curr_select.1,
+                                    None => 0..=(binary_file.len() - 1),
+                                };
+                                if let Some(file_selection) = binary_file.get(export_selection) {
+                                    let data = Self::format_export(
+                                        file_selection,
+                                        &self.value_type,
+                                        self.prefix,
+                                        &self.separator,
+                                    );
+                                    ui.ctx().copy_text(data);
+                                } else {
+                                    self.export_error =
+                                        Some("Cannot determine selection".to_string());
+                                }
+                            }
+                            // if ui.button("Export to file").clicked() {
+                            //     // TODO
+                            // }
+                        });
+                        let (selected_preview, is_file) = if let Some(range) = selection.range {
+                            let stop = range.1.min(range.0 + 49);
+                            (range.0..=stop, false)
+                        } else {
+                            let max = (binary_file.len() - 1).min(49);
+                            (0..=max, true)
+                        };
+                        ui.horizontal(|ui| {
+                            ui.label(format!(
+                                "Preview on 50 bytes (of {})",
+                                if is_file { "file" } else { "selection" }
+                            ));
+                            if let Some(err) = &self.export_error {
+                                ui.label(RichText::new(err).color(Color32::LIGHT_RED));
+                            }
+                        });
+                        if let Some(preview_value) = binary_file.get(selected_preview) {
+                            let mut formatted = Self::format_export(
+                                preview_value,
                                 &self.value_type,
                                 self.prefix,
                                 &self.separator,
                             );
-                            ui.ctx().copy_text(data);
+                            TextEdit::multiline(&mut formatted)
+                                .min_size(ui.available_size())
+                                .desired_width(f32::INFINITY)
+                                .font(FontId::monospace(12.0))
+                                .ui(ui);
                         }
-                        // if ui.button("Export to file").clicked() {
-                        //     // TODO
-                        // }
-                    });
-                    let (selected, is_file) = match selection.range {
-                        Some(range) => {
-                            let stop = range.1.min(range.0 + 49);
-                            (range.0..=stop, false)
-                        }
-                        None => (0..=49, true),
-                    };
-                    ui.horizontal(|ui| {
-                        ui.label(format!(
-                            "Preview on 50 bytes (of {})",
-                            if is_file { "file" } else { "selection" }
-                        ));
-                        if let Some(err) = &self.export_error {
-                            ui.label(RichText::new(err).color(Color32::LIGHT_RED));
-                        }
-                    });
-                    if let Some(preview_value) = binary_file.get(selected) {
-                        let mut formatted = Self::format_export(
-                            preview_value,
-                            &self.value_type,
-                            self.prefix,
-                            &self.separator,
-                        );
-                        TextEdit::multiline(&mut formatted)
-                            .min_size(ui.available_size())
-                            .desired_width(f32::INFINITY)
-                            .font(FontId::monospace(12.0))
-                            .ui(ui);
                     }
                 });
             self.is_open = is_open;
