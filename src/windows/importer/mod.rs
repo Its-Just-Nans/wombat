@@ -37,7 +37,6 @@ pub(crate) struct Importer {
     /// is open
     pub(crate) is_open: bool,
 
-    #[serde(skip)]
     /// current value
     value: String,
     /// value type
