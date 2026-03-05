@@ -90,13 +90,13 @@ impl Hashing {
                         ui.label(&data.md5);
                     });
                 self.is_open = is_open;
-              } else if binary_data.is_empty() {
+            } else if binary_data.is_empty() {
                 egui::Window::new(Self::window_title())
                     .open(&mut is_open)
                     .vscroll(true)
                     .show(ui.ctx(), |ui| {
                         ui.label("File is empty");
-                });
+                    });
                 self.is_open = is_open;
             } else {
                 self.data = Some(Self::calculate_hashes(binary_data));
