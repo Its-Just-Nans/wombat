@@ -51,18 +51,10 @@ impl Hashing {
 
     /// Calculate the histogram
     fn calculate_hashes(binary_data: &[u8]) -> Hashes {
-        let mut hasher = Sha1::new();
-        hasher.update(binary_data);
-        let sha1 = format!("{:x}", hasher.finalize());
-        let mut hasher = Sha256::new();
-        hasher.update(binary_data);
-        let sha256 = format!("{:x}", hasher.finalize());
-        let mut hasher = Sha512::new();
-        hasher.update(binary_data);
-        let sha512 = format!("{:x}", hasher.finalize());
-        let mut hasher = Md5::new();
-        hasher.update(binary_data);
-        let md5 = format!("{:x}", hasher.finalize());
+        let sha1 = format!("{:x}", Sha1::digest(binary_data));
+        let sha256 = format!("{:x}", Sha256::digest(binary_data));
+        let sha512 = format!("{:x}", Sha512::digest(binary_data));
+        let md5 = format!("{:x}", Md5::digest(binary_data));
         Hashes {
             sha1,
             sha256,
@@ -79,8 +71,8 @@ impl Hashing {
         _error_manager: &mut ErrorManager,
     ) {
         if self.is_open {
+            let mut is_open = self.is_open;
             if let Some(data) = &self.data {
-                let mut is_open = self.is_open;
                 egui::Window::new(Self::window_title())
                     .open(&mut is_open)
                     .vscroll(true)
@@ -97,6 +89,14 @@ impl Hashing {
                         ui.label("md5");
                         ui.label(&data.md5);
                     });
+                self.is_open = is_open;
+              } else if binary_data.is_empty() {
+                egui::Window::new(Self::window_title())
+                    .open(&mut is_open)
+                    .vscroll(true)
+                    .show(ui.ctx(), |ui| {
+                        ui.label("File is empty");
+                });
                 self.is_open = is_open;
             } else {
                 self.data = Some(Self::calculate_hashes(binary_data));
