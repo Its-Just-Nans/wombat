@@ -85,9 +85,13 @@ impl WombatApp {
         self.windows_data
             .histogram
             .ui(&self.binary_file, ui, error_manager);
-        self.windows_data
-            .exporter
-            .ui(&self.binary_file, &self.selection, ui, error_manager);
+        self.windows_data.exporter.ui(
+            &self.binary_file,
+            &self.filename,
+            &self.selection,
+            ui,
+            error_manager,
+        );
         #[cfg(feature = "hashing")]
         self.windows_data
             .hashing

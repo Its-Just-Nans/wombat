@@ -3,6 +3,7 @@
 use bladvak::eframe::egui::{self, FontId, RichText, TextEdit};
 use bladvak::eframe::egui::{Color32, Widget};
 use bladvak::errors::ErrorManager;
+use std::path::{Path, PathBuf};
 
 use crate::selection::Selection;
 
@@ -91,9 +92,10 @@ impl Exporter {
     pub(crate) fn ui(
         &mut self,
         binary_file: &[u8],
+        file_path: &Path,
         selection: &Selection,
         ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
+        error_manager: &mut ErrorManager,
     ) -> Option<Vec<u8>> {
         if self.is_open {
             let mut is_open = self.is_open;
@@ -124,12 +126,14 @@ impl Exporter {
                         ui.label("File is empty - no selection");
                     } else {
                         ui.horizontal(|ui| {
+                            let export_selection = match selection.range {
+                                Some(curr_select) => curr_select.0..=curr_select.1,
+                                None => 0..=(binary_file.len() - 1),
+                            };
                             if ui.button("Copy to clipboard").clicked() {
-                                let export_selection = match selection.range {
-                                    Some(curr_select) => curr_select.0..=curr_select.1,
-                                    None => 0..=(binary_file.len() - 1),
-                                };
-                                if let Some(file_selection) = binary_file.get(export_selection) {
+                                if let Some(file_selection) =
+                                    binary_file.get(export_selection.clone())
+                                {
                                     let data = Self::format_export(
                                         file_selection,
                                         &self.value_type,
@@ -140,6 +144,19 @@ impl Exporter {
                                 } else {
                                     self.export_error =
                                         Some("Cannot determine selection".to_string());
+                                }
+                            }
+                            if let Some(slice) = binary_file.get(export_selection)
+                                && ui.button("Export as raw").clicked()
+                            {
+                                let file_name = file_path
+                                    .file_name()
+                                    .map_or_else(|| PathBuf::from("exported"), PathBuf::from);
+                                if let Err(e) = bladvak::utils::save_file(
+                                    slice,
+                                    &file_name.with_extension("bin"),
+                                ) {
+                                    error_manager.add_error(e);
                                 }
                             }
                             // if ui.button("Export to file").clicked() {

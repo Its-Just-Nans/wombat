@@ -5,7 +5,6 @@ use bladvak::{
     app::BladvakPanel,
     eframe::egui::{self, Color32, Theme},
 };
-use std::path::PathBuf;
 
 use crate::{WombatApp, app::Accent};
 
@@ -49,7 +48,7 @@ impl BladvakPanel for PanelSelection {
     fn has_settings(&self) -> bool {
         false
     }
-    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         if app.binary_file.is_empty() {
             app.selection.range = None;
         }
@@ -101,42 +100,11 @@ impl BladvakPanel for PanelSelection {
                     }
                 }
                 if app.binary_file.get(range.clone()).is_some() {
-                    ui.collapsing("More", |ui| {
-                        if ui.button("Delete selection").clicked() {
-                            app.binary_file.drain(range.clone());
-                            *select2 = select1.checked_sub(1).unwrap_or(0);
-                            mark_stale = true;
-                        }
-                        if let Some(slice) = app.binary_file.get(range) {
-                            if ui.button("Export as raw").clicked()
-                                && let Err(e) =
-                                    bladvak::utils::save_file(slice, &PathBuf::from("exported.bin"))
-                            {
-                                error_manager.add_error(e);
-                            }
-                            if ui.button("Export as hex").clicked() {
-                                let file_as_hex = slice
-                                    .iter()
-                                    .map(|byte| format!("{byte:02X}"))
-                                    .collect::<Vec<String>>()
-                                    .join(" ");
-                                if let Err(e) = bladvak::utils::save_file(
-                                    file_as_hex.as_bytes(),
-                                    &PathBuf::from("exported.hex"),
-                                ) {
-                                    error_manager.add_error(e);
-                                }
-                            }
-                            if ui.button("Copy as hex").clicked() {
-                                let file_as_hex = slice
-                                    .iter()
-                                    .map(|byte| format!("{byte:02X}"))
-                                    .collect::<Vec<String>>()
-                                    .join(" ");
-                                ui.ctx().copy_text(file_as_hex);
-                            }
-                        }
-                    });
+                    if ui.button("Delete selection").clicked() {
+                        app.binary_file.drain(range.clone());
+                        *select2 = select1.checked_sub(1).unwrap_or(0);
+                        mark_stale = true;
+                    }
                 }
             }
             if mark_stale {
