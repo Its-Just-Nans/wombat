@@ -99,13 +99,12 @@ impl BladvakPanel for PanelSelection {
                         ui.label(format!("Unicode be {charac}"));
                     }
                 }
-                if app.binary_file.get(range.clone()).is_some() {
-                    if ui.button("Delete selection").clicked() {
+                if app.binary_file.get(range.clone()).is_some()
+                    && ui.button("Delete selection").clicked() {
                         app.binary_file.drain(range.clone());
                         *select2 = select1.checked_sub(1).unwrap_or(0);
                         mark_stale = true;
                     }
-                }
             }
             if mark_stale {
                 app.stale();
