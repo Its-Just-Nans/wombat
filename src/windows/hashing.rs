@@ -5,6 +5,7 @@ use bladvak::errors::ErrorManager;
 use md5::Md5;
 use sha1::{Digest, Sha1};
 use sha2::{Sha256, Sha512};
+use base16ct::HexDisplay;
 
 /// Different hashes
 #[derive(Debug)]
@@ -51,10 +52,10 @@ impl Hashing {
 
     /// Calculate the histogram
     fn calculate_hashes(binary_data: &[u8]) -> Hashes {
-        let sha1 = format!("{:x}", Sha1::digest(binary_data));
-        let sha256 = format!("{:x}", Sha256::digest(binary_data));
-        let sha512 = format!("{:x}", Sha512::digest(binary_data));
-        let md5 = format!("{:x}", Md5::digest(binary_data));
+        let sha1 = format!("{:x}", HexDisplay(&Sha1::digest(binary_data)));
+        let sha256 = format!("{:x}", HexDisplay(&Sha256::digest(binary_data)));
+        let sha512 = format!("{:x}", HexDisplay(&Sha512::digest(binary_data)));
+        let md5 = format!("{:x}", HexDisplay(&Md5::digest(binary_data)));
         Hashes {
             sha1,
             sha256,
