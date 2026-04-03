@@ -1,11 +1,11 @@
 //! Hashing
 
+use base16ct::HexDisplay;
 use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
 use md5::Md5;
 use sha1::{Digest, Sha1};
 use sha2::{Sha256, Sha512};
-use base16ct::HexDisplay;
 
 /// Different hashes
 #[derive(Debug)]
