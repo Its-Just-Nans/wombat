@@ -99,13 +99,6 @@ pub(crate) enum Accent {
 impl WombatApp {
     /// start ASCII printable char (after space)
     pub(crate) const RANGE_ASCII_PRINTABLE: RangeInclusive<u8> = 0x21_u8..=0x7E;
-    /// Called once before the first frame.
-    fn new_app(saved_state: Self, cc: &eframe::CreationContext<'_>) -> Self {
-        // This is also where you can customize the look and feel of egui using
-        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-        egui_extras::install_image_loaders(&cc.egui_ctx);
-        saved_state
-    }
 
     /// Load the default file (wombat icon)
     #[must_use]
@@ -285,15 +278,19 @@ impl BladvakApp<'_> for WombatApp {
         cc: &CreationContext<'_>,
         args: &[String],
     ) -> Result<Self, AppError> {
+        // This is also where you can customize the look and feel of egui using
+        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+        egui_extras::install_image_loaders(&cc.egui_ctx);
+
         if is_native() && args.len() > 1 {
             let path = &args[1];
             let bytes = std::fs::read(path)?;
-            let mut app = Self::new_app(saved_state, cc);
+            let mut app = saved_state;
             app.binary_file = bytes;
             app.filename = PathBuf::from(path);
             Ok(app)
         } else {
-            Ok(Self::new_app(saved_state, cc))
+            Ok(saved_state, cc)
         }
     }
 }
