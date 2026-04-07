@@ -1,8 +1,8 @@
 //! Wombat App
 
 use bladvak::app::BladvakPanel;
+use bladvak::eframe::CreationContext;
 use bladvak::eframe::egui::{self, Color32, RichText, Theme};
-use bladvak::eframe::{self, CreationContext};
 use bladvak::egui_extras::{Column, TableBuilder};
 use bladvak::utils::is_native;
 use bladvak::{File, egui_extras};
