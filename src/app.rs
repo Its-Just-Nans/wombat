@@ -290,7 +290,7 @@ impl BladvakApp<'_> for WombatApp {
             app.filename = PathBuf::from(path);
             Ok(app)
         } else {
-            Ok(saved_state, cc)
+            Ok(saved_state)
         }
     }
 }
