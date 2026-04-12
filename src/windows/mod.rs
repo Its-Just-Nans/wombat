@@ -43,7 +43,7 @@ impl WindowsData {
         Self {
             histogram: Histogram::new(),
             importer: Importer::new(),
-            exporter: exporter::Exporter::new(),
+            exporter: Exporter::new(),
             detection: Detection::new(),
             #[cfg(feature = "hashing")]
             hashing: hashing::Hashing::new(),

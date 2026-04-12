@@ -15,7 +15,7 @@ pub(crate) struct FileInfo;
 
 /// File info
 #[derive(Debug)]
-pub struct FileInfoData {
+pub(crate) struct FileInfoData {
     /// Kind of file
     pub(crate) kind: file_format::Kind,
     /// Type of file
