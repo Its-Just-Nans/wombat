@@ -63,7 +63,7 @@ impl Default for WombatApp {
 /// Display setting
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub(crate) struct DisplaySettings {
-    /// Little endian
+    /// Least Significant Bit
     pub(crate) display_lsb: bool,
     /// Bytes per line
     pub(crate) bytes_per_line: usize,
@@ -192,6 +192,97 @@ impl WombatApp {
                         accent_label(ui, Accent::Binary, format!("0b{current:08b}"));
                         let ascii_char = self.ascii_to_string(current);
                         accent_label(ui, Accent::Ascii, ascii_char);
+                    });
+                });
+            });
+    }
+
+    /// Ui for the table representation of a u16
+    pub(crate) fn ui_table_u16(ui: &mut egui::Ui, bytes: [u8; 2]) {
+        TableBuilder::new(ui)
+            .column(Column::auto().resizable(true))
+            .column(Column::remainder())
+            .column(Column::remainder())
+            .header(20.0, |mut header| {
+                header.col(|ui| {
+                    ui.label("");
+                });
+                header.col(|ui| {
+                    ui.label("L-Endian");
+                });
+                header.col(|ui| {
+                    ui.label("B-Endian");
+                });
+            })
+            .body(|mut body| {
+                body.row(30.0, |mut row| {
+                    row.col(|ui| {
+                        ui.label("Decimal");
+                        ui.label("Hex");
+                        ui.label("Octal");
+                    });
+                    row.col(|ui| {
+                        let range_le = u16::from_le_bytes(bytes);
+                        ui.label(format!("{range_le}"));
+                        ui.label(format!("0x{range_le:X}"));
+                        ui.label(format!("0o{range_le:o}"));
+                    });
+                    row.col(|ui| {
+                        let range_be = u16::from_be_bytes(bytes);
+                        ui.label(format!("{range_be}"));
+                        ui.label(format!("0x{range_be:X}"));
+                        ui.label(format!("0o{range_be:o}"));
+                    });
+                });
+            });
+    }
+
+    /// Ui for the table representation of a u32
+    pub(crate) fn ui_table_u32(ui: &mut egui::Ui, bytes: [u8; 4]) {
+        TableBuilder::new(ui)
+            .column(Column::auto().resizable(true))
+            .column(Column::remainder())
+            .column(Column::remainder())
+            .header(20.0, |mut header| {
+                header.col(|ui| {
+                    ui.label("");
+                });
+                header.col(|ui| {
+                    ui.label("L-Endian");
+                });
+                header.col(|ui| {
+                    ui.label("B-Endian");
+                });
+            })
+            .body(|mut body| {
+                body.row(30.0, |mut row| {
+                    row.col(|ui| {
+                        ui.label("Decimal");
+                        ui.label("Hex");
+                        ui.label("Octal");
+                        ui.label("Unicode");
+                    });
+                    row.col(|ui| {
+                        let range_le = u32::from_le_bytes(bytes);
+                        ui.label(format!("{range_le}"));
+                        ui.label(format!("0x{range_le:X}"));
+                        ui.label(format!("0o{range_le:o}"));
+                        if let Some(charac) = std::char::from_u32(range_le) {
+                            ui.label(format!("{charac}"));
+                        } else {
+                            ui.label("NONE");
+                        }
+                    });
+                    row.col(|ui| {
+                        let range_be = u32::from_be_bytes(bytes);
+                        ui.label(format!("{range_be}"));
+                        ui.label(format!("0x{range_be:X}"));
+                        ui.label(format!("0o{range_be:o}"));
+                        if let Some(charac) = std::char::from_u32(range_be) {
+                            ui.label(format!("{charac}"));
+                        } else {
+                            ui.label("NONE");
+                        }
                     });
                 });
             });

@@ -98,13 +98,13 @@ impl Importer {
                         ui.selectable_value(&mut self.value_type, ImportType::Octal, "Octal");
                         ui.selectable_value(
                             &mut self.value_type,
-                            ImportType::DecimalBigEndian,
-                            "Decimal (Big Endian)",
+                            ImportType::DecimalLittleEndian,
+                            "Decimal (Little Endian)",
                         );
                         ui.selectable_value(
                             &mut self.value_type,
-                            ImportType::DecimalLittleEndian,
-                            "Decimal (Little Endian)",
+                            ImportType::DecimalBigEndian,
+                            "Decimal (Big Endian)",
                         );
                     });
                     if previous_import_type != self.value_type {

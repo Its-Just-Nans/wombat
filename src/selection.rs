@@ -52,8 +52,8 @@ impl BladvakPanel for PanelSelection {
         if app.binary_file.is_empty() {
             app.selection.range = None;
         }
+        let mut mark_stale = false;
         if let Some((select1, select2)) = app.selection.range.as_mut() {
-            let mut mark_stale = false;
             ui.horizontal(|ui| {
                 ui.label("Selection");
                 let color_to_edit = if ui.ctx().theme() == Theme::Light {
@@ -73,38 +73,41 @@ impl BladvakPanel for PanelSelection {
                 ui.label("->");
                 ui.add(egui::DragValue::new(select2).range(*select1..=max));
             });
+            let range = *select1..=*select2;
+            if app.binary_file.get(range.clone()).is_some()
+                && ui.button("Delete selection").clicked()
+            {
+                app.binary_file.drain(range.clone());
+                *select2 = select1.checked_sub(1).unwrap_or(0);
+                mark_stale = true;
+            }
+        } else {
+            ui.label("No selection");
+        }
+        if let Some((select1, select2)) = app.selection.range {
             if select1 == select2
-                && let Some(current) = app.binary_file.get(*select1)
+                && let Some(current) = app.binary_file.get(select1)
             {
                 ui.separator();
                 ui.label(format!("byte at index {select1}"));
                 app.ui_table_u8(ui, *current, &Accent::Hex);
             } else {
-                let nb_selected = select2.checked_sub(*select1).map_or(0, |d| d as u64 + 1);
+                let nb_selected = select2.checked_sub(select1).map_or(0, |d| d as u64 + 1);
                 ui.label(format!("{nb_selected} bytes selected"));
-                let range = *select1..=*select2;
+                let range = select1..=select2;
+
+                if nb_selected == 2
+                    && let Some(slice) = app.binary_file.get(range.clone())
+                    && let Ok(bytes) = <[u8; 2]>::try_from(slice)
+                {
+                    WombatApp::ui_table_u16(ui, bytes);
+                }
 
                 if nb_selected == 4
                     && let Some(slice) = app.binary_file.get(range.clone())
                     && let Ok(bytes) = <[u8; 4]>::try_from(slice)
                 {
-                    let range_u32 = u32::from_le_bytes(bytes);
-
-                    if let Some(charac) = std::char::from_u32(range_u32) {
-                        ui.label(format!("Unicode le {charac}"));
-                    }
-                    let range_u32 = u32::from_be_bytes(bytes);
-
-                    if let Some(charac) = std::char::from_u32(range_u32) {
-                        ui.label(format!("Unicode be {charac}"));
-                    }
-                }
-                if app.binary_file.get(range.clone()).is_some()
-                    && ui.button("Delete selection").clicked()
-                {
-                    app.binary_file.drain(range.clone());
-                    *select2 = select1.checked_sub(1).unwrap_or(0);
-                    mark_stale = true;
+                    WombatApp::ui_table_u32(ui, bytes);
                 }
             }
             if mark_stale {
@@ -113,8 +116,6 @@ impl BladvakPanel for PanelSelection {
             if app.binary_file.is_empty() {
                 app.selection.range = None;
             }
-        } else {
-            ui.label("No selection");
         }
     }
 
