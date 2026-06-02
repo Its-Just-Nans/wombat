@@ -25,7 +25,7 @@ impl WombatApp {
                 .text_styles
                 .get(&text_style)
                 .map_or(14.0, |s| s.size);
-            let row_height = ui.text_style_height(&text_style).max(14.0); // fallback
+            let row_height = ui.text_style_height(&text_style).max(14.0) + 1.0; // fallback
             // total lines we'll render
             let lines_total = self
                 .binary_file

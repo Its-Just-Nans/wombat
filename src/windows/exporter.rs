@@ -20,7 +20,7 @@ pub(crate) enum ExportType {
     Decimal,
 }
 
-/// Histogram data
+/// Exporter data
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub(crate) struct Exporter {
     /// is open
