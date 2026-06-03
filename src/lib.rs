@@ -29,6 +29,7 @@ mod app;
 mod central_panel;
 mod panels;
 mod selection;
+mod ui_table;
 mod windows;
 
 pub use app::WombatApp;
