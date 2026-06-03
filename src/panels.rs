@@ -115,7 +115,7 @@ impl BladvakPanel for FileInfo {
         );
         ui.checkbox(
             &mut app.display_settings.show_color_picker,
-            "Show color picket for 3 bytes",
+            "Show color picker",
         );
     }
 }
