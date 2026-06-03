@@ -107,7 +107,6 @@ impl WombatApp {
                 self.selection.range = None;
             }
         }
-
     }
 }
 
