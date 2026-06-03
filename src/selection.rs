@@ -103,11 +103,30 @@ impl BladvakPanel for PanelSelection {
                     WombatApp::ui_table_u16(ui, bytes);
                 }
 
-                if nb_selected == 4
+                if (nb_selected == 3 || nb_selected == 4)
                     && let Some(slice) = app.binary_file.get(range.clone())
-                    && let Ok(bytes) = <[u8; 4]>::try_from(slice)
                 {
+                    let mut bytes = [0u8; 4];
+                    bytes[..slice.len()].copy_from_slice(slice);
                     WombatApp::ui_table_u32(ui, bytes);
+                }
+
+                if nb_selected > 4
+                    && nb_selected <= 8
+                    && let Some(slice) = app.binary_file.get(range.clone())
+                {
+                    let mut bytes = [0u8; 8];
+                    bytes[..slice.len()].copy_from_slice(slice);
+                    WombatApp::ui_table_u64(ui, bytes);
+                }
+
+                if nb_selected > 8
+                    && nb_selected <= 16
+                    && let Some(slice) = app.binary_file.get(range.clone())
+                {
+                    let mut bytes = [0u8; 16];
+                    bytes[..slice.len()].copy_from_slice(slice);
+                    WombatApp::ui_table_u128(ui, bytes);
                 }
             }
             if mark_stale {

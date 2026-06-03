@@ -160,6 +160,7 @@ impl WombatApp {
     /// Ui for the table representation of a u8
     pub(crate) fn ui_table_u8(&self, ui: &mut egui::Ui, current: u8, accent_ui: &Accent) {
         TableBuilder::new(ui)
+            .striped(true)
             .column(Column::auto().resizable(true))
             .column(Column::remainder())
             .body(|mut body| {
@@ -200,12 +201,13 @@ impl WombatApp {
     /// Ui for the table representation of a u16
     pub(crate) fn ui_table_u16(ui: &mut egui::Ui, bytes: [u8; 2]) {
         TableBuilder::new(ui)
+            .striped(true)
             .column(Column::auto().resizable(true))
             .column(Column::remainder())
             .column(Column::remainder())
             .header(20.0, |mut header| {
                 header.col(|ui| {
-                    ui.label("");
+                    ui.label("u16");
                 });
                 header.col(|ui| {
                     ui.label("L-Endian");
@@ -220,12 +222,17 @@ impl WombatApp {
                         ui.label("Decimal");
                         ui.label("Hex");
                         ui.label("Octal");
+                        ui.label("String");
                     });
                     row.col(|ui| {
                         let range_le = u16::from_le_bytes(bytes);
                         ui.label(format!("{range_le}"));
                         ui.label(format!("0x{range_le:X}"));
                         ui.label(format!("0o{range_le:o}"));
+                        match std::str::from_utf8(&bytes) {
+                            Ok(string) => ui.label(string),
+                            Err(_) => ui.label("NONE"),
+                        };
                     });
                     row.col(|ui| {
                         let range_be = u16::from_be_bytes(bytes);
@@ -240,12 +247,13 @@ impl WombatApp {
     /// Ui for the table representation of a u32
     pub(crate) fn ui_table_u32(ui: &mut egui::Ui, bytes: [u8; 4]) {
         TableBuilder::new(ui)
+            .striped(true)
             .column(Column::auto().resizable(true))
             .column(Column::remainder())
             .column(Column::remainder())
             .header(20.0, |mut header| {
                 header.col(|ui| {
-                    ui.label("");
+                    ui.label("u32");
                 });
                 header.col(|ui| {
                     ui.label("L-Endian");
@@ -261,6 +269,7 @@ impl WombatApp {
                         ui.label("Hex");
                         ui.label("Octal");
                         ui.label("Unicode");
+                        ui.label("String");
                     });
                     row.col(|ui| {
                         let range_le = u32::from_le_bytes(bytes);
@@ -272,6 +281,10 @@ impl WombatApp {
                         } else {
                             ui.label("NONE");
                         }
+                        match std::str::from_utf8(&bytes) {
+                            Ok(string) => ui.label(string),
+                            Err(_) => ui.label("NONE"),
+                        };
                     });
                     row.col(|ui| {
                         let range_be = u32::from_be_bytes(bytes);
@@ -283,6 +296,98 @@ impl WombatApp {
                         } else {
                             ui.label("NONE");
                         }
+                    });
+                });
+            });
+    }
+
+    /// Ui for the table representation of a u64
+    pub(crate) fn ui_table_u64(ui: &mut egui::Ui, bytes: [u8; 8]) {
+        TableBuilder::new(ui)
+            .striped(true)
+            .column(Column::auto().resizable(true))
+            .column(Column::remainder())
+            .column(Column::remainder())
+            .header(20.0, |mut header| {
+                header.col(|ui| {
+                    ui.label("u64");
+                });
+                header.col(|ui| {
+                    ui.label("L-Endian");
+                });
+                header.col(|ui| {
+                    ui.label("B-Endian");
+                });
+            })
+            .body(|mut body| {
+                body.row(30.0, |mut row| {
+                    row.col(|ui| {
+                        ui.label("Decimal");
+                        ui.label("Hex");
+                        ui.label("Octal");
+                        ui.label("String");
+                    });
+                    row.col(|ui| {
+                        let range_le = u64::from_le_bytes(bytes);
+                        ui.label(format!("{range_le}"));
+                        ui.label(format!("0x{range_le:X}"));
+                        ui.label(format!("0o{range_le:o}"));
+                        match std::str::from_utf8(&bytes) {
+                            Ok(string) => ui.label(string),
+                            Err(_) => ui.label("NONE"),
+                        };
+                    });
+                    row.col(|ui| {
+                        let range_be = u64::from_be_bytes(bytes);
+                        ui.label(format!("{range_be}"));
+                        ui.label(format!("0x{range_be:X}"));
+                        ui.label(format!("0o{range_be:o}"));
+                    });
+                });
+            });
+    }
+
+    /// Ui for the table representation of a u128
+    pub(crate) fn ui_table_u128(ui: &mut egui::Ui, bytes: [u8; 16]) {
+        TableBuilder::new(ui)
+            .striped(true)
+            .column(Column::auto().resizable(true))
+            .column(Column::remainder())
+            .column(Column::remainder())
+            .header(20.0, |mut header| {
+                header.col(|ui| {
+                    ui.label("u128");
+                });
+                header.col(|ui| {
+                    ui.label("L-Endian");
+                });
+                header.col(|ui| {
+                    ui.label("B-Endian");
+                });
+            })
+            .body(|mut body| {
+                body.row(30.0, |mut row| {
+                    row.col(|ui| {
+                        ui.label("Decimal");
+                        ui.label("Hex");
+                        ui.label("Octal");
+                        ui.label("String");
+                    });
+                    row.col(|ui| {
+                        let range_le = u128::from_le_bytes(bytes);
+                        ui.label(format!("{range_le}"));
+                        ui.label(format!("0x{range_le:X}"));
+                        ui.label(format!("0o{range_le:o}"));
+                        match std::str::from_utf8(&bytes) {
+                            Ok(string) => ui.label(string),
+                            Err(_) => ui.label("NONE"),
+                        };
+                    });
+                    row.col(|ui| {
+                        let range_be = u128::from_be_bytes(bytes);
+                        ui.label(format!("{range_be}"));
+                        ui.label(format!("0x{range_be:X}"));
+                        ui.label(format!("0o{range_be:o}"));
                     });
                 });
             });
