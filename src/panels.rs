@@ -113,5 +113,9 @@ impl BladvakPanel for FileInfo {
             &mut app.display_settings.limit_to_base_ascii,
             "Limit to base ASCII",
         );
+        ui.checkbox(
+            &mut app.display_settings.show_color_picker,
+            "Show color picket for 3 bytes",
+        );
     }
 }

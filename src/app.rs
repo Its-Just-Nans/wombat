@@ -68,6 +68,8 @@ pub(crate) struct DisplaySettings {
     pub(crate) bytes_per_line: usize,
     /// limit ascii
     pub(crate) limit_to_base_ascii: bool,
+    /// show color picket
+    pub(crate) show_color_picker: bool,
 }
 
 impl Default for DisplaySettings {
@@ -76,6 +78,7 @@ impl Default for DisplaySettings {
             display_lsb: false,
             bytes_per_line: 32,
             limit_to_base_ascii: true,
+            show_color_picker: true,
         }
     }
 }
