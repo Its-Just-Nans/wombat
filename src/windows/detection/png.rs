@@ -148,18 +148,17 @@ pub fn show_png_chunks(
         return None;
     };
 
-    ui.label("PNG Chunks");
-
     let mut return_range = None;
 
     ui.horizontal(|ui| {
-        ui.label(format!("png signature: {}", png_data.signature));
+        ui.label(format!("PNG signature: {}", png_data.signature));
         if ui.button("Show").clicked() {
             let range = 0..=(PNG_SIGNATURE.len() - 1);
             return_range = Some(range);
         }
     });
 
+    ui.label("PNG Chunks:");
     egui::Grid::new("png_chunks_table")
         .striped(true)
         .show(ui, |ui| {
