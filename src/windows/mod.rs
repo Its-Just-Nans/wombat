@@ -64,6 +64,11 @@ impl WindowsData {
         self.yara.reset();
     }
 
+    /// Mark selection stale
+    pub(crate) fn selection_stale(&mut self) {
+        self.hashing.selection_stale();
+    }
+
     /// Ui top bar
     pub(crate) fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
@@ -95,7 +100,7 @@ impl WombatApp {
         #[cfg(feature = "hashing")]
         self.windows_data
             .hashing
-            .ui(&self.binary_file, ui, error_manager);
+            .ui(&self.binary_file, &self.selection, ui, error_manager);
         #[cfg(feature = "yara")]
         self.windows_data
             .yara

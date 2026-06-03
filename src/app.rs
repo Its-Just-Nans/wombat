@@ -164,6 +164,11 @@ impl WombatApp {
         self.file_format = None;
         self.windows_data.reset();
     }
+
+    /// Mark selection as stale
+    pub(crate) fn stale_selection(&mut self) {
+        self.windows_data.selection_stale();
+    }
 }
 
 impl BladvakApp<'_> for WombatApp {
@@ -190,6 +195,7 @@ impl BladvakApp<'_> for WombatApp {
         let file_len = self.binary_file.len();
         self.filename = file.path;
         self.stale();
+        self.stale_selection();
 
         if self.binary_file.is_empty() {
             self.selection.reset();

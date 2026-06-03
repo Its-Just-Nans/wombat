@@ -71,6 +71,7 @@ impl WombatApp {
         row_height: f32,
         (first_line, last_line): (usize, usize),
     ) {
+        let mut mark_selection_stale = false;
         let bytes_per_line = self.display_settings.bytes_per_line;
         let font_id = FontId::new(font_size, FontFamily::Monospace);
 
@@ -199,6 +200,7 @@ impl WombatApp {
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);
                     self.selection.range = self.handle_selection_click(offset, idx, is_alt);
+                    mark_selection_stale = true;
                 }
 
                 // ASCII hover and click
@@ -232,9 +234,13 @@ impl WombatApp {
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);
                     self.selection.range = self.handle_selection_click(offset, idx, is_alt);
+                    mark_selection_stale = true;
                 }
             }
             y += row_height;
+        }
+        if mark_selection_stale {
+            self.stale_selection();
         }
     }
 
