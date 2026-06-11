@@ -251,11 +251,13 @@ impl BladvakApp<'_> for WombatApp {
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
         if is_native() && args.len() > 1 {
+            use std::fs;
             let path = &args[1];
-            let bytes = std::fs::read(path)?;
+            let absolute_path = fs::canonicalize(&path)?;
+            let bytes = fs::read(&absolute_path)?;
             let mut app = saved_state;
             app.binary_file = bytes;
-            app.filename = PathBuf::from(path);
+            app.filename = absolute_path;
             Ok(app)
         } else {
             Ok(saved_state)
