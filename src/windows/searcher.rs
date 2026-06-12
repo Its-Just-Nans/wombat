@@ -105,7 +105,7 @@ impl Searcher {
                 if let Some(start_idx) = idx_result {
                     let start_idx = start_idx + current_idx;
                     self.last_search_idx = Some(start_idx);
-                    should_return = true
+                    should_return = true;
                 } else {
                     self.last_search_idx = None;
                 }
