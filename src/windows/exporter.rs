@@ -158,17 +158,23 @@ impl Exporter {
                 //     // TODO
                 // }
             });
-            let (selected_preview, is_file) = if let Some(range) = selection.range {
+            let selected_preview = if let Some(range) = selection.range {
                 let stop = range.1.min(range.0 + 49);
-                (range.0..=stop, false)
+                range.0..=stop
             } else {
                 let max = (binary_file.len() - 1).min(49);
-                (0..=max, true)
+                0..=max
             };
             ui.horizontal(|ui| {
                 ui.label(format!(
-                    "Preview on 50 bytes (of {})",
-                    if is_file { "file" } else { "selection" }
+                    "Preview on {} bytes (of {})",
+                    selected_preview.clone().count(),
+                    if let Some(range) = selection.range {
+                        let range_len = range.1 - range.0 + 1;
+                        format!("{range_len} bytes selection")
+                    } else {
+                        "file".to_string()
+                    }
                 ));
                 if let Some(err) = &self.export_error {
                     ui.label(RichText::new(err).color(Color32::LIGHT_RED));

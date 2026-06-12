@@ -168,7 +168,8 @@ impl BladvakPanel for PanelSelection {
                 && ui.button("Delete selection").clicked()
             {
                 app.binary_file.drain(range.clone());
-                *select2 = select1.checked_sub(1).unwrap_or(0);
+                *select1 = select1.checked_sub(1).unwrap_or(0);
+                *select2 = select1.checked_add(1).unwrap_or(0);
                 mark_selection_stale = true;
                 mark_stale = true;
             }
