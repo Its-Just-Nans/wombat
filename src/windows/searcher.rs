@@ -96,8 +96,8 @@ impl Searcher {
                 .map(|one_u8| format!("0x{one_u8:02X}"))
                 .collect::<Vec<String>>()
                 .join(",");
-
             ui.label(format!("Needle is : [{needle_pretty}]"));
+            let mut should_return = false;
             if ui.button("Search next").clicked() {
                 let idx_result = binary_file[current_idx..]
                     .windows(needle.len())
@@ -105,14 +105,18 @@ impl Searcher {
                 if let Some(start_idx) = idx_result {
                     let start_idx = start_idx + current_idx;
                     self.last_search_idx = Some(start_idx);
+                    should_return = true
                 } else {
                     self.last_search_idx = None;
                 }
             }
             if let Some(last_start_idx) = self.last_search_idx {
                 ui.label(format!("Found at {last_start_idx}"));
-                let end_idx = last_start_idx + needle.len().checked_sub(1).unwrap_or(1);
-                return Some(last_start_idx..=end_idx);
+                if should_return {
+                    let end_idx = last_start_idx + needle.len().checked_sub(1).unwrap_or(1);
+                    return Some(last_start_idx..=end_idx);
+                }
+                return None;
             }
             ui.label("Nothing");
             return None;
