@@ -6,6 +6,7 @@ mod exporter;
 mod hashing;
 mod histogram;
 mod importer;
+mod searcher;
 #[cfg(feature = "yara")]
 mod yara;
 
@@ -17,6 +18,7 @@ use detection::Detection;
 use file_format::FileFormat;
 use histogram::Histogram;
 use importer::Importer;
+use searcher::Searcher;
 
 /// File info
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -25,6 +27,8 @@ pub struct WindowsData {
     pub(crate) histogram: Histogram,
     /// importer
     pub(crate) importer: Importer,
+    /// searcher
+    pub(crate) searcher: Searcher,
     /// detection
     pub(crate) detection: Detection,
     #[cfg(feature = "hashing")]
@@ -45,6 +49,7 @@ impl WindowsData {
             importer: Importer::new(),
             exporter: Exporter::new(),
             detection: Detection::new(),
+            searcher: Searcher::new(),
             #[cfg(feature = "hashing")]
             hashing: hashing::Hashing::new(),
             #[cfg(feature = "yara")]
@@ -57,6 +62,7 @@ impl WindowsData {
         self.histogram.reset();
         self.importer.reset();
         self.detection.reset();
+        self.searcher.reset();
         self.exporter.reset();
         #[cfg(feature = "hashing")]
         self.hashing.reset();
@@ -74,6 +80,7 @@ impl WindowsData {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.importer.is_open, "Import");
         ui.toggle_value(&mut self.exporter.is_open, "Exporter");
+        ui.toggle_value(&mut self.searcher.is_open, "Searcher");
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
         ui.toggle_value(&mut self.hashing.is_open, hashing::Hashing::window_title());
@@ -122,6 +129,13 @@ impl WombatApp {
                 name: file_fmt.name().to_string(),
             };
             self.file_format = Some(data);
+        }
+        if let Some(range) =
+            self.windows_data
+                .searcher
+                .ui(&self.binary_file, &self.selection, ui, error_manager)
+        {
+            self.selection.range = Some((*range.start(), *range.end()));
         }
         if let Some(infos) = &self.file_format
             && let Some(range) =
