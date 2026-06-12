@@ -26,10 +26,18 @@ impl WombatApp {
             .striped(true)
             .column(Column::auto().resizable(true))
             .column(Column::remainder())
+            .header(20.0, |mut header| {
+                header.col(|ui| {
+                    ui.label("u8");
+                });
+                header.col(|ui| {
+                    ui.label("Value");
+                });
+            })
             .body(|mut body| {
                 body.row(20.0, |mut row| {
                     row.col(|ui| {
-                        ui.label("decimal");
+                        ui.label("Decimal");
                     });
                     row.col(|ui| {
                         accent_label(ui, Accent::Decimal, format!("{current}"));
@@ -37,7 +45,7 @@ impl WombatApp {
                 });
                 body.row(20.0, |mut row| {
                     row.col(|ui| {
-                        ui.label("hex");
+                        ui.label("Hex");
                     });
                     row.col(|ui| {
                         accent_label(ui, Accent::Hex, format!("0x{current:02X}"));
@@ -45,7 +53,7 @@ impl WombatApp {
                 });
                 body.row(20.0, |mut row| {
                     row.col(|ui| {
-                        ui.label("octal");
+                        ui.label("Octal");
                     });
                     row.col(|ui| {
                         accent_label(ui, Accent::Octal, format!("0o{current:03o}"));
@@ -53,7 +61,7 @@ impl WombatApp {
                 });
                 body.row(20.0, |mut row| {
                     row.col(|ui| {
-                        ui.label("bin");
+                        ui.label("Bin");
                     });
                     row.col(|ui| {
                         accent_label(ui, Accent::Binary, format!("0b{current:08b}"));

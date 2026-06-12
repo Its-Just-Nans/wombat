@@ -41,9 +41,10 @@ impl WombatApp {
                 && let Some(current) = self.binary_file.get(select1)
             {
                 ui.separator();
-                ui.label(format!("byte at index {select1}"));
+                ui.label(format!("1 byte at index {select1}"));
                 self.ui_table_u8(ui, *current, &Accent::Hex);
             } else {
+                ui.separator();
                 let nb_selected = select2.checked_sub(select1).map_or(0, |d| d as u64 + 1);
                 ui.label(format!("{nb_selected} bytes selected"));
                 let range = select1..=select2;
