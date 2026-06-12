@@ -155,7 +155,8 @@ impl BladvakPanel for PanelSelection {
                 } else {
                     app.binary_file.len() - 1
                 };
-                ui.label("->");
+                ui.label("->")
+                    .on_hover_text(format!("0x{select1:X} to 0x{select2:X}"));
                 if ui
                     .add(egui::DragValue::new(select2).range(*select1..=max))
                     .changed()
