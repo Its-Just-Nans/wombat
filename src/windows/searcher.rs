@@ -1,6 +1,7 @@
 //! Searcher
 
 use bladvak::eframe::egui;
+use bladvak::eframe::egui::Color32;
 use bladvak::errors::ErrorManager;
 use std::ops::RangeInclusive;
 
@@ -116,7 +117,7 @@ impl Searcher {
             ui.label("Nothing");
             return None;
         } else {
-            ui.label("No needle or cannot parse needle");
+            ui.colored_label(Color32::RED, "Cannot parse needle");
         }
         None
     }
