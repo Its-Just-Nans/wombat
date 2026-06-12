@@ -85,10 +85,10 @@ impl Searcher {
             SearchType::Text => Some(self.search.0.as_bytes().to_vec()),
             SearchType::Hex => parse_hex_string(&self.search.0).ok(),
         };
-        if self.search.0.len() == 0 {
+        if self.search.0.is_empty() {
             ui.label("Search is empty");
         } else if let Some(needle) = &self.search.1
-            && needle.len() > 0
+            && !needle.is_empty()
         {
             let needle_pretty = needle
                 .iter()
@@ -112,10 +112,9 @@ impl Searcher {
                 ui.label(format!("Found at {last_start_idx}"));
                 let end_idx = last_start_idx + needle.len().checked_sub(1).unwrap_or(1);
                 return Some(last_start_idx..=end_idx);
-            } else {
-                ui.label("Nothing");
-                return None;
             }
+            ui.label("Nothing");
+            return None;
         } else {
             ui.label("No needle or cannot parse needle");
         }
