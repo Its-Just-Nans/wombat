@@ -1,4 +1,4 @@
-//! Wombat
+//! Wombat is a hex viewer made with [bladvak](https://github.com/Its-Just-Nans/bladvak) (egui)
 //!
 //! ```sh
 //! cargo install wombat --locked
