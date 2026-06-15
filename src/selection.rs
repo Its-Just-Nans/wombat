@@ -41,7 +41,7 @@ impl WombatApp {
                 && let Some(current) = self.binary_file.get(select1)
             {
                 ui.separator();
-                ui.label(format!("1 byte at index {select1}"));
+                ui.label(format!("1 byte at index 0x{select1:X} ({select1})"));
                 self.ui_table_u8(ui, *current, &Accent::Hex);
             } else {
                 ui.separator();
