@@ -195,7 +195,11 @@ impl WombatApp {
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
-                    resp.on_hover_ui(|ui| self.ui_table_u8(ui, *b, &Accent::Hex));
+                    resp.on_hover_ui(|ui| {
+                        let position = line * bytes_per_line + idx;
+                        ui.label(format!("Bytes at index {position} (0x{position:X})"));
+                        self.ui_table_u8(ui, *b, &Accent::Hex);
+                    });
                 }
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);
@@ -229,7 +233,11 @@ impl WombatApp {
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
-                    resp.on_hover_ui(|ui| self.ui_table_u8(ui, *b, &Accent::Ascii));
+                    resp.on_hover_ui(|ui| {
+                        let position = line * bytes_per_line + idx;
+                        ui.label(format!("Bytes at index {position} (0x{position:X})"));
+                        self.ui_table_u8(ui, *b, &Accent::Ascii);
+                    });
                 }
                 if is_clicked {
                     let is_alt = ui.ctx().input(|i| i.modifiers.shift);
