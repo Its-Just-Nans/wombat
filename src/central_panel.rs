@@ -1,6 +1,8 @@
 //! Central panel
 
-use bladvak::eframe::egui::{self, FontFamily, FontId, ScrollArea, TextStyle, Theme, Vec2};
+use bladvak::eframe::egui::{
+    self, FontFamily, FontId, Painter, ScrollArea, TextStyle, Theme, Vec2,
+};
 use bladvak::errors::ErrorManager;
 
 use crate::WombatApp;
@@ -82,6 +84,7 @@ impl WombatApp {
 
         // we'll draw 3 columns: offset, hex bytes, ascii
         // Choose x positions relative to `left`
+        let offset_col_nb: usize = 8;
         let offset_col_width = 80.0; // "00000000:" width
         let hex_col_x = left + offset_col_width;
         // For hex column width estimate: bytes_per_line * 3 chars ("xx ") maybe plus small gap
@@ -93,7 +96,7 @@ impl WombatApp {
             let slice = &self.binary_file[offset..slice_end];
 
             // formatted offset
-            let offset_text = format!("{offset:08X}:");
+            let offset_text = format!("{offset:0offset_col_nb$X}:");
 
             // hex text: group each byte as two hex digits separated by a space
             let mut hex_buf = Vec::with_capacity(bytes_per_line);
@@ -168,6 +171,18 @@ impl WombatApp {
             }
 
             let char_width = ui.fonts_mut(|f| f.glyph_width(&font_id, '0'));
+
+            Self::interact_offset(
+                ui,
+                painter,
+                origin,
+                bytes_per_line,
+                char_width,
+                offset_col_nb,
+                row_height,
+                line,
+                y,
+            );
             let hex_group_width = char_width * 2.0; // "FF " is 3 chars
 
             for (idx, b) in slice.iter().enumerate() {
@@ -282,5 +297,48 @@ impl WombatApp {
         }
         // no previous selection - create new selection
         Some((current_idx, current_idx))
+    }
+
+    /// Interact the offset
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    fn interact_offset(
+        ui: &egui::Ui,
+        _painter: &Painter,
+        origin: egui::Pos2,
+        bytes_per_line: usize,
+        char_width: f32,
+        offset_col_nb: usize,
+        row_height: f32,
+        line: usize,
+        y: f32,
+    ) {
+        #[allow(clippy::cast_precision_loss)]
+        let byte_rect = egui::Rect::from_min_size(
+            origin + Vec2::new(0.0, y),
+            egui::vec2(char_width * offset_col_nb as f32 + char_width, row_height),
+        );
+
+        let resp = ui.interact(
+            byte_rect,
+            ui.id().with(("offset_hex", line, 0)),
+            egui::Sense::click(),
+        );
+        // debug
+        // use bladvak::eframe::egui::{Color32, Stroke};
+        // painter.rect(
+        //     byte_rect,
+        //     1.0,
+        //     Color32::TRANSPARENT,
+        //     Stroke::new(0.5, Color32::RED),
+        //     egui::StrokeKind::Middle,
+        // );
+        if resp.hovered() {
+            resp.on_hover_ui(|ui| {
+                    let position_start = line * bytes_per_line;
+                    let position_end = line * bytes_per_line + bytes_per_line - 1;
+                    ui.label(format!("Position from {position_start} (0x{position_start:X}) to {position_end} (0x{position_end:X})"));
+                });
+        }
     }
 }
