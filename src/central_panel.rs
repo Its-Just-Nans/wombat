@@ -212,7 +212,7 @@ impl WombatApp {
                 if resp.hovered() {
                     resp.on_hover_ui(|ui| {
                         let position = line * bytes_per_line + idx;
-                        ui.label(format!("Bytes at index {position} (0x{position:X})"));
+                        ui.label(format!("Bytes at index 0x{position:X} ({position})"));
                         self.ui_table_u8(ui, *b, &Accent::Hex);
                     });
                 }
@@ -250,7 +250,7 @@ impl WombatApp {
                 if resp.hovered() {
                     resp.on_hover_ui(|ui| {
                         let position = line * bytes_per_line + idx;
-                        ui.label(format!("Bytes at index {position} (0x{position:X})"));
+                        ui.label(format!("Bytes at index 0x{position:X} ({position})"));
                         self.ui_table_u8(ui, *b, &Accent::Ascii);
                     });
                 }
@@ -337,7 +337,7 @@ impl WombatApp {
             resp.on_hover_ui(|ui| {
                     let position_start = line * bytes_per_line;
                     let position_end = line * bytes_per_line + bytes_per_line - 1;
-                    ui.label(format!("Position from {position_start} (0x{position_start:X}) to {position_end} (0x{position_end:X})"));
+                    ui.label(format!("Position from 0x{position_start:X} ({position_start}) to 0x{position_end:X} ({position_end})"));
                 });
         }
     }
