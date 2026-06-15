@@ -40,6 +40,9 @@ pub struct WombatApp {
 
     /// Windows
     pub(crate) windows_data: WindowsData,
+
+    /// Visual debug
+    pub(crate) visual_debug: bool,
 }
 
 /// default file (wombat icon)
@@ -55,6 +58,7 @@ impl Default for WombatApp {
             selection: Selection::default(),
             file_format: None,
             windows_data: WindowsData::new(),
+            visual_debug: false,
         }
     }
 }

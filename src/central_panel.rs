@@ -1,7 +1,7 @@
 //! Central panel
 
 use bladvak::eframe::egui::{
-    self, FontFamily, FontId, Painter, ScrollArea, TextStyle, Theme, Vec2,
+    self, Color32, FontFamily, FontId, Painter, ScrollArea, Stroke, TextStyle, Theme, Vec2,
 };
 use bladvak::errors::ErrorManager;
 
@@ -174,7 +174,11 @@ impl WombatApp {
 
             Self::interact_offset(
                 ui,
-                painter,
+                if self.visual_debug {
+                    Some(painter)
+                } else {
+                    None
+                },
                 origin,
                 bytes_per_line,
                 char_width,
@@ -198,15 +202,15 @@ impl WombatApp {
                     ui.id().with(("hex", line, idx)),
                     egui::Sense::click(),
                 );
-                // debug
-                // use bladvak::eframe::egui::{Color32, Stroke};
-                // painter.rect(
-                //     byte_rect,
-                //     1.0,
-                //     Color32::TRANSPARENT,
-                //     Stroke::new(0.5, Color32::BLACK),
-                //     egui::StrokeKind::Middle,
-                // );
+                if self.visual_debug {
+                    painter.rect(
+                        byte_rect,
+                        1.0,
+                        Color32::TRANSPARENT,
+                        Stroke::new(0.5, Color32::BLACK),
+                        egui::StrokeKind::Middle,
+                    );
+                }
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
@@ -236,15 +240,15 @@ impl WombatApp {
                     ui.id().with(("ascii", line, idx)),
                     egui::Sense::click(),
                 );
-                // debug
-                // use bladvak::eframe::egui::{Color32, Stroke};
-                // painter.rect(
-                //     byte_rect,
-                //     1.0,
-                //     Color32::TRANSPARENT,
-                //     Stroke::new(1.0, Color32::BLACK),
-                //     egui::StrokeKind::Outside,
-                // );
+                if self.visual_debug {
+                    painter.rect(
+                        byte_rect,
+                        1.0,
+                        Color32::TRANSPARENT,
+                        Stroke::new(1.0, Color32::BLACK),
+                        egui::StrokeKind::Outside,
+                    );
+                }
 
                 let is_clicked = resp.clicked();
                 if resp.hovered() {
@@ -304,7 +308,7 @@ impl WombatApp {
     #[allow(clippy::too_many_arguments)]
     fn interact_offset(
         ui: &egui::Ui,
-        _painter: &Painter,
+        painter: Option<&Painter>,
         origin: egui::Pos2,
         bytes_per_line: usize,
         char_width: f32,
@@ -324,15 +328,15 @@ impl WombatApp {
             ui.id().with(("offset_hex", line, 0)),
             egui::Sense::click(),
         );
-        // debug
-        // use bladvak::eframe::egui::{Color32, Stroke};
-        // painter.rect(
-        //     byte_rect,
-        //     1.0,
-        //     Color32::TRANSPARENT,
-        //     Stroke::new(0.5, Color32::RED),
-        //     egui::StrokeKind::Middle,
-        // );
+        if let Some(painter) = painter {
+            painter.rect(
+                byte_rect,
+                1.0,
+                Color32::TRANSPARENT,
+                Stroke::new(0.5, Color32::RED),
+                egui::StrokeKind::Middle,
+            );
+        }
         if resp.hovered() {
             resp.on_hover_ui(|ui| {
                     let position_start = line * bytes_per_line;
