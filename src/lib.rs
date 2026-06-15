@@ -3,7 +3,7 @@
 //! ```sh
 //! cargo install wombat --locked
 //!
-//! wombat
+//! wombat path/to/file.bin
 //! ```
 
 #![warn(clippy::all, rust_2018_idioms)]
