@@ -145,6 +145,14 @@ impl BladvakPanel for PanelSelection {
             });
             ui.horizontal(|ui| {
                 if ui
+                    .button("▶")
+                    .on_hover_text("Go to start of selection")
+                    .clicked()
+                {
+                    app.offset
+                        .go_to_index(*select1, app.display_settings.bytes_per_line);
+                }
+                if ui
                     .add(egui::DragValue::new(select1).range(0..=*select2))
                     .changed()
                 {
@@ -162,6 +170,14 @@ impl BladvakPanel for PanelSelection {
                     .changed()
                 {
                     mark_selection_stale = true;
+                }
+                if ui
+                    .button("◀")
+                    .on_hover_text("Go to end of selection")
+                    .clicked()
+                {
+                    app.offset
+                        .go_to_index(*select2, app.display_settings.bytes_per_line);
                 }
             });
             let range = *select1..=*select2;
