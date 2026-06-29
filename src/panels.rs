@@ -103,7 +103,7 @@ impl BladvakPanel for FileInfo {
             {
                 app.offset.need_change = true;
             }
-            if ui.button("Go to").clicked() {
+            if ui.button("Go to line").clicked() {
                 app.offset.need_change = true;
             }
             if ui
