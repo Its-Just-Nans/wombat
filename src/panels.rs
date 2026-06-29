@@ -84,9 +84,34 @@ impl BladvakPanel for FileInfo {
         ));
         ui.separator();
         ui.horizontal(|ui| {
-            let resp = ui.add(egui::DragValue::new(&mut app.offset.line_to_go).speed(1.0));
-            let clicked = ui.button("Go to").clicked();
-            if resp.dragged() || clicked {
+            if ui
+                .add(
+                    egui::DragValue::new(&mut app.offset.line_to_go)
+                        .custom_parser(|v| {
+                            if v.chars().all(|c| c.is_ascii_digit()) {
+                                v.parse::<f64>().ok()
+                            } else {
+                                #[allow(clippy::cast_precision_loss)]
+                                u64::from_str_radix(v.trim_start_matches("0x"), 16)
+                                    .ok()
+                                    .map(|n| n as f64)
+                            }
+                        })
+                        .speed(1.0),
+                )
+                .dragged()
+            {
+                app.offset.need_change = true;
+            }
+            if ui.button("Go to").clicked() {
+                app.offset.need_change = true;
+            }
+            if ui
+                .button("Go to index")
+                .on_hover_text("Divide by the number of bytes per line")
+                .clicked()
+            {
+                app.offset.line_to_go /= app.display_settings.bytes_per_line;
                 app.offset.need_change = true;
             }
         });
