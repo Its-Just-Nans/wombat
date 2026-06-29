@@ -106,12 +106,15 @@ impl BladvakPanel for FileInfo {
             if ui.button("Go to line").clicked() {
                 app.offset.need_change = true;
             }
+            let line_to_go = app.offset.line_to_go / app.display_settings.bytes_per_line;
             if ui
                 .button("Go to index")
-                .on_hover_text("Divide by the number of bytes per line")
+                .on_hover_text(format!(
+                    "Go to line {line_to_go}\nDivide by the number of bytes per line"
+                ))
                 .clicked()
             {
-                app.offset.line_to_go /= app.display_settings.bytes_per_line;
+                app.offset.line_to_go = line_to_go;
                 app.offset.need_change = true;
             }
         });
