@@ -38,13 +38,6 @@ impl BladvakPanel for FileInfo {
         true
     }
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        ui.horizontal(|ui| {
-            let resp = ui.add(egui::DragValue::new(&mut app.offset.line_to_go).speed(1.0));
-            let clicked = ui.button("Go to").clicked();
-            if resp.dragged() || clicked {
-                app.offset.need_change = true;
-            }
-        });
         ui.label(format!("File: {}", app.filename.display()));
         ui.label(format!("{} bytes", app.binary_file.len()));
         #[allow(clippy::cast_precision_loss)]
@@ -89,6 +82,14 @@ impl BladvakPanel for FileInfo {
             &mut app.display_settings.bytes_per_line,
             1..=64,
         ));
+        ui.separator();
+        ui.horizontal(|ui| {
+            let resp = ui.add(egui::DragValue::new(&mut app.offset.line_to_go).speed(1.0));
+            let clicked = ui.button("Go to").clicked();
+            if resp.dragged() || clicked {
+                app.offset.need_change = true;
+            }
+        });
     }
 
     fn ui_settings(
