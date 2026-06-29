@@ -135,7 +135,7 @@ impl WombatApp {
                 .searcher
                 .ui(&self.binary_file, &self.selection, ui, error_manager)
         {
-            self.selection.range = Some((*range.start(), *range.end()));
+            self.go_to_range(range);
         }
         if let Some(infos) = &self.file_format
             && let Some(range) =
@@ -143,7 +143,7 @@ impl WombatApp {
                     .detection
                     .ui(&self.binary_file, infos, ui, error_manager)
         {
-            self.selection.range = Some((*range.start(), *range.end()));
+            self.go_to_range(range);
         }
     }
 }

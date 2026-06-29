@@ -1,7 +1,7 @@
 //! Histogram
 
+use ahash::{HashMap, HashMapExt};
 use bladvak::eframe::egui;
-use bladvak::eframe::egui::ahash::{HashMap, HashMapExt};
 use bladvak::egui_plot::{Bar, BarChart, Legend, Plot};
 use bladvak::errors::ErrorManager;
 

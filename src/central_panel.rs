@@ -18,16 +18,30 @@ impl WombatApp {
         ui: &mut egui::Ui,
         _error_manager: &mut ErrorManager,
     ) {
+        let text_style = TextStyle::Monospace;
+        let row_height = ui.text_style_height(&text_style).max(14.0) + 1.0; // fallback
         ScrollArea::vertical().show_viewport(ui, |ui: &mut egui::Ui, viewport: egui::Rect| {
+            if self.offset.need_change {
+                // convert line to px
+                let offset_needed = (self.offset.line_to_go as f32) * row_height;
+                let offset_needed = if self.offset.current > offset_needed {
+                    (self.offset.current - offset_needed) * Vec2::DOWN
+                } else {
+                    (offset_needed - self.offset.current) * Vec2::UP
+                };
+                ui.scroll_with_delta(offset_needed);
+                self.offset.need_change = false;
+            }
+            let margin = ui.visuals().clip_rect_margin;
+
+            self.offset.current = ui.clip_rect().top() - ui.min_rect().top() + margin;
             // 1) compute text metrics: row height using monospace TextStyle if available
-            let text_style = TextStyle::Monospace;
             // Choose a monospace font id. Use the style's size for monospace if available:
             let font_size = ui
                 .style()
                 .text_styles
                 .get(&text_style)
                 .map_or(14.0, |s| s.size);
-            let row_height = ui.text_style_height(&text_style).max(14.0) + 1.0; // fallback
             // total lines we'll render
             let lines_total = self
                 .binary_file

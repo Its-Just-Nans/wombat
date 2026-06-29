@@ -17,6 +17,17 @@ use crate::panels::{FileInfo, FileInfoData};
 use crate::selection::{PanelSelection, Selection};
 use crate::windows::WindowsData;
 
+/// Offset of the application
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+pub(crate) struct Offset {
+    /// The current offset
+    pub(crate) current: f32,
+    /// Does the offset need to be changed
+    pub(crate) need_change: bool,
+    /// Line to go
+    pub(crate) line_to_go: usize,
+}
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 #[serde(default)]
@@ -33,6 +44,9 @@ pub struct WombatApp {
     pub(crate) display_settings: DisplaySettings,
     /// Selection
     pub(crate) selection: Selection,
+
+    /// Scroll area offset
+    pub(crate) offset: Offset,
 
     /// File info
     #[serde(skip)]
@@ -56,6 +70,11 @@ impl Default for WombatApp {
             filename: path,
             display_settings: DisplaySettings::default(),
             selection: Selection::default(),
+            offset: Offset {
+                current: 0.0,
+                need_change: false,
+                line_to_go: 0,
+            },
             file_format: None,
             windows_data: WindowsData::new(),
             visual_debug: false,
@@ -161,6 +180,15 @@ impl WombatApp {
                 }
             }
         }
+    }
+
+    /// Go to the selected range
+    pub(crate) fn go_to_range(&mut self, range: RangeInclusive<usize>) {
+        let start = *range.start();
+        self.selection.range = Some((start, *range.end()));
+        let line_to_go = start / self.display_settings.bytes_per_line;
+        self.offset.line_to_go = line_to_go;
+        self.offset.need_change = true;
     }
 
     /// Mark data as stale
