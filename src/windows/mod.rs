@@ -1,5 +1,6 @@
 //! Wombat windows
 
+#[cfg(feature = "detection")]
 mod detection;
 mod exporter;
 #[cfg(feature = "hashing")]
@@ -14,7 +15,6 @@ use crate::{WombatApp, panels::FileInfoData, windows::exporter::Exporter};
 
 use bladvak::{ErrorManager, eframe::egui};
 
-use detection::Detection;
 use file_format::FileFormat;
 use histogram::Histogram;
 use importer::Importer;
@@ -29,10 +29,13 @@ pub struct WindowsData {
     pub(crate) importer: Importer,
     /// searcher
     pub(crate) searcher: Searcher,
+
     /// detection
-    pub(crate) detection: Detection,
-    #[cfg(feature = "hashing")]
+    #[cfg(feature = "detection")]
+    pub(crate) detection: detection::Detection,
+
     /// hashing
+    #[cfg(feature = "hashing")]
     pub(crate) hashing: hashing::Hashing,
     /// exporter
     pub(crate) exporter: Exporter,
@@ -48,7 +51,8 @@ impl WindowsData {
             histogram: Histogram::new(),
             importer: Importer::new(),
             exporter: Exporter::new(),
-            detection: Detection::new(),
+            #[cfg(feature = "detection")]
+            detection: detection::Detection::new(),
             searcher: Searcher::new(),
             #[cfg(feature = "hashing")]
             hashing: hashing::Hashing::new(),
@@ -61,6 +65,7 @@ impl WindowsData {
     pub(crate) fn reset(&mut self) {
         self.histogram.reset();
         self.importer.reset();
+        #[cfg(feature = "detection")]
         self.detection.reset();
         self.searcher.reset();
         self.exporter.reset();
@@ -72,6 +77,7 @@ impl WindowsData {
 
     /// Mark selection stale
     pub(crate) fn selection_stale(&mut self) {
+        #[cfg(feature = "hashing")]
         self.hashing.selection_stale();
     }
 
@@ -81,6 +87,7 @@ impl WindowsData {
         ui.toggle_value(&mut self.importer.is_open, "Import");
         ui.toggle_value(&mut self.exporter.is_open, "Exporter");
         ui.toggle_value(&mut self.searcher.is_open, "Searcher");
+        #[cfg(feature = "detection")]
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
         ui.toggle_value(&mut self.hashing.is_open, hashing::Hashing::window_title());
@@ -137,6 +144,7 @@ impl WombatApp {
         {
             self.go_to_range(range);
         }
+        #[cfg(feature = "detection")]
         if let Some(infos) = &self.file_format
             && let Some(range) =
                 self.windows_data

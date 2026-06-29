@@ -1,5 +1,7 @@
 //! Detection
 
+#![cfg(feature = "detection")]
+
 mod cert;
 mod png;
 mod xml;
