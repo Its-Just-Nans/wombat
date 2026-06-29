@@ -22,7 +22,8 @@ enum DetectionCache {
     Xml(Option<XmlData>),
     /// cert data cached
     Cert(Option<CertData>),
-
+    /// String
+    String(String),
     /// no cache
     #[default]
     Empty,
@@ -40,6 +41,10 @@ impl DetectionCache {
             DetectionCache::Png(data) => show_png_chunks(ui, data.as_ref()),
             DetectionCache::Xml(xml_str) => xml_tree_ui(ui, xml_str.as_ref()),
             DetectionCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
+            DetectionCache::String(str) => {
+                ui.label(str);
+                None
+            }
             DetectionCache::Empty => {
                 ui.label(format!("Kind: {:?}", file_info.kind));
                 ui.label("No data");
@@ -55,7 +60,7 @@ impl DetectionCache {
                 let parsed = PngData::parse(binary_data);
                 DetectionCache::Png(parsed)
             }
-            "xml" => {
+            "xml" | "svg" | "html" => {
                 let parsed = XmlData::parse(binary_data);
                 DetectionCache::Xml(Some(parsed))
             }
@@ -67,7 +72,14 @@ impl DetectionCache {
                 let parsed = CertData::parse(binary_data, true);
                 DetectionCache::Cert(parsed)
             }
-            _ => DetectionCache::Empty,
+            "qoi" => DetectionCache::String("A QOI (Quite OK Image) image".to_string()),
+            _ => {
+                if binary_data.starts_with("0 HEAD\r\n1 SOUR".as_bytes()) {
+                    DetectionCache::String("Maybe a GED file".to_string())
+                } else {
+                    DetectionCache::Empty
+                }
+            }
         }
     }
 }
