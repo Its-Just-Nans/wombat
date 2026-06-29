@@ -42,8 +42,8 @@ pub(crate) struct Importer {
     /// value type
     pub(crate) value_type: ImportType,
 
-    #[serde(skip)]
     /// import error
+    #[serde(skip)]
     import_error: Option<String>,
 }
 
@@ -133,6 +133,23 @@ impl Importer {
                         .changed()
                     {
                         self.import_error = None;
+                    }
+                    let preview_len = self.value.len().min(50);
+                    ui.label(format!("Import preview for {preview_len} chars"));
+                    if let Some(val) = self.value.get(0..preview_len) {
+                        match Self::import(val, &self.value_type) {
+                            Ok(res) => {
+                                let import_preview = res
+                                    .iter()
+                                    .map(|one_u8| format!("0x{one_u8:02X}"))
+                                    .collect::<Vec<String>>()
+                                    .join(",");
+                                ui.label(import_preview);
+                            }
+                            Err(err) => {
+                                ui.label(RichText::new(err).color(Color32::LIGHT_RED));
+                            }
+                        }
                     }
                 });
             self.is_open = is_open;
