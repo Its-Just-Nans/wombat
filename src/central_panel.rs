@@ -353,10 +353,14 @@ impl WombatApp {
         }
         if resp.hovered() {
             resp.on_hover_ui(|ui| {
-                    let position_start = line * bytes_per_line;
-                    let position_end = line * bytes_per_line + bytes_per_line - 1;
-                    ui.label(format!("Position from 0x{position_start:X} ({position_start}) to 0x{position_end:X} ({position_end})"));
-                });
+                let p_start = line * bytes_per_line;
+                let p_end = line * bytes_per_line + bytes_per_line - 1;
+                let label = format!(
+                    "Position from 0x{p_start:X} ({p_start}) to 0x{p_end:X} ({p_end})\nLine: {}",
+                    y / row_height
+                );
+                ui.label(label);
+            });
         }
     }
 }
