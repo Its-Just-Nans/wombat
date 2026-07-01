@@ -186,7 +186,7 @@ impl WombatApp {
 
             let char_width = ui.fonts_mut(|f| f.glyph_width(&font_id, '0'));
 
-            Self::interact_offset(
+            let offset_clicked = Self::interact_offset(
                 ui,
                 if self.visual_debug {
                     Some(painter)
@@ -201,6 +201,11 @@ impl WombatApp {
                 line,
                 y,
             );
+            if offset_clicked {
+                let is_shift = ui.ctx().input(|i| i.modifiers.shift);
+                self.selection.range = self.handle_offset_click(offset, is_shift);
+                mark_selection_stale = true;
+            }
             let hex_group_width = char_width * 2.0; // "FF " is 3 chars
 
             for (idx, b) in slice.iter().enumerate() {
@@ -235,8 +240,8 @@ impl WombatApp {
                     });
                 }
                 if is_clicked {
-                    let is_alt = ui.ctx().input(|i| i.modifiers.shift);
-                    self.selection.range = self.handle_selection_click(offset, idx, is_alt);
+                    let is_shift = ui.ctx().input(|i| i.modifiers.shift);
+                    self.selection.range = self.handle_selection_click(offset, idx, is_shift);
                     mark_selection_stale = true;
                 }
 
@@ -273,8 +278,8 @@ impl WombatApp {
                     });
                 }
                 if is_clicked {
-                    let is_alt = ui.ctx().input(|i| i.modifiers.shift);
-                    self.selection.range = self.handle_selection_click(offset, idx, is_alt);
+                    let is_shift = ui.ctx().input(|i| i.modifiers.shift);
+                    self.selection.range = self.handle_selection_click(offset, idx, is_shift);
                     mark_selection_stale = true;
                 }
             }
@@ -290,11 +295,11 @@ impl WombatApp {
         &self,
         offset: usize,
         idx: usize,
-        is_alt: bool,
+        is_shift: bool,
     ) -> Option<(usize, usize)> {
         let current_idx = offset + idx;
         if let Some((select1, select2)) = self.selection.range {
-            if is_alt {
+            if is_shift {
                 if select1 == current_idx {
                     return Some((current_idx, current_idx));
                 } else if current_idx < select1 {
@@ -317,6 +322,29 @@ impl WombatApp {
         Some((current_idx, current_idx))
     }
 
+    /// Handle offset click
+    fn handle_offset_click(&self, offset: usize, is_shift: bool) -> Option<(usize, usize)> {
+        let end_idx = offset + self.display_settings.bytes_per_line - 1;
+        let end_idx = if self.binary_file.len() > end_idx {
+            end_idx
+        } else {
+            offset + (self.binary_file.len() - offset - 1)
+        };
+        if let Some((select1, select2)) = self.selection.range {
+            if select1 == offset && select2 == end_idx {
+                return None;
+            }
+            if is_shift {
+                if offset > select1 {
+                    // offset is after
+                    return Some((select1, end_idx));
+                }
+                return Some((offset, select2));
+            }
+        }
+        Some((offset, end_idx))
+    }
+
     /// Interact the offset
     #[inline]
     #[allow(clippy::too_many_arguments)]
@@ -330,7 +358,7 @@ impl WombatApp {
         row_height: f32,
         line: usize,
         y: f32,
-    ) {
+    ) -> bool {
         #[allow(clippy::cast_precision_loss)]
         let byte_rect = egui::Rect::from_min_size(
             origin + Vec2::new(0.0, y),
@@ -351,6 +379,7 @@ impl WombatApp {
                 egui::StrokeKind::Middle,
             );
         }
+        let is_clicked = resp.clicked();
         if resp.hovered() {
             resp.on_hover_ui(|ui| {
                 let p_start = line * bytes_per_line;
@@ -362,5 +391,6 @@ impl WombatApp {
                 ui.label(label);
             });
         }
+        is_clicked
     }
 }
