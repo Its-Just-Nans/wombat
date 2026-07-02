@@ -3,6 +3,7 @@
 #![cfg(feature = "detection")]
 
 mod cert;
+mod mp4;
 mod png;
 mod xml;
 
@@ -12,6 +13,7 @@ use std::ops::RangeInclusive;
 
 use crate::panels::FileInfoData;
 use crate::windows::detection::cert::{CertData, show_certs};
+use crate::windows::detection::mp4::{Mp4Data, show_mp4_ui};
 use crate::windows::detection::png::{PngData, show_png_chunks};
 use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 
@@ -24,6 +26,8 @@ enum DetectionCache {
     Xml(Option<XmlData>),
     /// cert data cached
     Cert(Option<CertData>),
+    /// mp4 data cached
+    Mp4(Option<Mp4Data>),
     /// String
     String(String),
     /// no cache
@@ -47,6 +51,7 @@ impl DetectionCache {
                 ui.label(str);
                 None
             }
+            DetectionCache::Mp4(mp4_data) => show_mp4_ui(ui, mp4_data.as_ref()),
             DetectionCache::Empty => {
                 ui.label(format!("Kind: {:?}", file_info.kind));
                 ui.label("No data");
@@ -73,6 +78,10 @@ impl DetectionCache {
             "der" => {
                 let parsed = CertData::parse(binary_data, true);
                 DetectionCache::Cert(parsed)
+            }
+            "mp4" => {
+                let parsed = Mp4Data::parse(binary_data);
+                DetectionCache::Mp4(parsed)
             }
             "qoi" => DetectionCache::String("A QOI (Quite OK Image) image".to_string()),
             _ => {

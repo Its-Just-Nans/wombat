@@ -275,8 +275,10 @@ impl BladvakApp<'_> for WombatApp {
         if is_native() && args.len() > 1 {
             use std::fs;
             let path = &args[1];
-            let absolute_path = fs::canonicalize(path)?;
-            let bytes = fs::read(&absolute_path)?;
+            let absolute_path = fs::canonicalize(path)
+                .map_err(|e| format!("Unable to canonicalize path '{path}': {e}"))?;
+            let bytes = std::fs::read(&absolute_path)
+                .map_err(|e| format!("Unable to read file '{}': {e}", absolute_path.display()))?;
             let mut app = saved_state;
             app.binary_file = bytes;
             app.filename = absolute_path;
