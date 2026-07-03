@@ -1,0 +1,96 @@
+//! Mp4 ui
+
+use std::ops::RangeInclusive;
+
+use crate::windows::detection::mp4::Ftyp;
+use crate::windows::detection::mp4::{Mp4Box, Mp4BoxData, Mp4Data};
+use bladvak::eframe::egui::{self, CollapsingHeader};
+
+/// Show the UI of the cached data
+#[allow(clippy::cast_possible_truncation)]
+pub(crate) fn show_mp4_ui(
+    ui: &mut egui::Ui,
+    mp4_data: Option<&Mp4Data>,
+) -> Option<RangeInclusive<usize>> {
+    ui.label("MP4");
+    let Some(data) = mp4_data else {
+        ui.label("Parsing dailed");
+        return None;
+    };
+    let mut return_range = None;
+    egui::Grid::new("png_chunks_table")
+        .striped(true)
+        .show(ui, |ui| {
+            ui.label("Size");
+            ui.label("Name");
+            ui.label("Start");
+            ui.label("End");
+            ui.end_row();
+
+            for one_box in &data.boxes {
+                let start = one_box.offset as usize;
+                let end = (one_box.offset + one_box.size) as usize;
+                ui.label(format!("{}", one_box.size));
+                ui.label(&one_box.name);
+                ui.label(format!("{start}"));
+                ui.label(format!("{end}"));
+                if ui.button("Show").clicked() {
+                    let range = start..=(end - 1);
+                    return_range = Some(range);
+                }
+                ui.end_row();
+            }
+        });
+    for (idx, one_box) in data.boxes.iter().enumerate() {
+        show_box(ui, one_box, idx);
+    }
+    return_range
+}
+
+/// Show the boxes
+fn show_box(ui: &mut egui::Ui, one_box: &Mp4Box, idx: usize) {
+    CollapsingHeader::new(&one_box.name)
+        .id_salt(format!("{}_{idx}", one_box.name))
+        .show(ui, |ui| match &one_box.data {
+            Mp4BoxData::Ftyp(Ftyp {
+                major_brand,
+                minor_version,
+                compatible_brands,
+            }) => {
+                ui.label(format!("Major brand: {major_brand}"));
+                ui.label(format!("Minor version: {minor_version}"));
+                let comp = compatible_brands.join(", ");
+                ui.label(format!("Compatible brands: {comp}"));
+            }
+            Mp4BoxData::Container(data) => {
+                for (index, one_box) in data.children.iter().enumerate() {
+                    show_box(ui, one_box, idx + index);
+                }
+            }
+            Mp4BoxData::Meta(meta_box) => {
+                ui.label(format!("Version: {}", meta_box.version));
+                ui.label(format!("Flags: {}", meta_box.flags));
+                for (index, one_box) in meta_box.children.iter().enumerate() {
+                    show_box(ui, one_box, idx + index);
+                }
+            }
+            Mp4BoxData::Mvhd(data) => {
+                ui.label(format!("Version: {}", data.version));
+                ui.label(format!("Flags: {}", data.flags));
+                ui.label(format!("Creation Time: {}", data.creation_time));
+                ui.label(format!("Modification Time: {}", data.modification_time));
+                ui.label(format!("Timescale: {}", data.timescale));
+                ui.label(format!("Duration: {}", data.duration));
+            }
+            Mp4BoxData::MDat(data) => {
+                ui.label(format!("Size: {}", data.size));
+            }
+            Mp4BoxData::Free(data) => {
+                ui.label(format!("Size: {}", data.size));
+            }
+            Mp4BoxData::Unknown => {
+                ui.label("not parsed");
+                ui.label(format!("{:?}", one_box.data));
+            }
+        });
+}
