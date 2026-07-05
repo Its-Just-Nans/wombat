@@ -42,55 +42,72 @@ pub(crate) fn show_mp4_ui(
             }
         });
     for (idx, one_box) in data.boxes.iter().enumerate() {
-        show_box(ui, one_box, idx);
+        if let Some(range) = show_box(ui, one_box, idx) {
+            return_range = Some(range);
+        }
     }
     return_range
 }
 
 /// Show the boxes
-fn show_box(ui: &mut egui::Ui, one_box: &Mp4Box, idx: usize) {
+#[allow(clippy::cast_possible_truncation)]
+#[must_use]
+fn show_box(ui: &mut egui::Ui, one_box: &Mp4Box, idx: usize) -> Option<RangeInclusive<usize>> {
+    let mut return_range = None;
     CollapsingHeader::new(&one_box.name)
         .id_salt(format!("{}_{idx}", one_box.name))
-        .show(ui, |ui| match &one_box.data {
-            Mp4BoxData::Ftyp(Ftyp {
-                major_brand,
-                minor_version,
-                compatible_brands,
-            }) => {
-                ui.label(format!("Major brand: {major_brand}"));
-                ui.label(format!("Minor version: {minor_version}"));
-                let comp = compatible_brands.join(", ");
-                ui.label(format!("Compatible brands: {comp}"));
+        .show(ui, |ui| {
+            if ui.button("Show").clicked() {
+                let start = one_box.offset as usize;
+                let end = (one_box.offset + one_box.size) as usize;
+                let range = start..=(end - 1);
+                return_range = Some(range);
             }
-            Mp4BoxData::Container(data) => {
-                for (index, one_box) in data.children.iter().enumerate() {
-                    show_box(ui, one_box, idx + index);
+            match &one_box.data {
+                Mp4BoxData::Ftyp(Ftyp {
+                    major_brand,
+                    minor_version,
+                    compatible_brands,
+                }) => {
+                    ui.label(format!("Major brand: {major_brand}"));
+                    ui.label(format!("Minor version: {minor_version}"));
+                    let comp = compatible_brands.join(", ");
+                    ui.label(format!("Compatible brands: {comp}"));
                 }
-            }
-            Mp4BoxData::Meta(meta_box) => {
-                ui.label(format!("Version: {}", meta_box.version));
-                ui.label(format!("Flags: {}", meta_box.flags));
-                for (index, one_box) in meta_box.children.iter().enumerate() {
-                    show_box(ui, one_box, idx + index);
+                Mp4BoxData::Container(data) => {
+                    for (index, one_box) in data.children.iter().enumerate() {
+                        if let Some(range) = show_box(ui, one_box, idx + index) {
+                            return_range = Some(range);
+                        }
+                    }
                 }
-            }
-            Mp4BoxData::Mvhd(data) => {
-                ui.label(format!("Version: {}", data.version));
-                ui.label(format!("Flags: {}", data.flags));
-                ui.label(format!("Creation Time: {}", data.creation_time));
-                ui.label(format!("Modification Time: {}", data.modification_time));
-                ui.label(format!("Timescale: {}", data.timescale));
-                ui.label(format!("Duration: {}", data.duration));
-            }
-            Mp4BoxData::MDat(data) => {
-                ui.label(format!("Size: {}", data.size));
-            }
-            Mp4BoxData::Free(data) => {
-                ui.label(format!("Size: {}", data.size));
-            }
-            Mp4BoxData::Unknown => {
-                ui.label("not parsed");
-                ui.label(format!("{:?}", one_box.data));
+                Mp4BoxData::Meta(meta_box) => {
+                    ui.label(format!("Version: {}", meta_box.version));
+                    ui.label(format!("Flags: {}", meta_box.flags));
+                    for (index, one_box) in meta_box.children.iter().enumerate() {
+                        if let Some(range) = show_box(ui, one_box, idx + index) {
+                            return_range = Some(range);
+                        }
+                    }
+                }
+                Mp4BoxData::Mvhd(data) => {
+                    ui.label(format!("Version: {}", data.version));
+                    ui.label(format!("Flags: {}", data.flags));
+                    ui.label(format!("Creation Time: {}", data.creation_time));
+                    ui.label(format!("Modification Time: {}", data.modification_time));
+                    ui.label(format!("Timescale: {}", data.timescale));
+                    ui.label(format!("Duration: {}", data.duration));
+                }
+                Mp4BoxData::MDat(data) => {
+                    ui.label(format!("Size: {}", data.size));
+                }
+                Mp4BoxData::Free(data) => {
+                    ui.label(format!("Size: {}", data.size));
+                }
+                Mp4BoxData::Unknown(data) => {
+                    ui.label(format!("{data:?}"));
+                }
             }
         });
+    return_range
 }

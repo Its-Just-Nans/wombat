@@ -75,9 +75,9 @@ pub(crate) struct ContainerBox {
 
 impl ContainerBox {
     /// Parse the generic
-    fn parse(data: &[u8]) -> Option<Self> {
+    fn parse(data: &[u8], offset: usize) -> Option<Self> {
         Some(Self {
-            children: Mp4Box::parse_all(data, 0)?,
+            children: Mp4Box::parse_all(data, offset + BOX_HEADER_SIZE)?,
         })
     }
 }
@@ -98,7 +98,7 @@ pub(crate) enum Mp4BoxData {
     /// free
     Free(Free),
     /// Unknown box
-    Unknown,
+    Unknown(Box<[u8]>),
 }
 
 /// A MP4 Box
@@ -135,15 +135,15 @@ impl Mp4Box {
             "free" => Mp4BoxData::Free(Free::parse(raw)),
 
             // containers
-            "moov" | "udta" | "trak" | "mdia" | "minf" | "stbl" => {
-                Mp4BoxData::Container(ContainerBox::parse(raw)?)
+            "moov" | "udta" | "trak" | "mdia" | "minf" | "stbl" | "edts" | "ilst" => {
+                Mp4BoxData::Container(ContainerBox::parse(raw, offset)?)
             }
 
             // content
             "mvhd" => Mp4BoxData::Mvhd(Mvhd::parse(raw)?),
-            "meta" => Mp4BoxData::Meta(MetaBox::parse(raw)?),
+            "meta" => Mp4BoxData::Meta(MetaBox::parse(raw, offset)?),
 
-            _ => Mp4BoxData::Unknown,
+            _ => Mp4BoxData::Unknown(raw.into()),
         };
 
         Some(Self {
@@ -265,7 +265,7 @@ pub(crate) struct MetaBox {
 
 impl MetaBox {
     /// Parse the meta
-    fn parse(data: &[u8]) -> Option<Self> {
+    fn parse(data: &[u8], offset: usize) -> Option<Self> {
         if data.len() < 4 {
             return None;
         }
@@ -273,7 +273,7 @@ impl MetaBox {
         let version = data[0];
         let flags = (u32::from(data[1]) << 16) | (u32::from(data[2]) << 8) | u32::from(data[3]);
 
-        let children = Mp4Box::parse_all(&data[4..], 4)?;
+        let children = Mp4Box::parse_all(&data[4..], offset + BOX_HEADER_SIZE + 4)?;
 
         Some(Self {
             version,
