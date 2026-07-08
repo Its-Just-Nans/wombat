@@ -14,7 +14,7 @@ pub(crate) fn show_mp4_ui(
 ) -> Option<RangeInclusive<usize>> {
     ui.label("MP4");
     let Some(data) = mp4_data else {
-        ui.label("Parsing dailed");
+        ui.label("Parsing failed");
         return None;
     };
     let mut return_range = None;
@@ -75,7 +75,7 @@ fn show_box(ui: &mut egui::Ui, one_box: &Mp4Box, idx: usize) -> Option<RangeIncl
                     ui.label(format!("Compatible brands: {comp}"));
                 }
                 Mp4BoxData::Container(data) => {
-                    for (index, one_box) in data.children.iter().enumerate() {
+                    for (index, one_box) in data.iter().enumerate() {
                         if let Some(range) = show_box(ui, one_box, idx + index) {
                             return_range = Some(range);
                         }

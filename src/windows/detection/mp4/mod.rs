@@ -26,22 +26,6 @@ use crate::windows::detection::mp4::{co64::Co64Box, stco::StcoBox, stsc::StscBox
 /// Box header size
 const BOX_HEADER_SIZE: usize = 8;
 
-/// Generic Container
-#[derive(Debug)]
-pub(crate) struct ContainerBox {
-    /// children
-    pub(crate) children: Vec<Mp4Box>,
-}
-
-impl ContainerBox {
-    /// Parse the generic
-    fn parse(data: &[u8], offset: usize) -> Option<Self> {
-        Some(Self {
-            children: Mp4Box::parse_all(data, offset + BOX_HEADER_SIZE)?,
-        })
-    }
-}
-
 /// Different Mp4 box data
 #[derive(Debug)]
 pub(crate) enum Mp4BoxData {
@@ -64,7 +48,7 @@ pub(crate) enum Mp4BoxData {
     /// co64
     Co64(Co64Box),
     /// Generic Container
-    Container(ContainerBox),
+    Container(Vec<Mp4Box>),
     /// mdat
     MDat(MDat),
     /// free
@@ -108,7 +92,7 @@ impl Mp4Box {
 
             // containers
             "moov" | "udta" | "trak" | "mdia" | "minf" | "stbl" | "edts" | "ilst" => {
-                Mp4BoxData::Container(ContainerBox::parse(raw, offset)?)
+                Mp4BoxData::Container(Mp4Box::parse_all(raw, offset + BOX_HEADER_SIZE)?)
             }
 
             // content
