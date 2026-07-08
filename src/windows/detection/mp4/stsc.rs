@@ -5,7 +5,7 @@ use bladvak::eframe::egui;
 /// stsc entry
 #[derive(Debug)]
 pub struct StscEntry {
-    /// firt chunk
+    /// first chunk
     pub first_chunk: u32,
     /// samples per chunk
     pub samples_per_chunk: u32,
