@@ -4,7 +4,6 @@
 
 mod cert;
 mod mp4;
-mod mp4_ui;
 mod png;
 mod xml;
 
@@ -14,8 +13,7 @@ use std::ops::RangeInclusive;
 
 use crate::panels::FileInfoData;
 use crate::windows::detection::cert::{CertData, show_certs};
-use crate::windows::detection::mp4::Mp4Data;
-use crate::windows::detection::mp4_ui::show_mp4_ui;
+use crate::windows::detection::mp4::{Mp4Data, ui::show_mp4_ui};
 use crate::windows::detection::png::{PngData, show_png_chunks};
 use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 

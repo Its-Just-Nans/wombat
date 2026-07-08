@@ -104,6 +104,24 @@ fn show_box(ui: &mut egui::Ui, one_box: &Mp4Box, idx: usize) -> Option<RangeIncl
                 Mp4BoxData::Free(data) => {
                     ui.label(format!("Size: {}", data.size));
                 }
+                Mp4BoxData::Stzs(data) => {
+                    data.show(ui);
+                }
+                Mp4BoxData::Stts(data) => {
+                    data.show(ui);
+                }
+                Mp4BoxData::Stco(data) => {
+                    data.show(ui);
+                }
+                Mp4BoxData::Stsc(data) => {
+                    data.show(ui);
+                }
+                Mp4BoxData::Co64(data) => {
+                    data.show(ui);
+                }
+                Mp4BoxData::Stsd(data) => {
+                    data.show(ui);
+                }
                 Mp4BoxData::Unknown(data) => {
                     ui.label(format!("{data:?}"));
                 }
