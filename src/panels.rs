@@ -38,10 +38,13 @@ impl BladvakPanel for FileInfo {
         true
     }
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        ui.label(format!("File: {}", app.filename.display()));
-        ui.label(format!("{} bytes", app.binary_file.len()));
+        let Some(document) = app.documents.get_current_doc_mut() else {
+            return;
+        };
+        ui.label(format!("File: {}", document.filename.display()));
+        ui.label(format!("{} bytes", document.binary_file.len()));
         #[allow(clippy::cast_precision_loss)]
-        let binary_len = app.binary_file.len() as f64;
+        let binary_len = document.binary_file.len() as f64;
 
         let size_kb = binary_len / 1000.0;
         if size_kb > 1.0 {
@@ -58,7 +61,7 @@ impl BladvakPanel for FileInfo {
                 .on_hover_text(format!("{binary_len} / (1000^2)"));
         }
 
-        if let Some(fmt) = &app.file_format {
+        if let Some(fmt) = &document.file_format {
             ui.collapsing("File info", |ui| {
                 ui.label(format!("Kind: {:?}", fmt.kind));
                 ui.label(format!("Type: {}", fmt.file_type));
@@ -66,27 +69,24 @@ impl BladvakPanel for FileInfo {
                 ui.label(format!("Extension: .{}", fmt.extension));
             });
         } else if ui.button("Get file info").clicked() {
-            let file_fmt = FileFormat::from_bytes(&app.binary_file);
+            let file_fmt = FileFormat::from_bytes(&document.binary_file);
             let data = FileInfoData {
                 kind: file_fmt.kind(),
                 file_type: file_fmt.media_type().to_string(),
                 extension: file_fmt.extension().to_string(),
                 name: file_fmt.name().to_string(),
             };
-            app.file_format = Some(data);
+            document.file_format = Some(data);
         }
 
         ui.separator();
         ui.label("Line length");
-        ui.add(egui::Slider::new(
-            &mut app.display_settings.bytes_per_line,
-            1..=64,
-        ));
+        ui.add(egui::Slider::new(&mut document.bytes_per_line, 1..=64));
         ui.separator();
         ui.horizontal(|ui| {
             if ui
                 .add(
-                    egui::DragValue::new(&mut app.offset.line_to_go)
+                    egui::DragValue::new(&mut document.offset.line_to_go)
                         .custom_parser(|v| {
                             if v.chars().all(|c| c.is_ascii_digit()) {
                                 v.parse::<f64>().ok()
@@ -101,12 +101,12 @@ impl BladvakPanel for FileInfo {
                 )
                 .dragged()
             {
-                app.offset.need_change = true;
+                document.offset.need_change = true;
             }
             if ui.button("Go to line").clicked() {
-                app.offset.need_change = true;
+                document.offset.need_change = true;
             }
-            let line_to_go = app.offset.line_to_go / app.display_settings.bytes_per_line;
+            let line_to_go = document.offset.line_to_go / document.bytes_per_line;
             if ui
                 .button("Go to index")
                 .on_hover_text(format!(
@@ -114,8 +114,8 @@ impl BladvakPanel for FileInfo {
                 ))
                 .clicked()
             {
-                app.offset.line_to_go = line_to_go;
-                app.offset.need_change = true;
+                document.offset.line_to_go = line_to_go;
+                document.offset.need_change = true;
             }
         });
     }

@@ -6,7 +6,12 @@ use bladvak::{
     eframe::egui::{self, Color32, Theme},
 };
 
-use crate::{WombatApp, app::Accent};
+use crate::WombatApp;
+use crate::display_settings::Accent;
+use crate::ui_table::ui_table_u16;
+use crate::ui_table::ui_table_u32;
+use crate::ui_table::ui_table_u64;
+use crate::ui_table::ui_table_u128;
 
 /// Selection
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -36,13 +41,17 @@ impl Selection {
 impl WombatApp {
     /// Ui for the selection
     fn ui_selection(&mut self, ui: &mut egui::Ui) {
-        if let Some((select1, select2)) = self.selection.range {
+        let Some(document) = self.documents.get_current_doc_mut() else {
+            return;
+        };
+        if let Some((select1, select2)) = document.selection.range {
             if select1 == select2
-                && let Some(current) = self.binary_file.get(select1)
+                && let Some(current) = document.binary_file.get(select1)
             {
                 ui.separator();
                 ui.label(format!("1 byte at index 0x{select1:X} ({select1})"));
-                self.ui_table_u8(ui, *current, &Accent::Hex);
+                self.display_settings
+                    .ui_table_u8(ui, *current, &Accent::Hex);
             } else {
                 ui.separator();
                 let nb_selected = select2.checked_sub(select1).map_or(0, |d| d as u64 + 1);
@@ -50,19 +59,19 @@ impl WombatApp {
                 let range = select1..=select2;
 
                 if nb_selected == 2
-                    && let Some(slice) = self.binary_file.get(range.clone())
+                    && let Some(slice) = document.binary_file.get(range.clone())
                     && let Ok(bytes) = <[u8; 2]>::try_from(slice)
                 {
-                    WombatApp::ui_table_u16(ui, bytes);
+                    ui_table_u16(ui, bytes);
                 }
 
                 if nb_selected == 3
-                    && let Some(slice) = self.binary_file.get(range.clone())
+                    && let Some(slice) = document.binary_file.get(range.clone())
                     && let Ok(bytes) = <[u8; 3]>::try_from(slice)
                 {
                     let mut bytes_table = [0u8; 4];
                     bytes_table[..bytes.len()].copy_from_slice(&bytes);
-                    WombatApp::ui_table_u32(ui, bytes_table);
+                    ui_table_u32(ui, bytes_table);
                     if self.display_settings.show_color_picker {
                         ui.horizontal(|ui| {
                             ui.label("Color preview");
@@ -73,10 +82,10 @@ impl WombatApp {
                 }
 
                 if nb_selected == 4
-                    && let Some(slice) = self.binary_file.get(range.clone())
+                    && let Some(slice) = document.binary_file.get(range.clone())
                     && let Ok(bytes) = <[u8; 4]>::try_from(slice)
                 {
-                    WombatApp::ui_table_u32(ui, bytes);
+                    ui_table_u32(ui, bytes);
                     if self.display_settings.show_color_picker {
                         ui.horizontal(|ui| {
                             ui.label("Color preview");
@@ -88,24 +97,24 @@ impl WombatApp {
 
                 if nb_selected > 4
                     && nb_selected <= 8
-                    && let Some(slice) = self.binary_file.get(range.clone())
+                    && let Some(slice) = document.binary_file.get(range.clone())
                 {
                     let mut bytes = [0u8; 8];
                     bytes[..slice.len()].copy_from_slice(slice);
-                    WombatApp::ui_table_u64(ui, bytes);
+                    ui_table_u64(ui, bytes);
                 }
 
                 if nb_selected > 8
                     && nb_selected <= 16
-                    && let Some(slice) = self.binary_file.get(range.clone())
+                    && let Some(slice) = document.binary_file.get(range.clone())
                 {
                     let mut bytes = [0u8; 16];
                     bytes[..slice.len()].copy_from_slice(slice);
-                    WombatApp::ui_table_u128(ui, bytes);
+                    ui_table_u128(ui, bytes);
                 }
             }
-            if self.binary_file.is_empty() {
-                self.selection.range = None;
+            if document.binary_file.is_empty() {
+                document.selection.range = None;
             }
         }
     }
@@ -128,18 +137,21 @@ impl BladvakPanel for PanelSelection {
     }
 
     fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        if app.binary_file.is_empty() {
-            app.selection.range = None;
+        let Some(document) = app.documents.get_current_doc_mut() else {
+            return;
+        };
+        if document.binary_file.is_empty() {
+            document.selection.range = None;
         }
         let mut mark_stale = false;
         let mut mark_selection_stale = false;
-        if let Some((select1, select2)) = app.selection.range.as_mut() {
+        if let Some((select1, select2)) = document.selection.range.as_mut() {
             ui.horizontal(|ui| {
                 ui.label("Selection");
                 let color_to_edit = if ui.ctx().theme() == Theme::Light {
-                    &mut app.selection.color.0
+                    &mut document.selection.color.0
                 } else {
-                    &mut app.selection.color.1
+                    &mut document.selection.color.1
                 };
                 ui.color_edit_button_srgba(color_to_edit);
             });
@@ -149,8 +161,9 @@ impl BladvakPanel for PanelSelection {
                     .on_hover_text("Go to start of selection")
                     .clicked()
                 {
-                    app.offset
-                        .go_to_index(*select1, app.display_settings.bytes_per_line);
+                    document
+                        .offset
+                        .go_to_index(*select1, document.bytes_per_line);
                 }
                 if ui
                     .add(egui::DragValue::new(select1).range(0..=*select2))
@@ -158,10 +171,10 @@ impl BladvakPanel for PanelSelection {
                 {
                     mark_selection_stale = true;
                 }
-                let max = if app.binary_file.is_empty() {
+                let max = if document.binary_file.is_empty() {
                     0
                 } else {
-                    app.binary_file.len() - 1
+                    document.binary_file.len() - 1
                 };
                 ui.label("->")
                     .on_hover_text(format!("0x{select1:X} to 0x{select2:X}"));
@@ -176,15 +189,16 @@ impl BladvakPanel for PanelSelection {
                     .on_hover_text("Go to end of selection")
                     .clicked()
                 {
-                    app.offset
-                        .go_to_index(*select2, app.display_settings.bytes_per_line);
+                    document
+                        .offset
+                        .go_to_index(*select2, document.bytes_per_line);
                 }
             });
             let range = *select1..=*select2;
-            if app.binary_file.get(range.clone()).is_some()
+            if document.binary_file.get(range.clone()).is_some()
                 && ui.button("Delete selection").clicked()
             {
-                app.binary_file.drain(range.clone());
+                document.binary_file.drain(range.clone());
                 *select1 = select1.checked_sub(1).unwrap_or(0);
                 *select2 = select1.checked_add(1).unwrap_or(0);
                 mark_selection_stale = true;

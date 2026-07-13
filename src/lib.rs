@@ -27,6 +27,8 @@
 
 mod app;
 mod central_panel;
+mod display_settings;
+mod document;
 mod offset;
 mod panels;
 mod selection;

@@ -10,43 +10,30 @@ use bladvak::{
     errors::{AppError, ErrorManager},
 };
 use std::fmt::Debug;
-use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
-use crate::offset::Offset;
-use crate::panels::{FileInfo, FileInfoData};
-use crate::selection::{PanelSelection, Selection};
-use crate::windows::WindowsData;
+use crate::display_settings::DisplaySettings;
+use crate::document::{Document, Documents};
+use crate::panels::FileInfo;
+use crate::selection::PanelSelection;
+use crate::windows::exporter::Exporter;
+use crate::windows::importer::Importer;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 #[serde(default)]
 pub struct WombatApp {
-    /// Binary file data
+    /// Documents
     #[serde(skip)]
-    pub(crate) binary_file: Vec<u8>,
-
-    /// Filename of the file
-    #[serde(skip)]
-    pub(crate) filename: PathBuf,
-
+    pub(crate) documents: Documents,
     /// Display settings
     pub(crate) display_settings: DisplaySettings,
-    /// Selection
-    pub(crate) selection: Selection,
-
-    /// Scroll area offset
-    pub(crate) offset: Offset,
-
-    /// File info
-    #[serde(skip)]
-    pub(crate) file_format: Option<FileInfoData>,
-
-    /// Windows
-    pub(crate) windows_data: WindowsData,
-
     /// Visual debug
     pub(crate) visual_debug: bool,
+    /// importer
+    pub(crate) importer: Importer,
+    /// exporter
+    pub(crate) exporter: Exporter,
 }
 
 /// default file (wombat icon)
@@ -55,66 +42,24 @@ const LOGO_ASSET: &[u8] = include_bytes!("../assets/icon-1024.png");
 impl Default for WombatApp {
     fn default() -> Self {
         let File { data, path } = Self::load_default_file();
-        Self {
+        let document = Document {
             binary_file: data,
             filename: path,
-            display_settings: DisplaySettings::default(),
-            selection: Selection::default(),
-            offset: Offset {
-                current: 0.0,
-                need_change: false,
-                line_to_go: 0,
-            },
-            file_format: None,
-            windows_data: WindowsData::new(),
-            visual_debug: false,
-        }
-    }
-}
-
-/// Display setting
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
-pub(crate) struct DisplaySettings {
-    /// Least Significant Bit
-    pub(crate) display_lsb: bool,
-    /// Bytes per line
-    pub(crate) bytes_per_line: usize,
-    /// limit ascii
-    pub(crate) limit_to_base_ascii: bool,
-    /// show color picket
-    pub(crate) show_color_picker: bool,
-}
-
-impl Default for DisplaySettings {
-    fn default() -> Self {
+            ..Default::default()
+        };
+        let mut documents = Documents::default();
+        documents.push(document);
         Self {
-            display_lsb: false,
-            bytes_per_line: 32,
-            limit_to_base_ascii: true,
-            show_color_picker: true,
+            documents,
+            display_settings: DisplaySettings::default(),
+            visual_debug: false,
+            importer: Importer::new(),
+            exporter: Exporter::new(),
         }
     }
-}
-
-/// Accent type
-#[derive(Debug, PartialEq)]
-pub(crate) enum Accent {
-    /// decimal
-    Decimal,
-    /// hexe
-    Hex,
-    /// octal
-    Octal,
-    /// binary
-    Binary,
-    /// ascii
-    Ascii,
 }
 
 impl WombatApp {
-    /// start ASCII printable char (after space)
-    pub(crate) const RANGE_ASCII_PRINTABLE: RangeInclusive<u8> = 0x21_u8..=0x7E;
-
     /// Load the default file (wombat icon)
     #[must_use]
     pub fn load_default_file() -> File {
@@ -124,71 +69,21 @@ impl WombatApp {
         }
     }
 
-    /// ascii u8 to string
-    pub(crate) fn ascii_to_string(&self, c: u8) -> String {
-        match c {
-            0x0 => "NUL (Null character)".to_string(),
-            0x01 => "SOH (Start of Heading)".to_string(),
-            0x02 => "STX (Start of Text)".to_string(),
-            0x03 => "ETX (End of Text)".to_string(),
-            0x04 => "EOT (End of Transmission)".to_string(),
-            0x05 => "ENQ (Enquiry)".to_string(),
-            0x06 => "ACK (Acknowledge)".to_string(),
-            0x07 => "BEL (Bell, Alert)".to_string(),
-            0x08 => "BS (Backspace)".to_string(),
-            0x09 => "HT (Horizontal Tab)".to_string(),
-            0x0A => "LF (Line Feed)".to_string(),
-            0x0B => "VT (Vertical Tabulation)".to_string(),
-            0x0C => "FF (Form Feed)".to_string(),
-            0x0D => "CR (Carriage Return)".to_string(),
-            0x0E => "SO (Shift Out)".to_string(),
-            0x0F => "SI (Shift In)".to_string(),
-            0x10 => "DLE (Data Link Escape)".to_string(),
-            0x11 => "DC1 (Device Control One (XON))".to_string(),
-            0x12 => "DC2 (Device Control Two)".to_string(),
-            0x13 => "DC3 (Device Control Three (XOFF))".to_string(),
-            0x14 => "DC4 (Device Control Four)".to_string(),
-            0x15 => "NAK (Negative Acknowledge)".to_string(),
-            0x16 => "SYN (Synchronous Idle)".to_string(),
-            0x17 => "ETB (End of Transmission Block)".to_string(),
-            0x18 => "CAN (Cancel)".to_string(),
-            0x19 => "EM (End of medium)".to_string(),
-            0x1A => "SUB (Substitute)".to_string(),
-            0x1B => "ESC (Escape)".to_string(),
-            0x1C => "FS (File Separator)".to_string(),
-            0x1D => "GS (Group Separator)".to_string(),
-            0x1E => "RS (Record Separator)".to_string(),
-            0x1F => "US (Unit Separator)".to_string(),
-            0x20 => "SP (Space)".to_string(),
-            x if Self::RANGE_ASCII_PRINTABLE.contains(&x) => (c as char).to_string(),
-            0x7F => "DEL (Delete)".to_string(),
-            c => {
-                if self.display_settings.limit_to_base_ascii {
-                    "extended ASCII".to_string()
-                } else {
-                    format!("{} (extended ASCII)", c as char)
-                }
-            }
-        }
-    }
-
-    /// Go to the selected range
-    pub(crate) fn go_to_range(&mut self, range: RangeInclusive<usize>) {
-        let start = *range.start();
-        self.selection.range = Some((start, *range.end()));
-        self.offset
-            .go_to_index(start, self.display_settings.bytes_per_line);
-    }
-
     /// Mark data as stale
     pub(crate) fn stale(&mut self) {
-        self.file_format = None;
-        self.windows_data.reset();
+        self.importer.reset();
+        self.exporter.reset();
+        if let Some(document) = self.documents.get_current_doc_mut() {
+            document.stale();
+            document.windows_data.reset();
+        }
     }
 
     /// Mark selection as stale
     pub(crate) fn stale_selection(&mut self) {
-        self.windows_data.selection_stale();
+        if let Some(document) = self.documents.get_current_doc_mut() {
+            document.windows_data.selection_stale();
+        }
     }
 }
 
@@ -204,7 +99,7 @@ impl BladvakApp<'_> for WombatApp {
     }
 
     fn is_side_panel(&self) -> bool {
-        true
+        self.documents.is_some()
     }
 
     fn is_open_button(&self) -> bool {
@@ -212,15 +107,18 @@ impl BladvakApp<'_> for WombatApp {
     }
 
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
-        self.binary_file = file.data;
-        let file_len = self.binary_file.len();
-        self.filename = file.path;
+        let mut document = Document {
+            binary_file: file.data,
+            filename: file.path,
+            ..Default::default()
+        };
+        let file_len = document.binary_file.len();
         self.stale();
         self.stale_selection();
 
-        if self.binary_file.is_empty() {
-            self.selection.reset();
-        } else if let Some((select1, select2)) = self.selection.range.as_mut() {
+        if document.binary_file.is_empty() {
+            document.selection.reset();
+        } else if let Some((select1, select2)) = document.selection.range.as_mut() {
             if *select1 > file_len {
                 *select1 = file_len - 1;
             }
@@ -228,22 +126,63 @@ impl BladvakApp<'_> for WombatApp {
                 *select2 = file_len - 1;
             }
         }
+        self.documents.push(document);
         Ok(())
     }
 
     fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        ui.menu_button("Windows", |ui| {
-            self.windows_data.ui_top_bar(ui);
-        });
+        if let Some(document) = self.documents.get_current_doc_mut() {
+            ui.menu_button("Windows", |ui| {
+                document.windows_data.ui_top_bar(ui);
+            });
+        }
         ui.separator();
-        ui.label(format!("File: {}", self.filename.display()));
+        let mut current_idx = self.documents.current_idx;
+        let mut to_remove = None;
+        for (idx, one_doc) in self.documents.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.selectable_value(
+                    &mut current_idx,
+                    idx,
+                    format!("{}", one_doc.filename.display()),
+                );
+                if ui.button("x").clicked() {
+                    to_remove = Some(idx);
+                }
+            });
+            ui.separator();
+        }
+        self.documents.current_idx = current_idx;
+        if let Some(index) = to_remove {
+            self.documents.remove(index);
+        }
     }
 
-    fn menu_file(&mut self, _ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {}
+    fn menu_file(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+        ui.toggle_value(&mut self.importer.is_open, "Import");
+        ui.toggle_value(&mut self.exporter.is_open, "Export");
+    }
 
     fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         self.app_central_panel(ui, error_manager);
         self.ui_windows(ui, error_manager);
+        if let Some(document) = self.documents.get_current_doc_mut() {
+            self.exporter.ui(
+                &document.binary_file,
+                &document.filename,
+                &document.selection,
+                ui,
+                error_manager,
+            );
+            if let Some(data) = self.importer.ui(ui, error_manager)
+                && let Err(e) = self.handle_file(File {
+                    data,
+                    path: PathBuf::from("imported.bin"),
+                })
+            {
+                error_manager.add_error(e);
+            }
+        }
     }
 
     fn name() -> String {
@@ -280,8 +219,12 @@ impl BladvakApp<'_> for WombatApp {
             let bytes = std::fs::read(&absolute_path)
                 .map_err(|e| format!("Unable to read file '{}': {e}", absolute_path.display()))?;
             let mut app = saved_state;
-            app.binary_file = bytes;
-            app.filename = absolute_path;
+            let document = Document {
+                binary_file: bytes,
+                filename: absolute_path,
+                ..Default::default()
+            };
+            app.documents.push(document);
             Ok(app)
         } else {
             Ok(saved_state)
@@ -298,7 +241,7 @@ mod test {
         let wombat = WombatApp::default();
 
         for i in 0u8..=u8::MAX {
-            let text = wombat.ascii_to_string(i);
+            let text = wombat.display_settings.ascii_to_string(i);
             if i > 127 {
                 // extended ASCII
                 assert_eq!(text, "extended ASCII", "{i}");
