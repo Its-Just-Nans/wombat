@@ -136,8 +136,8 @@ impl BladvakApp<'_> for WombatApp {
             ui.menu_button("Windows", |ui| {
                 document.windows_data.ui_top_bar(ui);
             });
+            ui.separator();
         }
-        ui.separator();
         let mut current_idx = self.documents.current_idx;
         let mut to_remove = None;
         for (idx, one_doc) in self.documents.iter().enumerate() {
