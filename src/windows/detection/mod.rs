@@ -3,6 +3,7 @@
 #![cfg(feature = "detection")]
 
 mod cert;
+mod jpg;
 mod mp4;
 mod png;
 mod xml;
@@ -13,6 +14,7 @@ use std::ops::RangeInclusive;
 
 use crate::panels::FileInfoData;
 use crate::windows::detection::cert::{CertData, show_certs};
+use crate::windows::detection::jpg::{JpgData, show_jpg_data};
 use crate::windows::detection::mp4::{Mp4Data, ui::show_mp4_ui};
 use crate::windows::detection::png::{PngData, show_png_chunks};
 use crate::windows::detection::xml::{XmlData, xml_tree_ui};
@@ -22,6 +24,8 @@ use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 enum DetectionCache {
     /// png data cached
     Png(Option<PngData>),
+    /// jpg data cached
+    Jpg(Option<JpgData>),
     /// xml data cached
     Xml(Option<XmlData>),
     /// cert data cached
@@ -45,6 +49,7 @@ impl DetectionCache {
     ) -> Option<RangeInclusive<usize>> {
         match self {
             DetectionCache::Png(data) => show_png_chunks(ui, data.as_ref()),
+            DetectionCache::Jpg(data) => show_jpg_data(ui, data.as_ref()),
             DetectionCache::Xml(xml_str) => xml_tree_ui(ui, xml_str.as_ref()),
             DetectionCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
             DetectionCache::String(str) => {
@@ -78,6 +83,10 @@ impl DetectionCache {
             "der" => {
                 let parsed = CertData::parse(binary_data, true);
                 DetectionCache::Cert(parsed)
+            }
+            "jpg" => {
+                let parsed = JpgData::parse(binary_data);
+                DetectionCache::Jpg(parsed)
             }
             "mp4" => {
                 let parsed = Mp4Data::parse(binary_data);
