@@ -142,9 +142,9 @@ impl Documents {
         self.current_idx = self.inner.len() - 1;
     }
 
-    /// iter on documents
-    pub(crate) fn iter(&self) -> std::slice::Iter<'_, Document> {
-        self.inner.iter()
+    /// iter mut on documents
+    pub(crate) fn iter_mut(&mut self) -> std::slice::IterMut<'_, Document> {
+        self.inner.iter_mut()
     }
 
     /// Remove a document

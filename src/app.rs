@@ -131,21 +131,21 @@ impl BladvakApp<'_> for WombatApp {
     }
 
     fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        if let Some(document) = self.documents.get_current_doc_mut() {
-            ui.menu_button("Windows", |ui| {
-                document.windows_data.ui_top_bar(ui);
-            });
-        }
         ui.separator();
         let mut current_idx = self.documents.current_idx;
         let mut to_remove = None;
-        for (idx, one_doc) in self.documents.iter().enumerate() {
+        for (idx, one_doc) in self.documents.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 ui.selectable_value(
                     &mut current_idx,
                     idx,
                     format!("{}", one_doc.filename.display()),
                 );
+                if idx == current_idx {
+                    ui.menu_button("Windows", |ui| {
+                        one_doc.windows_data.ui_top_bar(ui);
+                    });
+                }
                 if ui.button("x").clicked() {
                     to_remove = Some(idx);
                 }
