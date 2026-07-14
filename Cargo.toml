@@ -32,6 +32,7 @@ md-5 = { version = "0.11.0", optional = true }
 time = { version = "0.3.53", features = ["wasm-bindgen"] }
 base16ct = "1.0.0"
 ahash = "0.8.12"
+zip = "8.6.0"
 
 [features]
 # yara only on native

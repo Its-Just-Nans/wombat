@@ -7,6 +7,7 @@ mod jpg;
 mod mp4;
 mod png;
 mod xml;
+mod zip;
 
 use bladvak::eframe::egui::{self};
 use bladvak::errors::ErrorManager;
@@ -18,6 +19,7 @@ use crate::windows::detection::jpg::{JpgData, show_jpg_data};
 use crate::windows::detection::mp4::{Mp4Data, ui::show_mp4_ui};
 use crate::windows::detection::png::{PngData, show_png_chunks};
 use crate::windows::detection::xml::{XmlData, xml_tree_ui};
+use crate::windows::detection::zip::{ZipData, show_zip_data};
 
 /// Histogram data cache
 #[derive(Default, Debug)]
@@ -32,6 +34,8 @@ enum DetectionCache {
     Cert(Option<CertData>),
     /// mp4 data cached
     Mp4(Option<Mp4Data>),
+    /// zip data cached
+    Zip(Option<ZipData>),
     /// String
     String(String),
     /// no cache
@@ -57,6 +61,7 @@ impl DetectionCache {
                 None
             }
             DetectionCache::Mp4(mp4_data) => show_mp4_ui(ui, mp4_data.as_ref()),
+            DetectionCache::Zip(data) => show_zip_data(ui, data.as_ref()),
             DetectionCache::Empty => {
                 ui.label(format!("Kind: {:?}", file_info.kind));
                 ui.label("No data");
@@ -91,6 +96,10 @@ impl DetectionCache {
             "mp4" => {
                 let parsed = Mp4Data::parse(binary_data);
                 DetectionCache::Mp4(parsed)
+            }
+            "zip" => {
+                let parsed = ZipData::parse(binary_data);
+                DetectionCache::Zip(parsed)
             }
             "qoi" => DetectionCache::String("A QOI (Quite OK Image) image".to_string()),
             _ => {
