@@ -157,4 +157,10 @@ impl Documents {
     pub(crate) fn is_some(&self) -> bool {
         !self.inner.is_empty()
     }
+
+    /// Clear
+    pub(crate) fn clear(&mut self) {
+        self.current_idx = 0;
+        self.inner.clear();
+    }
 }

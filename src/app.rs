@@ -142,11 +142,11 @@ impl BladvakApp<'_> for WombatApp {
         let mut to_remove = None;
         for (idx, one_doc) in self.documents.iter().enumerate() {
             ui.horizontal(|ui| {
-                ui.selectable_value(
-                    &mut current_idx,
-                    idx,
-                    format!("{}", one_doc.filename.display()),
-                );
+                let filename = match one_doc.filename.file_name() {
+                    Some(file_n) => file_n,
+                    None => one_doc.filename.as_os_str(),
+                };
+                ui.selectable_value(&mut current_idx, idx, format!("{}", filename.display()));
                 if ui.button("x").clicked() {
                     to_remove = Some(idx);
                 }
@@ -219,18 +219,21 @@ impl BladvakApp<'_> for WombatApp {
 
         if is_native() && args.len() > 1 {
             use std::fs;
-            let path = &args[1];
-            let absolute_path = fs::canonicalize(path)
-                .map_err(|e| format!("Unable to canonicalize path '{path}': {e}"))?;
-            let bytes = std::fs::read(&absolute_path)
-                .map_err(|e| format!("Unable to read file '{}': {e}", absolute_path.display()))?;
             let mut app = saved_state;
-            let document = Document {
-                binary_file: bytes,
-                filename: absolute_path,
-                ..Default::default()
-            };
-            app.documents.push(document);
+            app.documents.clear();
+            for one_path in &args[1..] {
+                let absolute_path = fs::canonicalize(one_path)
+                    .map_err(|e| format!("Unable to canonicalize path '{one_path}': {e}"))?;
+                let bytes = std::fs::read(&absolute_path).map_err(|e| {
+                    format!("Unable to read file '{}': {e}", absolute_path.display())
+                })?;
+                let document = Document {
+                    binary_file: bytes,
+                    filename: absolute_path,
+                    ..Default::default()
+                };
+                app.documents.push(document);
+            }
             Ok(app)
         } else {
             Ok(saved_state)
