@@ -157,11 +157,16 @@ impl BladvakApp<'_> for WombatApp {
         if let Some(index) = to_remove {
             self.documents.remove(index);
         }
+        if !self.documents.is_some() {
+            self.exporter.is_open = false;
+        }
     }
 
     fn menu_file(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         ui.toggle_value(&mut self.importer.is_open, "Import");
-        ui.toggle_value(&mut self.exporter.is_open, "Export");
+        if self.documents.get_current_doc_mut().is_some() {
+            ui.toggle_value(&mut self.exporter.is_open, "Export");
+        }
     }
 
     fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
@@ -175,14 +180,14 @@ impl BladvakApp<'_> for WombatApp {
                 ui,
                 error_manager,
             );
-            if let Some(data) = self.importer.ui(ui, error_manager)
-                && let Err(e) = self.handle_file(File {
-                    data,
-                    path: PathBuf::from("imported.bin"),
-                })
-            {
-                error_manager.add_error(e);
-            }
+        }
+        if let Some(data) = self.importer.ui(ui, error_manager)
+            && let Err(e) = self.handle_file(File {
+                data,
+                path: PathBuf::from("imported.bin"),
+            })
+        {
+            error_manager.add_error(e);
         }
     }
 
