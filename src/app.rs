@@ -8,12 +8,13 @@ use bladvak::{File, egui_extras};
 use bladvak::{
     app::BladvakApp,
     errors::{AppError, ErrorManager},
+    utils::Documents,
 };
 use std::fmt::Debug;
 use std::path::PathBuf;
 
 use crate::display_settings::DisplaySettings;
-use crate::document::{Document, Documents};
+use crate::document::Document;
 use crate::panels::FileInfo;
 use crate::selection::PanelSelection;
 use crate::windows::exporter::Exporter;
@@ -25,7 +26,7 @@ use crate::windows::importer::Importer;
 pub struct WombatApp {
     /// Documents
     #[serde(skip)]
-    pub(crate) documents: Documents,
+    pub(crate) documents: Documents<Document>,
     /// Display settings
     pub(crate) display_settings: DisplaySettings,
     /// Visual debug
@@ -130,7 +131,7 @@ impl BladvakApp<'_> for WombatApp {
         Ok(())
     }
 
-    fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    fn top_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         ui.separator();
         if let Some(document) = self.documents.get_current_doc_mut() {
             ui.menu_button("Windows", |ui| {
@@ -138,7 +139,7 @@ impl BladvakApp<'_> for WombatApp {
             });
             ui.separator();
         }
-        let mut current_idx = self.documents.current_idx;
+        let mut current_idx = self.documents.get_current_index();
         let mut to_remove = None;
         for (idx, one_doc) in self.documents.iter().enumerate() {
             ui.horizontal(|ui| {
@@ -153,7 +154,9 @@ impl BladvakApp<'_> for WombatApp {
             });
             ui.separator();
         }
-        self.documents.current_idx = current_idx;
+        if let Err(err) = self.documents.set_current_index(current_idx) {
+            error_manager.add_error(err);
+        }
         if let Some(index) = to_remove {
             self.documents.remove(index);
         }
