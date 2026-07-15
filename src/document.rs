@@ -1,7 +1,9 @@
 //! Document
 
 use std::ops::RangeInclusive;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use bladvak::utils::document::DocumentTrait;
 
 use crate::offset::Offset;
 use crate::panels::FileInfoData;
@@ -114,5 +116,11 @@ impl Document {
             }
         }
         Some((offset, end_idx))
+    }
+}
+
+impl DocumentTrait for Document {
+    fn path(&self) -> &Path {
+        &self.filename
     }
 }

@@ -131,7 +131,7 @@ impl BladvakApp<'_> for WombatApp {
         Ok(())
     }
 
-    fn top_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+    fn top_panel(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         ui.separator();
         if let Some(document) = self.documents.get_current_doc_mut() {
             ui.menu_button("Windows", |ui| {
@@ -139,27 +139,7 @@ impl BladvakApp<'_> for WombatApp {
             });
             ui.separator();
         }
-        let mut current_idx = self.documents.get_current_index();
-        let mut to_remove = None;
-        for (idx, one_doc) in self.documents.iter().enumerate() {
-            ui.horizontal(|ui| {
-                let filename = match one_doc.filename.file_name() {
-                    Some(file_n) => file_n,
-                    None => one_doc.filename.as_os_str(),
-                };
-                ui.selectable_value(&mut current_idx, idx, format!("{}", filename.display()));
-                if ui.button("x").clicked() {
-                    to_remove = Some(idx);
-                }
-            });
-            ui.separator();
-        }
-        if let Err(err) = self.documents.set_current_index(current_idx) {
-            error_manager.add_error(err);
-        }
-        if let Some(index) = to_remove {
-            self.documents.remove(index);
-        }
+        self.documents.show_file_list(ui);
         if !self.documents.is_some() {
             self.exporter.is_open = false;
         }
