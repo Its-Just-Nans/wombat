@@ -126,7 +126,7 @@ impl BladvakPanel for FileInfo {
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
     ) {
-        if ui.button("Reset default file").clicked() {
+        if ui.button("Load default file").clicked() {
             let default_file = WombatApp::load_default_file();
             if let Err(err) = app.handle_file(default_file) {
                 error_manager.add_error(err);
