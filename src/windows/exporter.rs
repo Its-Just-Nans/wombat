@@ -6,6 +6,7 @@ use bladvak::errors::ErrorManager;
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
+use crate::display_settings::DisplaySettings;
 use crate::selection::Selection;
 
 /// export type
@@ -135,6 +136,7 @@ impl Exporter {
         selection: &Selection,
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
+        limit_to_base_ascii: bool,
     ) {
         let previous_import_type = self.value_type.clone();
         ui.horizontal(|ui| {
@@ -151,7 +153,7 @@ impl Exporter {
         });
         if matches!(
             self.value_type,
-            ExportType::Decimal | ExportType::Base64 | ExportType::Base64Url
+            ExportType::Ascii | ExportType::Decimal | ExportType::Base64 | ExportType::Base64Url
         ) {
             ui.add_enabled_ui(false, |ui| {
                 let mut value = false;
@@ -175,6 +177,7 @@ impl Exporter {
                             &self.value_type,
                             self.prefix,
                             &self.separator,
+                            limit_to_base_ascii,
                         );
                         ui.ctx().copy_text(data);
                     } else {
@@ -222,6 +225,7 @@ impl Exporter {
                     &self.value_type,
                     self.prefix,
                     &self.separator,
+                    limit_to_base_ascii,
                 );
                 TextEdit::multiline(&mut formatted)
                     .min_size(ui.available_size())
@@ -240,6 +244,7 @@ impl Exporter {
         selection: &Selection,
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
+        limit_to_base_ascii: bool,
     ) -> Option<Vec<u8>> {
         if self.is_open {
             let mut is_open = self.is_open;
@@ -247,7 +252,14 @@ impl Exporter {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    self.windows_ui(binary_file, file_path, selection, ui, error_manager);
+                    self.windows_ui(
+                        binary_file,
+                        file_path,
+                        selection,
+                        ui,
+                        error_manager,
+                        limit_to_base_ascii,
+                    );
                 });
             self.is_open = is_open;
         }
@@ -263,6 +275,7 @@ pub(crate) fn format_export(
     export_type: &ExportType,
     prefix: bool,
     separator: &str,
+    limit_to_base_ascii: bool,
 ) -> String {
     let prefix = if prefix {
         match export_type {
@@ -291,7 +304,15 @@ pub(crate) fn format_export(
             let tokens = selection
                 .iter()
                 .map(|one_u8| match export_type {
-                    ExportType::Ascii => format!("{}", *one_u8 as char),
+                    ExportType::Ascii => {
+                        if limit_to_base_ascii
+                            && !DisplaySettings::RANGE_ASCII_PRINTABLE.contains(one_u8)
+                        {
+                            ".".to_string()
+                        } else {
+                            format!("{}", *one_u8 as char)
+                        }
+                    }
                     ExportType::Hex => format!("{prefix}{one_u8:02X}"),
                     ExportType::Binary => format!("{prefix}{one_u8:08b}"),
                     ExportType::Octal => format!("{prefix}{one_u8:03o}"),

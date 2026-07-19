@@ -157,6 +157,7 @@ impl BladvakApp<'_> for WombatApp {
                 &document.selection,
                 ui,
                 error_manager,
+                self.display_settings.limit_to_base_ascii,
             );
         }
         if let Some((filename, data)) = self.importer.ui(ui, error_manager)

@@ -105,7 +105,13 @@ impl WombatApp {
                             }
                         }
                         FileExportType::Text(exp) => {
-                            let export_str = format_export(&document.binary_file, &exp, true, " ");
+                            let export_str = format_export(
+                                &document.binary_file,
+                                &exp,
+                                true,
+                                " ",
+                                self.display_settings.limit_to_base_ascii,
+                            );
                             if let Err(err) =
                                 bladvak::utils::save_file(export_str.as_bytes(), &path_to_save)
                             {
