@@ -139,10 +139,11 @@ impl BladvakApp<'_> for WombatApp {
         }
     }
 
-    fn menu_file(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    fn menu_file(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         ui.toggle_value(&mut self.importer.is_open, "Import");
         if self.documents.get_current_doc_mut().is_some() {
             ui.toggle_value(&mut self.exporter.is_open, "Export");
+            self.export_file_ui(ui, error_manager);
         }
     }
 

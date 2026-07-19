@@ -3,6 +3,7 @@
 use bladvak::eframe::egui::{self, FontId, RichText, TextEdit};
 use bladvak::eframe::egui::{Color32, Widget};
 use bladvak::errors::ErrorManager;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
 use crate::selection::Selection;
@@ -20,12 +21,22 @@ pub(crate) enum ExportType {
     Decimal,
 }
 
+impl Display for ExportType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Hex => write!(f, "Hex"),
+            Self::Binary => write!(f, "Binary"),
+            Self::Octal => write!(f, "Octal"),
+            Self::Decimal => write!(f, "Decimal"),
+        }
+    }
+}
+
 /// Exporter data
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub(crate) struct Exporter {
     /// is open
     pub(crate) is_open: bool,
-
     /// prefix value
     prefix: bool,
 
@@ -55,37 +66,6 @@ impl Exporter {
     /// reset data
     pub(crate) fn reset(&mut self) {
         self.export_error = None;
-    }
-
-    /// Import
-    /// # Errors
-    /// return error if fails to parse the `value`
-    fn format_export(
-        selection: &[u8],
-        export_type: &ExportType,
-        prefix: bool,
-        separator: &str,
-    ) -> String {
-        let prefix = if prefix {
-            match export_type {
-                ExportType::Binary => "0b",
-                ExportType::Decimal => "",
-                ExportType::Hex => "0x",
-                ExportType::Octal => "0o",
-            }
-        } else {
-            ""
-        };
-        let tokens = selection
-            .iter()
-            .map(|one_u8| match export_type {
-                ExportType::Binary => format!("{prefix}{one_u8:08b}"),
-                ExportType::Hex => format!("{prefix}{one_u8:02X}"),
-                ExportType::Octal => format!("{prefix}{one_u8:03o}"),
-                ExportType::Decimal => format!("{one_u8}"),
-            })
-            .collect::<Vec<String>>();
-        tokens.join(separator)
     }
 
     /// Ui inside the windows of the exporter
@@ -131,7 +111,7 @@ impl Exporter {
                 };
                 if ui.button("Copy to clipboard").clicked() {
                     if let Some(file_selection) = binary_file.get(export_selection.clone()) {
-                        let data = Self::format_export(
+                        let data = format_export(
                             file_selection,
                             &self.value_type,
                             self.prefix,
@@ -181,7 +161,7 @@ impl Exporter {
                 }
             });
             if let Some(preview_value) = binary_file.get(selected_preview) {
-                let mut formatted = Self::format_export(
+                let mut formatted = format_export(
                     preview_value,
                     &self.value_type,
                     self.prefix,
@@ -217,4 +197,35 @@ impl Exporter {
         }
         None
     }
+}
+
+/// Export
+/// # Errors
+/// return error if fails to parse the `value`
+pub(crate) fn format_export(
+    selection: &[u8],
+    export_type: &ExportType,
+    prefix: bool,
+    separator: &str,
+) -> String {
+    let prefix = if prefix {
+        match export_type {
+            ExportType::Binary => "0b",
+            ExportType::Decimal => "",
+            ExportType::Hex => "0x",
+            ExportType::Octal => "0o",
+        }
+    } else {
+        ""
+    };
+    let tokens = selection
+        .iter()
+        .map(|one_u8| match export_type {
+            ExportType::Binary => format!("{prefix}{one_u8:08b}"),
+            ExportType::Hex => format!("{prefix}{one_u8:02X}"),
+            ExportType::Octal => format!("{prefix}{one_u8:03o}"),
+            ExportType::Decimal => format!("{one_u8}"),
+        })
+        .collect::<Vec<String>>();
+    tokens.join(separator)
 }
