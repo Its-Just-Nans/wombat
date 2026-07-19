@@ -11,6 +11,8 @@ use crate::selection::Selection;
 /// export type
 #[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) enum ExportType {
+    /// ASCII
+    Ascii,
     /// hex
     Hex,
     /// binary
@@ -28,6 +30,7 @@ pub(crate) enum ExportType {
 impl Display for ExportType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Ascii => write!(f, "Ascii"),
             Self::Hex => write!(f, "Hex"),
             Self::Binary => write!(f, "Binary"),
             Self::Octal => write!(f, "Octal"),
@@ -79,6 +82,12 @@ impl Exporter {
         egui::ComboBox::from_id_salt("export_combo_box")
             .selected_text(self.value_type.to_string())
             .show_ui(ui, |ui| {
+                let save_value = self.value_type.clone();
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::Ascii,
+                    ExportType::Ascii.to_string(),
+                );
                 ui.selectable_value(
                     &mut self.value_type,
                     ExportType::Hex,
@@ -109,6 +118,12 @@ impl Exporter {
                     ExportType::Base64Url,
                     ExportType::Base64Url.to_string(),
                 );
+                if self.value_type != save_value {
+                    // value changed
+                    if self.value_type == ExportType::Ascii {
+                        self.separator.clear(); // empty the string
+                    }
+                }
             });
     }
 
@@ -276,8 +291,9 @@ pub(crate) fn format_export(
             let tokens = selection
                 .iter()
                 .map(|one_u8| match export_type {
-                    ExportType::Binary => format!("{prefix}{one_u8:08b}"),
+                    ExportType::Ascii => format!("{}", *one_u8 as char),
                     ExportType::Hex => format!("{prefix}{one_u8:02X}"),
+                    ExportType::Binary => format!("{prefix}{one_u8:08b}"),
                     ExportType::Octal => format!("{prefix}{one_u8:03o}"),
                     ExportType::Decimal => format!("{one_u8}"),
                     ExportType::Base64 | ExportType::Base64Url => String::new(),
