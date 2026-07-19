@@ -6,7 +6,9 @@ mod import_hex;
 mod import_octal;
 
 use std::fmt::Display;
+use std::path::PathBuf;
 
+use bladvak::utils::BladvakClipBoard;
 pub use import_binary::parse_binary_string;
 pub use import_decimal::parse_decimal_string;
 pub use import_hex::parse_hex_string;
@@ -66,6 +68,10 @@ pub(crate) struct Importer {
     /// import error
     #[serde(skip)]
     import_error: Option<String>,
+
+    /// clipboard
+    #[serde(skip)]
+    clipboard: BladvakClipBoard,
 }
 
 impl Importer {
@@ -76,6 +82,7 @@ impl Importer {
             value: String::new(),
             value_type: ImportType::String,
             import_error: None,
+            clipboard: BladvakClipBoard::default(),
         }
     }
 
@@ -163,12 +170,60 @@ impl Importer {
                 );
             });
     }
+
+    /// clipboard import ui
+    fn clipboard_import_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+    ) -> Option<Result<(PathBuf, Vec<u8>), String>> {
+        let mut ret = None;
+        if ui.button("Import file from clipboard").clicked()
+            && let Err(err) = self.clipboard.launch_get_file()
+        {
+            error_manager.add_error(err);
+        }
+        match self.clipboard.files(ui.ctx()) {
+            Some(Ok(files_list)) => {
+                if let Some(file) = files_list.into_iter().nth(0) {
+                    match file.get_data() {
+                        Ok(d) => {
+                            ret = Some(Ok((PathBuf::from("imported_file.bin"), d)));
+                        }
+                        Err(err) => {
+                            ret = Some(Err(err));
+                        }
+                    }
+                }
+            }
+            Some(Err(err)) => {
+                ret = Some(Err(err));
+            }
+            None => {}
+        }
+        if ui.button("Import text from clipboard").clicked()
+            && let Err(err) = self.clipboard.launch_get_text()
+        {
+            error_manager.add_error(err);
+        }
+        match self.clipboard.text(ui.ctx()) {
+            Some(Ok(text)) => {
+                ret = Some(Ok((PathBuf::from("imported_text.txt"), text.into_bytes())));
+            }
+            Some(Err(err)) => {
+                ret = Some(Err(err));
+            }
+            None => {}
+        }
+        ret
+    }
+
     /// Show the importer ui
     pub(crate) fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
-    ) -> Option<Vec<u8>> {
+        error_manager: &mut ErrorManager,
+    ) -> Option<(PathBuf, Vec<u8>)> {
         if self.is_open {
             let mut is_open = self.is_open;
             let mut ret = None;
@@ -176,6 +231,8 @@ impl Importer {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
+                    ret = self.clipboard_import_ui(ui, error_manager);
+                    ui.separator();
                     let previous_import_type = self.value_type.clone();
                     ui.horizontal(|ui| {
                         ui.label("Import from:");
@@ -189,7 +246,14 @@ impl Importer {
                             if self.value.is_empty() {
                                 self.import_error = Some("Input cannot be empty".into());
                             } else {
-                                ret = Some(Self::import(&self.value, &self.value_type));
+                                match Self::import(&self.value, &self.value_type) {
+                                    Ok(d) => {
+                                        ret = Some(Ok((PathBuf::from("imported.bin"), d)));
+                                    }
+                                    Err(err) => {
+                                        ret = Some(Err(err));
+                                    }
+                                }
                             }
                         }
                         if ui.button("Clear").clicked() {
@@ -229,7 +293,7 @@ impl Importer {
             self.is_open = is_open;
             if let Some(import_result) = ret {
                 match import_result {
-                    Ok(res) => return Some(res),
+                    Ok((filename, data)) => return Some((filename, data)),
                     Err(import_err) => self.import_error = Some(import_err),
                 }
             }

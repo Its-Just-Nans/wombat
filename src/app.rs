@@ -159,10 +159,10 @@ impl BladvakApp<'_> for WombatApp {
                 error_manager,
             );
         }
-        if let Some(data) = self.importer.ui(ui, error_manager)
+        if let Some((filename, data)) = self.importer.ui(ui, error_manager)
             && let Err(e) = self.handle_file(File {
                 data,
-                path: PathBuf::from("imported.bin"),
+                path: filename,
             })
         {
             error_manager.add_error(e);
