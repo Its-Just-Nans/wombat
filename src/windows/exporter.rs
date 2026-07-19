@@ -134,9 +134,6 @@ impl Exporter {
                         error_manager.add_error(e);
                     }
                 }
-                // if ui.button("Export to file").clicked() {
-                //     // TODO
-                // }
             });
             let selected_preview = if let Some(range) = selection.range {
                 let stop = range.1.min(range.0 + 49);
