@@ -19,6 +19,10 @@ pub(crate) enum ExportType {
     Octal,
     /// decimal
     Decimal,
+    /// base 64
+    Base64,
+    /// base 64 (url safe)
+    Base64Url,
 }
 
 impl Display for ExportType {
@@ -28,6 +32,8 @@ impl Display for ExportType {
             Self::Binary => write!(f, "Binary"),
             Self::Octal => write!(f, "Octal"),
             Self::Decimal => write!(f, "Decimal"),
+            Self::Base64 => write!(f, "Base64"),
+            Self::Base64Url => write!(f, "Base64 (url safe)"),
         }
     }
 }
@@ -68,6 +74,44 @@ impl Exporter {
         self.export_error = None;
     }
 
+    /// ui export type
+    fn combo_box_ui(&mut self, ui: &mut egui::Ui) {
+        egui::ComboBox::from_id_salt("export_combo_box")
+            .selected_text(self.value_type.to_string())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::Hex,
+                    ExportType::Hex.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::Binary,
+                    ExportType::Binary.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::Octal,
+                    ExportType::Octal.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::Decimal,
+                    ExportType::Decimal.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::Base64,
+                    ExportType::Base64.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::Base64Url,
+                    ExportType::Base64Url.to_string(),
+                );
+            });
+    }
+
     /// Ui inside the windows of the exporter
     pub(crate) fn windows_ui(
         &mut self,
@@ -80,10 +124,7 @@ impl Exporter {
         let previous_import_type = self.value_type.clone();
         ui.horizontal(|ui| {
             ui.label("Export selection to:");
-            ui.selectable_value(&mut self.value_type, ExportType::Hex, "Hex");
-            ui.selectable_value(&mut self.value_type, ExportType::Binary, "Binary");
-            ui.selectable_value(&mut self.value_type, ExportType::Octal, "Octal");
-            ui.selectable_value(&mut self.value_type, ExportType::Decimal, "Decimal");
+            self.combo_box_ui(ui);
         });
         if previous_import_type != self.value_type {
             self.export_error = None;
@@ -93,7 +134,10 @@ impl Exporter {
             ui.label("Separator");
             ui.text_edit_singleline(&mut self.separator);
         });
-        if self.value_type == ExportType::Decimal {
+        if matches!(
+            self.value_type,
+            ExportType::Decimal | ExportType::Base64 | ExportType::Base64Url
+        ) {
             ui.add_enabled_ui(false, |ui| {
                 let mut value = false;
                 ui.checkbox(&mut value, "Prefix");
@@ -208,21 +252,38 @@ pub(crate) fn format_export(
     let prefix = if prefix {
         match export_type {
             ExportType::Binary => "0b",
-            ExportType::Decimal => "",
             ExportType::Hex => "0x",
             ExportType::Octal => "0o",
+            _ => "",
         }
     } else {
         ""
     };
-    let tokens = selection
-        .iter()
-        .map(|one_u8| match export_type {
-            ExportType::Binary => format!("{prefix}{one_u8:08b}"),
-            ExportType::Hex => format!("{prefix}{one_u8:02X}"),
-            ExportType::Octal => format!("{prefix}{one_u8:03o}"),
-            ExportType::Decimal => format!("{one_u8}"),
-        })
-        .collect::<Vec<String>>();
-    tokens.join(separator)
+    match export_type {
+        ExportType::Base64 => {
+            use base64::{Engine, alphabet::STANDARD, engine};
+            let engine_config = engine::GeneralPurposeConfig::new().with_encode_padding(true);
+            let process_engine = engine::GeneralPurpose::new(&STANDARD, engine_config);
+            process_engine.encode(selection)
+        }
+        ExportType::Base64Url => {
+            use base64::{Engine, alphabet::URL_SAFE, engine};
+            let engine_config = engine::GeneralPurposeConfig::new().with_encode_padding(true);
+            let process_engine = engine::GeneralPurpose::new(&URL_SAFE, engine_config);
+            process_engine.encode(selection)
+        }
+        _ => {
+            let tokens = selection
+                .iter()
+                .map(|one_u8| match export_type {
+                    ExportType::Binary => format!("{prefix}{one_u8:08b}"),
+                    ExportType::Hex => format!("{prefix}{one_u8:02X}"),
+                    ExportType::Octal => format!("{prefix}{one_u8:03o}"),
+                    ExportType::Decimal => format!("{one_u8}"),
+                    ExportType::Base64 | ExportType::Base64Url => String::new(),
+                })
+                .collect::<Vec<String>>();
+            tokens.join(separator)
+        }
+    }
 }

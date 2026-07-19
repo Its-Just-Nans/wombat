@@ -122,7 +122,7 @@ impl Importer {
 
     /// combo box import type
     fn combo_box_ui(&mut self, ui: &mut egui::Ui) {
-        egui::ComboBox::from_id_salt("import_combo _box")
+        egui::ComboBox::from_id_salt("import_combo_box")
             .selected_text(self.value_type.to_string())
             .show_ui(ui, |ui| {
                 ui.selectable_value(
