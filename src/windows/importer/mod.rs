@@ -5,6 +5,8 @@ mod import_decimal;
 mod import_hex;
 mod import_octal;
 
+use std::fmt::Display;
+
 pub use import_binary::parse_binary_string;
 pub use import_decimal::parse_decimal_string;
 pub use import_hex::parse_hex_string;
@@ -29,6 +31,25 @@ pub(crate) enum ImportType {
     DecimalBigEndian,
     /// decimal import little endian
     DecimalLittleEndian,
+    /// base 64
+    Base64,
+    /// base 64 (URL safe)
+    Base64Url,
+}
+
+impl Display for ImportType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Hex => write!(f, "Hex"),
+            Self::String => write!(f, "String"),
+            Self::Binary => write!(f, "Binary"),
+            Self::Octal => write!(f, "Octal"),
+            Self::DecimalBigEndian => write!(f, "Decimal (big endian)"),
+            Self::DecimalLittleEndian => write!(f, "Decimal (little endian)"),
+            Self::Base64 => write!(f, "Base 64"),
+            Self::Base64Url => write!(f, "Base 64 (url)"),
+        }
+    }
 }
 
 /// Histogram data
@@ -74,7 +95,73 @@ impl Importer {
             ImportType::Octal => parse_octal_string(value),
             ImportType::DecimalBigEndian => parse_decimal_string(value, true),
             ImportType::DecimalLittleEndian => parse_decimal_string(value, false),
+            ImportType::Base64 => {
+                use base64::{Engine, alphabet::STANDARD, engine};
+                let engine_config = engine::GeneralPurposeConfig::new()
+                    .with_decode_allow_trailing_bits(true)
+                    .with_decode_padding_mode(engine::DecodePaddingMode::Indifferent);
+                let process_engine = engine::GeneralPurpose::new(&STANDARD, engine_config);
+                let decoded = process_engine
+                    .decode(value.as_bytes())
+                    .map_err(|err| format!("Error importing base64: {err}"))?;
+                Ok(decoded)
+            }
+            ImportType::Base64Url => {
+                use base64::{Engine, alphabet::URL_SAFE, engine};
+                let engine_config = engine::GeneralPurposeConfig::new()
+                    .with_decode_allow_trailing_bits(true)
+                    .with_decode_padding_mode(engine::DecodePaddingMode::Indifferent);
+                let process_engine = engine::GeneralPurpose::new(&URL_SAFE, engine_config);
+                let decoded = process_engine
+                    .decode(value.as_bytes())
+                    .map_err(|err| format!("Error importing base64 (url safe): {err}"))?;
+                Ok(decoded)
+            }
         }
+    }
+
+    /// combo box import type
+    fn combo_box_ui(&mut self, ui: &mut egui::Ui) {
+        egui::ComboBox::from_id_salt("import_combo _box")
+            .selected_text(self.value_type.to_string())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ImportType::String,
+                    ImportType::String.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ImportType::Hex,
+                    ImportType::Hex.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ImportType::Binary,
+                    ImportType::Binary.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ImportType::Octal,
+                    ImportType::Octal.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ImportType::DecimalLittleEndian,
+                    ImportType::DecimalLittleEndian.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ImportType::DecimalBigEndian,
+                    ImportType::DecimalBigEndian.to_string(),
+                );
+                ui.selectable_value(&mut self.value_type, ImportType::Base64, "Base 64");
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ImportType::Base64Url,
+                    ImportType::Base64Url.to_string(),
+                );
+            });
     }
     /// Show the importer ui
     pub(crate) fn ui(
@@ -92,20 +179,7 @@ impl Importer {
                     let previous_import_type = self.value_type.clone();
                     ui.horizontal(|ui| {
                         ui.label("Import from:");
-                        ui.selectable_value(&mut self.value_type, ImportType::String, "String");
-                        ui.selectable_value(&mut self.value_type, ImportType::Hex, "Hex");
-                        ui.selectable_value(&mut self.value_type, ImportType::Binary, "Binary");
-                        ui.selectable_value(&mut self.value_type, ImportType::Octal, "Octal");
-                        ui.selectable_value(
-                            &mut self.value_type,
-                            ImportType::DecimalLittleEndian,
-                            "Decimal (Little Endian)",
-                        );
-                        ui.selectable_value(
-                            &mut self.value_type,
-                            ImportType::DecimalBigEndian,
-                            "Decimal (Big Endian)",
-                        );
+                        self.combo_box_ui(ui);
                     });
                     if previous_import_type != self.value_type {
                         self.import_error = None;
