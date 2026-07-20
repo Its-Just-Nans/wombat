@@ -1,12 +1,20 @@
 //! zip
 
-use std::{io::Cursor, ops::RangeInclusive, path::PathBuf};
+use std::{
+    io::{Cursor, Read},
+    ops::RangeInclusive,
+    path::PathBuf,
+};
 
 use bladvak::eframe::egui;
+
+use crate::{WombatApp, document::Document, windows::detection::DetectionCache};
 
 /// Zip file
 #[derive(Debug)]
 pub(crate) struct ZipFile {
+    /// index
+    pub(crate) index: usize,
     /// file type
     pub(crate) file_type: String,
     /// filename
@@ -40,8 +48,8 @@ impl ZipData {
 
         let mut files = Vec::with_capacity(archive.len());
 
-        for i in 0..archive.len() {
-            let file = match archive.by_index(i) {
+        for index in 0..archive.len() {
+            let file = match archive.by_index(index) {
                 Ok(file) => file,
                 Err(_err) => {
                     continue;
@@ -63,6 +71,7 @@ impl ZipData {
                 "file".to_string()
             };
             files.push(ZipFile {
+                index,
                 file_type,
                 filename,
                 compression,
@@ -77,47 +86,85 @@ impl ZipData {
     }
 }
 
-/// show zip data
-pub(crate) fn show_zip_data(
-    ui: &mut egui::Ui,
-    data: Option<&ZipData>,
-) -> Option<RangeInclusive<usize>> {
-    let Some(data) = data else {
-        ui.label("Failed to parse zip data");
-        return None;
-    };
-    egui::Grid::new("png_chunks_table")
-        .striped(true)
-        .show(ui, |ui| {
-            ui.label("Type");
-            ui.label("Filename");
-            ui.label("Compression");
-            ui.label("Uncompressed size");
-            ui.label("Compressed size");
-            ui.label("Unix mode");
-            ui.label("Last modified date");
-            ui.label("Comment");
-            ui.end_row();
+impl WombatApp {
+    /// show zip data
+    pub(crate) fn detection_ui_zip(&mut self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        let mut extracted_file = None;
+        let Some(document) = self.documents.get_current_doc() else {
+            ui.label("Failed to get document");
+            return None;
+        };
+        let DetectionCache::Zip(data) = &document.windows_data.detection.cache else {
+            ui.label("Failed to get detection");
+            return None;
+        };
+        let Some(data) = data else {
+            ui.label("Failed to parse zip data");
+            return None;
+        };
+        for (one_idx, one_file) in data.files.iter().enumerate() {
+            egui::CollapsingHeader::new(format!(
+                "{}: {}",
+                one_file.index,
+                one_file.filename.display()
+            ))
+            .id_salt(format!("zip_{one_idx}"))
+            .show(ui, |ui| {
+                egui::Grid::new(format!("grid_{one_idx}"))
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("Type");
+                        ui.label(one_file.file_type.clone());
+                        ui.end_row();
+                        ui.label("Compression");
+                        ui.label(&one_file.compression);
+                        ui.end_row();
+                        ui.label("Uncompressed size");
+                        ui.label(one_file.uncompressed_size.to_string());
+                        ui.end_row();
+                        ui.label("Compressed size");
+                        ui.label(one_file.compressed_size.to_string());
+                        ui.end_row();
+                        ui.label("Unix mode");
+                        if let Some(mode) = one_file.unix_mode {
+                            ui.label(format!("0o{mode:o}"));
+                        } else {
+                            ui.label("No UNIX mode");
+                        }
+                        ui.end_row();
+                        ui.label("Last modified date");
+                        if let Some(lm) = &one_file.last_modified {
+                            ui.label(lm);
+                        } else {
+                            ui.label("No modified date");
+                        }
+                        ui.end_row();
+                        ui.label("Comment");
+                        ui.label(one_file.comment.clone());
+                        ui.end_row();
+                    });
+                if ui.button("Extract").clicked() {
+                    let reader = Cursor::new(&document.binary_file);
+                    let Ok(mut archive) = zip::ZipArchive::new(reader) else {
+                        return;
+                    };
 
-            for one_file in &data.files {
-                ui.label(one_file.file_type.clone());
-                ui.label(format!("{}", one_file.filename.display()));
-                ui.label(&one_file.compression);
-                ui.label(one_file.uncompressed_size.to_string());
-                ui.label(one_file.compressed_size.to_string());
-                if let Some(mode) = one_file.unix_mode {
-                    ui.label(format!("0o{mode:o}"));
-                } else {
-                    ui.label("No UNIX mode");
+                    if let Ok(mut file) = archive.by_index(one_file.index) {
+                        let mut buffer = Vec::new();
+                        if file.read_to_end(&mut buffer).is_ok() {
+                            extracted_file = Some(Document {
+                                binary_file: buffer,
+                                filename: one_file.filename.clone(),
+                                ..Default::default()
+                            });
+                        }
+                    }
                 }
-                if let Some(lm) = &one_file.last_modified {
-                    ui.label(lm);
-                } else {
-                    ui.label("No modified date");
-                }
-                ui.label(one_file.comment.clone());
-                ui.end_row();
-            }
-        });
-    None
+            });
+        }
+        if let Some(extracted) = extracted_file {
+            self.documents.push(extracted);
+        }
+        None
+    }
 }

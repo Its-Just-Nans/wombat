@@ -127,12 +127,8 @@ impl WombatApp {
             document.go_to_range(range);
         }
         #[cfg(feature = "detection")]
-        if let Some(infos) = &document.file_format
-            && let Some(range) =
-                document
-                    .windows_data
-                    .detection
-                    .ui(&document.binary_file, infos, ui, error_manager)
+        if let Some(range) = self.show_detection_ui(ui, error_manager)
+            && let Some(document) = self.documents.get_current_doc_mut()
         {
             document.go_to_range(range);
         }
