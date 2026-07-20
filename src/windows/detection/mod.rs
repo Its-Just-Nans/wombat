@@ -124,6 +124,7 @@ impl WombatApp {
         _error_manager: &mut ErrorManager,
     ) -> Option<RangeInclusive<usize>> {
         let detection = &self.documents.get_current_doc()?.windows_data.detection;
+        let current_index = self.documents.get_current_index();
         if detection.is_open {
             let mut is_open = detection.is_open;
             let mut ret = None;
@@ -166,7 +167,7 @@ impl WombatApp {
                         }
                     };
                 });
-            if let Some(document) = self.documents.get_current_doc_mut() {
+            if let Some(document) = self.documents.get_mut(current_index) {
                 document.windows_data.detection.is_open = is_open;
             }
             return ret;
