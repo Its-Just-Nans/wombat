@@ -6,6 +6,7 @@ mod cert;
 mod jpg;
 mod mp4;
 mod png;
+mod raw;
 mod xml;
 mod zip;
 
@@ -18,6 +19,7 @@ use crate::windows::detection::cert::{CertData, show_certs};
 use crate::windows::detection::jpg::{JpgData, show_jpg_data};
 use crate::windows::detection::mp4::{Mp4Data, ui::show_mp4_ui};
 use crate::windows::detection::png::{PngData, show_png_chunks};
+use crate::windows::detection::raw::{StringType, show_raw_string_data};
 use crate::windows::detection::xml::{XmlData, xml_tree_ui};
 use crate::windows::detection::zip::{ZipData, show_zip_data};
 
@@ -36,8 +38,10 @@ enum DetectionCache {
     Mp4(Option<Mp4Data>),
     /// zip data cached
     Zip(Option<ZipData>),
-    /// String
-    String(String),
+    /// Message
+    Message(String),
+    /// Raw String
+    RawString(Option<StringType>),
     /// no cache
     #[default]
     Empty,
@@ -56,12 +60,13 @@ impl DetectionCache {
             DetectionCache::Jpg(data) => show_jpg_data(ui, data.as_ref()),
             DetectionCache::Xml(xml_str) => xml_tree_ui(ui, xml_str.as_ref()),
             DetectionCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
-            DetectionCache::String(str) => {
+            DetectionCache::Message(str) => {
                 ui.label(str);
                 None
             }
-            DetectionCache::Mp4(mp4_data) => show_mp4_ui(ui, mp4_data.as_ref()),
+            DetectionCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
             DetectionCache::Zip(data) => show_zip_data(ui, data.as_ref()),
+            DetectionCache::RawString(data) => show_raw_string_data(ui, data.as_ref()),
             DetectionCache::Empty => {
                 ui.label(format!("Kind: {:?}", file_info.kind));
                 ui.label("No data");
@@ -101,14 +106,12 @@ impl DetectionCache {
                 let parsed = ZipData::parse(binary_data);
                 DetectionCache::Zip(parsed)
             }
-            "qoi" => DetectionCache::String("A QOI (Quite OK Image) image".to_string()),
-            _ => {
-                if binary_data.starts_with("0 HEAD\r\n1 SOUR".as_bytes()) {
-                    DetectionCache::String("Maybe a GED file".to_string())
-                } else {
-                    DetectionCache::Empty
-                }
+            "bin" => {
+                let parsed = StringType::parse(binary_data);
+                DetectionCache::RawString(parsed)
             }
+            "qoi" => DetectionCache::Message("A QOI (Quite OK Image) image".to_string()),
+            _ => DetectionCache::Empty,
         }
     }
 }

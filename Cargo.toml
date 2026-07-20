@@ -34,6 +34,7 @@ base16ct = "1.0.0"
 ahash = "0.8.12"
 zip = "8.6.0"
 base64 = "0.22.1"
+uuid = "1.24.0"
 
 [features]
 # yara only on native

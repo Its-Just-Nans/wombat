@@ -6441,6 +6441,7 @@ dependencies = [
  "sha1 0.11.0",
  "sha2 0.11.0",
  "time",
+ "uuid",
  "x509-parser",
  "yara-x",
  "zip",
