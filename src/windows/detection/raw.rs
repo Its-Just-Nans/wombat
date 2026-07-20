@@ -6,7 +6,8 @@ use bladvak::eframe::egui;
 use uuid::Uuid;
 
 /// String Detection
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
+#[allow(dead_code)]
 pub(crate) enum StringType {
     /// Md5
     Md5,
@@ -17,16 +18,57 @@ pub(crate) enum StringType {
     /// sha 512
     Sha512,
     /// uuid
-    Uuid,
+    Uuid(uuid::Uuid),
+    /// ipv4
+    Ipv4,
+    /// ipv6
+    Ipv6,
+    /// int
+    Integer(i64),
+    /// float
+    Float(f64),
+    /// url
+    Url(url::Url),
+    /// json
+    Json,
+    /// base 64
+    Base64,
+    /// base 64 url
+    Base64Url,
     /// Gedcom
     Ged,
     /// unknown str
     Unknown,
 }
 
+impl std::fmt::Display for StringType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 /// check if hex and len
 fn is_hex(s: &str, len: usize) -> bool {
     s.len() == len && s.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// check if base 64
+fn is_base64(s: &str) -> bool {
+    use base64::{Engine, engine::general_purpose};
+
+    general_purpose::STANDARD.decode(s).is_ok()
+}
+
+/// check if base 64 url
+fn is_base64url(s: &str) -> bool {
+    use base64::{Engine, engine::general_purpose};
+
+    general_purpose::URL_SAFE_NO_PAD.decode(s).is_ok()
+}
+
+/// check if ged
+fn is_ged(bin: &[u8]) -> bool {
+    bin.starts_with("0 HEAD\r\n1 SOUR".as_bytes())
 }
 
 impl StringType {
@@ -41,13 +83,31 @@ impl StringType {
                 StringType::Sha256
             } else if is_hex(s, 128) {
                 StringType::Sha512
-            } else if Uuid::parse_str(s).is_ok() {
-                StringType::Uuid
+            } else if let Ok(uuid) = Uuid::parse_str(s) {
+                StringType::Uuid(uuid)
+            } else if s.parse::<std::net::Ipv4Addr>().is_ok() {
+                StringType::Ipv4
+            } else if s.parse::<std::net::Ipv6Addr>().is_ok() {
+                StringType::Ipv6
+            } else if let Ok(int) = s.parse::<i64>() {
+                StringType::Integer(int)
+            } else if let Ok(float) = s.parse::<f64>() {
+                StringType::Float(float)
+            } else if let Ok(url) = url::Url::parse(s) {
+                StringType::Url(url)
+            } else if serde_json::from_str::<serde_json::Value>(s).is_ok() {
+                StringType::Json
+            } else if is_base64(s) {
+                StringType::Base64
+            } else if is_base64url(s) {
+                StringType::Base64Url
+            } else if is_ged(s.as_bytes()) {
+                StringType::Ged
             } else {
                 StringType::Unknown
             };
             return Some(str_type);
-        } else if bin.starts_with("0 HEAD\r\n1 SOUR".as_bytes()) {
+        } else if is_ged(bin) {
             return Some(StringType::Ged);
         }
         None
@@ -63,6 +123,6 @@ pub(crate) fn show_raw_string_data(
         ui.label("Unknown bin");
         return None;
     };
-    ui.label(format!("Could be: {data:?}"));
+    ui.label(format!("Could be: {data}"));
     None
 }
