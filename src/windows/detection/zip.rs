@@ -10,13 +10,22 @@ use bladvak::eframe::egui;
 
 use crate::{WombatApp, document::Document, windows::detection::DetectionCache};
 
+/// Entry type
+#[derive(Debug)]
+pub(crate) enum EntryType {
+    /// filej
+    File,
+    /// dir
+    Directory,
+}
+
 /// Zip file
 #[derive(Debug)]
 pub(crate) struct ZipFile {
     /// index
     pub(crate) index: usize,
     /// file type
-    pub(crate) file_type: String,
+    pub(crate) entry_type: EntryType,
     /// filename
     pub(crate) filename: PathBuf,
     /// compression
@@ -65,14 +74,14 @@ impl ZipData {
             let last_modified = file.last_modified().map(|lm| lm.to_string());
 
             let comment = file.comment().to_string();
-            let file_type = if file.is_dir() {
-                "directory".to_string()
+            let entry_type = if file.is_dir() {
+                EntryType::Directory
             } else {
-                "file".to_string()
+                EntryType::File
             };
             files.push(ZipFile {
                 index,
-                file_type,
+                entry_type,
                 filename,
                 compression,
                 uncompressed_size,
@@ -106,7 +115,7 @@ impl WombatApp {
             egui::CollapsingHeader::new(format!(
                 "{}: {} {}",
                 one_file.index,
-                if one_file.file_type == "file" {
+                if let EntryType::File = one_file.entry_type {
                     "🗋"
                 } else {
                     "🗀"
@@ -119,7 +128,7 @@ impl WombatApp {
                     .striped(true)
                     .show(ui, |ui| {
                         ui.label("Type");
-                        ui.label(one_file.file_type.clone());
+                        ui.label(format!("{:?}", one_file.entry_type));
                         ui.end_row();
                         ui.label("Compression");
                         ui.label(&one_file.compression);
@@ -148,7 +157,9 @@ impl WombatApp {
                         ui.label(one_file.comment.clone());
                         ui.end_row();
                     });
-                if ui.button("Extract").clicked() {
+                if let EntryType::File = one_file.entry_type
+                    && ui.button("Extract").clicked()
+                {
                     let reader = Cursor::new(&document.binary_file);
                     let Ok(mut archive) = zip::ZipArchive::new(reader) else {
                         return;
