@@ -104,9 +104,14 @@ impl WombatApp {
         };
         for (one_idx, one_file) in data.files.iter().enumerate() {
             egui::CollapsingHeader::new(format!(
-                "{}: {}",
+                "{}: {} {}",
                 one_file.index,
-                one_file.filename.display()
+                if one_file.file_type == "file" {
+                    "🗋"
+                } else {
+                    "🗀"
+                },
+                one_file.filename.display(),
             ))
             .id_salt(format!("zip_{one_idx}"))
             .show(ui, |ui| {
