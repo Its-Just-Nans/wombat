@@ -22,14 +22,10 @@ impl WombatApp {
         let text_style = TextStyle::Monospace;
         let row_height = ui.text_style_height(&text_style).max(14.0) + 1.0; // fallback
         if self.documents.get_current_doc_mut().is_none() {
-            egui::Area::new("center".into())
-                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-                .show(ui.ctx(), |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.heading(concat!("Welcome to ", env!("CARGO_PKG_NAME")));
-                        ui.label("No document opened");
-                    });
-                });
+            bladvak::utils::central_ui(ui, |ui| {
+                ui.heading(concat!("Welcome to ", env!("CARGO_PKG_NAME")));
+                ui.label("No document opened");
+            });
             return;
         }
         ScrollArea::vertical().show_viewport(ui, |ui: &mut egui::Ui, viewport: egui::Rect| {
