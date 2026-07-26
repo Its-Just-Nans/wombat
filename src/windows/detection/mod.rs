@@ -135,8 +135,7 @@ impl WombatApp {
                     let Some(document) = self.documents.get_current_doc_mut() else {
                         return;
                     };
-                    let detection = &mut document.windows_data.detection;
-                    let binary_data = &document.binary_file;
+                    let _ = document.get_file_format();
                     let Some(file_info) = &document.file_format else {
                         return;
                     };
@@ -145,8 +144,10 @@ impl WombatApp {
                         file_info.name, file_info.file_type, file_info.extension
                     ));
                     ui.separator();
-                    if matches!(detection.cache, DetectionCache::Empty) {
-                        detection.cache = DetectionCache::parse(binary_data, file_info);
+                    if matches!(document.windows_data.detection.cache, DetectionCache::Empty) {
+                        let binary_data = &document.binary_file;
+                        document.windows_data.detection.cache =
+                            DetectionCache::parse(binary_data, file_info);
                     }
                     let detection_cache = &document.windows_data.detection.cache;
                     ret = match detection_cache {
