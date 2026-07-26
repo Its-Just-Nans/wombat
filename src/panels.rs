@@ -4,7 +4,6 @@ use bladvak::app::BladvakPanel;
 use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
 use bladvak::{BladvakApp, File};
-use file_format::FileFormat;
 use std::path::PathBuf;
 
 use crate::WombatApp;
@@ -69,14 +68,7 @@ impl BladvakPanel for FileInfo {
                 ui.label(format!("Extension: .{}", fmt.extension));
             });
         } else if ui.button("Get file info").clicked() {
-            let file_fmt = FileFormat::from_bytes(&*document.binary_file);
-            let data = FileInfoData {
-                kind: file_fmt.kind(),
-                file_type: file_fmt.media_type().to_string(),
-                extension: file_fmt.extension().to_string(),
-                name: file_fmt.name().to_string(),
-            };
-            document.file_format = Some(data);
+            let _ = document.get_file_format();
         }
 
         ui.separator();

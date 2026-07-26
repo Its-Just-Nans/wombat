@@ -14,11 +14,10 @@ mod yara;
 pub(crate) mod exporter;
 pub(crate) mod importer;
 
-use crate::{WombatApp, panels::FileInfoData};
+use crate::WombatApp;
 
 use bladvak::{ErrorManager, eframe::egui};
 
-use file_format::FileFormat;
 use histogram::Histogram;
 use metadata::Metadata;
 use previewer::Previewer;
@@ -121,17 +120,6 @@ impl WombatApp {
             .windows_data
             .yara
             .ui(&document.binary_file, ui, error_manager);
-        if document.file_format.is_none() {
-            let file_fmt = FileFormat::from_bytes(&*document.binary_file);
-            let data = FileInfoData {
-                kind: file_fmt.kind(),
-                file_type: file_fmt.media_type().to_string(),
-                extension: file_fmt.extension().to_string(),
-                name: file_fmt.name().to_string(),
-            };
-            document.file_format = Some(data);
-        }
-
         if let Some(range) = document.windows_data.searcher.ui(
             &document.binary_file,
             &document.selection,
