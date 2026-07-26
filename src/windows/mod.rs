@@ -128,10 +128,11 @@ impl WombatApp {
         ) {
             document.go_to_range(range);
         }
+        let kind = document.get_file_format().kind;
         document
             .windows_data
             .previewer
-            .ui(ui, error_manager, &document.binary_file);
+            .ui(ui, error_manager, &document.binary_file, kind);
         self.show_metadata_ui(ui, error_manager);
         #[cfg(feature = "detection")]
         if let Some(range) = self.show_detection_ui(ui, error_manager)

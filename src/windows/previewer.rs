@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use bladvak::eframe::egui;
 use bladvak::{ErrorManager, image};
+use file_format::Kind;
 
 /// Previewer
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -30,21 +31,26 @@ impl Previewer {
         ui: &mut egui::Ui,
         _error_manager: &mut ErrorManager,
         binary_file: &Arc<Vec<u8>>,
+        kind: Kind,
     ) {
         if self.texture.is_none() {
-            if let Ok(img) = image::load_from_memory(binary_file) {
-                let img = img.to_rgba8();
-                let size = [img.width() as usize, img.height() as usize];
+            if kind == Kind::Image {
+                if let Ok(img) = image::load_from_memory(binary_file) {
+                    let img = img.to_rgba8();
+                    let size = [img.width() as usize, img.height() as usize];
 
-                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &img);
+                    let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &img);
 
-                self.texture = Some(Ok(ui.ctx().load_texture(
-                    "image",
-                    color_image,
-                    egui::TextureOptions::LINEAR,
-                )));
+                    self.texture = Some(Ok(ui.ctx().load_texture(
+                        "image",
+                        color_image,
+                        egui::TextureOptions::LINEAR,
+                    )));
+                } else {
+                    self.texture = Some(Err("Failed to load image from memory".to_string()));
+                }
             } else {
-                self.texture = Some(Err("Failed to load image from memory".to_string()));
+                self.texture = Some(Err(format!("Cannot preview "{kind:?}" for the moment")));
             }
         }
         if self.is_open {
