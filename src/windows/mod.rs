@@ -1,9 +1,9 @@
 //! Wombat windows
 
+mod detection;
 #[cfg(feature = "hashing")]
 mod hashing;
 mod histogram;
-mod metadata;
 #[cfg(feature = "parsing")]
 mod parsing;
 mod previewer;
@@ -18,8 +18,8 @@ use crate::WombatApp;
 
 use bladvak::{ErrorManager, eframe::egui};
 
+use detection::Detection;
 use histogram::Histogram;
-use metadata::Metadata;
 use previewer::Previewer;
 use searcher::Searcher;
 
@@ -30,8 +30,8 @@ pub struct WindowsData {
     pub(crate) histogram: Histogram,
     /// searcher
     pub(crate) searcher: Searcher,
-    /// metadata
-    pub(crate) metadata: Metadata,
+    /// detection
+    pub(crate) detection: Detection,
     /// previewer
     pub(crate) previewer: Previewer,
     /// parsing
@@ -51,7 +51,7 @@ impl WindowsData {
     pub(crate) fn new() -> Self {
         Self {
             histogram: Histogram::new(),
-            metadata: Metadata::default(),
+            detection: Detection::default(),
             previewer: Previewer::default(),
             #[cfg(feature = "parsing")]
             parsing: parsing::Parsing::new(),
@@ -67,7 +67,7 @@ impl WindowsData {
     pub(crate) fn reset(&mut self) {
         self.histogram.reset();
         self.previewer.reset();
-        self.metadata.reset();
+        self.detection.reset();
         #[cfg(feature = "parsing")]
         self.parsing.reset();
         self.searcher.reset();
@@ -87,7 +87,7 @@ impl WindowsData {
     pub(crate) fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.searcher.is_open, "Searcher");
-        ui.toggle_value(&mut self.metadata.is_open, "Metadata");
+        ui.toggle_value(&mut self.detection.is_open, "Detection");
         ui.toggle_value(&mut self.previewer.is_open, "Previewer");
         #[cfg(feature = "parsing")]
         ui.toggle_value(&mut self.parsing.is_open, "Parsing");
@@ -133,7 +133,7 @@ impl WombatApp {
             .windows_data
             .previewer
             .ui(ui, error_manager, &document.binary_file, kind);
-        self.show_metadata_ui(ui, error_manager);
+        self.show_detection_ui(ui, error_manager);
         #[cfg(feature = "parsing")]
         if let Some(range) = self.show_parsing_ui(ui, error_manager)
             && let Some(document) = self.documents.get_current_doc_mut()

@@ -1,4 +1,4 @@
-//! Metadata
+//! Detection
 
 use std::io::Cursor;
 use std::ops::RangeInclusive;
@@ -41,16 +41,16 @@ const OFFSET_EXIF_JPG: usize = 2 + 2 + 6;
 /// Offset PNG of the exif
 const OFFSET_EXIF_PNG: usize = 4 + 4;
 
-/// Metadata
+/// Detection
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug)]
-pub(crate) struct Metadata {
+pub(crate) struct Detection {
     /// Is open
     pub(crate) is_open: bool,
     /// exif
     exif_data: Option<Result<ExifData, String>>,
 }
 
-impl Metadata {
+impl Detection {
     /// reset
     pub(crate) fn reset(&mut self) {
         self.exif_data = None;
@@ -215,11 +215,11 @@ fn show_exif_table(ui: &mut egui::Ui, exif: &Exif) {
 
 impl WombatApp {
     /// show exif
-    fn show_metadata_exif(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    fn show_detection_exif(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
         let Some(document) = self.documents.get_current_doc_mut() else {
             return;
         };
-        let exif_data = &document.windows_data.metadata.exif_data;
+        let exif_data = &document.windows_data.detection.exif_data;
         let mut doc = None;
         let mut range = None;
         if let Some(exif_data) = exif_data {
@@ -287,27 +287,31 @@ impl WombatApp {
         }
     }
 
-    /// show metadata ui
-    pub(crate) fn show_metadata_ui(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+    /// show detection ui
+    pub(crate) fn show_detection_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+    ) {
         let current_index = self.documents.get_current_index();
         let Some(document) = self.documents.get_current_doc_mut() else {
             return;
         };
         let extension = document.get_file_format().extension.clone();
-        let metadata = &mut document.windows_data.metadata;
-        if metadata.is_open {
-            let mut is_open = metadata.is_open;
-            if metadata.exif_data.is_none() {
-                metadata.parse_exif(&document.binary_file, &extension);
+        let detection = &mut document.windows_data.detection;
+        if detection.is_open {
+            let mut is_open = detection.is_open;
+            if detection.exif_data.is_none() {
+                detection.parse_exif(&document.binary_file, &extension);
             }
-            egui::Window::new("Metadata")
+            egui::Window::new("Detection")
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    self.show_metadata_exif(ui, error_manager);
+                    self.show_detection_exif(ui, error_manager);
                 });
             if let Some(document) = self.documents.get_mut(current_index) {
-                document.windows_data.metadata.is_open = is_open;
+                document.windows_data.detection.is_open = is_open;
             }
         }
     }
