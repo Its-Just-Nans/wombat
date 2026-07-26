@@ -274,7 +274,6 @@ impl WombatApp {
                     });
                 }
                 Err(s) => {
-                    ui.label("No exif detected");
                     ui.label(s);
                 }
             }

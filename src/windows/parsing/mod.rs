@@ -38,7 +38,7 @@ enum ParsingCache {
     /// mp4 data cached
     Mp4(Option<Mp4Data>),
     /// zip data cached
-    Zip(Option<ZipData>),
+    Zip(Result<ZipData, String>),
     /// Message
     Message(String),
     /// Raw String

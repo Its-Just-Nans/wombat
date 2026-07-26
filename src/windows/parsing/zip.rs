@@ -51,9 +51,14 @@ pub(crate) struct ZipData {
 
 impl ZipData {
     /// parse zip data
-    pub(crate) fn parse(binary_file: &[u8]) -> Option<ZipData> {
+    pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
         let reader = Cursor::new(binary_file);
-        let mut archive = zip::ZipArchive::new(reader).ok()?;
+        let mut archive = match zip::ZipArchive::new(reader) {
+            Ok(ar) => ar,
+            Err(e) => {
+                return Err(format!("Failed to parse zip: {e}"));
+            }
+        };
 
         let mut files = Vec::with_capacity(archive.len());
 
@@ -91,7 +96,7 @@ impl ZipData {
                 comment,
             });
         }
-        Some(Self { files })
+        Ok(Self { files })
     }
 }
 
@@ -103,13 +108,17 @@ impl WombatApp {
             ui.label("Failed to get document");
             return None;
         };
-        let ParsingCache::Zip(data) = &document.windows_data.parsing.cache else {
+        let ParsingCache::Zip(cached_data) = &document.windows_data.parsing.cache else {
             ui.label("Failed to get detection");
             return None;
         };
-        let Some(data) = data else {
-            ui.label("Failed to parse zip data");
-            return None;
+        let data = match cached_data {
+            Ok(data) => data,
+            Err(e) => {
+                ui.label("Failed to parse zip data");
+                ui.label(e);
+                return None;
+            }
         };
         for (one_idx, one_file) in data.files.iter().enumerate() {
             egui::CollapsingHeader::new(format!(
