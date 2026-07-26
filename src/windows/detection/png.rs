@@ -5,15 +5,15 @@ use std::ops::RangeInclusive;
 
 /// png chunk
 #[derive(Debug)]
-struct PngChunk {
+pub(crate) struct PngChunk {
     /// chunk size
     size: usize,
     /// chunk type
-    chunk_type: String,
+    pub(crate) chunk_type: String,
     /// chunk start
-    start: usize,
+    pub(crate) start: usize,
     /// chunk end
-    end: usize,
+    pub(crate) end: usize,
     /// chunk crc
     crc: String,
     /// chunk crc valid
@@ -24,7 +24,7 @@ struct PngChunk {
 #[derive(Debug)]
 pub(crate) struct PngData {
     /// png chunks
-    chunks: Vec<PngChunk>,
+    pub(crate) chunks: Vec<PngChunk>,
     /// png signature
     signature: String,
 }

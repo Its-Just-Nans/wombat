@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use bladvak::utils::document::DocumentTrait;
+use file_format::FileFormat;
 
 use crate::offset::Offset;
 use crate::panels::FileInfoData;
@@ -55,6 +56,19 @@ impl Document {
             filename,
             ..Default::default()
         }
+    }
+
+    /// Get file info - load if needed
+    pub(crate) fn get_file_format(&mut self) -> &FileInfoData {
+        self.file_format.get_or_insert_with(|| {
+            let file_fmt = FileFormat::from_bytes(&*self.binary_file);
+            FileInfoData {
+                kind: file_fmt.kind(),
+                file_type: file_fmt.media_type().to_string(),
+                extension: file_fmt.extension().to_string(),
+                name: file_fmt.name().to_string(),
+            }
+        })
     }
     /// Go to the selected range
     pub(crate) fn go_to_range(&mut self, range: RangeInclusive<usize>) {

@@ -12,6 +12,7 @@ use exif::Exif;
 use crate::WombatApp;
 use crate::document::Document;
 use crate::windows::detection::jpg::{Marker, parse_jpeg};
+use crate::windows::detection::png::PngData;
 
 /// Exif data
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -34,8 +35,11 @@ impl std::fmt::Debug for ExifData {
     }
 }
 
-/// OFFSET of the exif = 2 bytes (marker) + 2 bytes (length) + 6 byes ("Exif\0\0")
-const OFFSET_EXIF: usize = 2 + 2 + 6;
+/// Offset JPG of the exif = 2 bytes (marker) + 2 bytes (length) + 6 byes ("Exif\0\0")
+const OFFSET_EXIF_JPG: usize = 2 + 2 + 6;
+
+/// Offset PNG of the exif
+const OFFSET_EXIF_PNG: usize = 4 + 4;
 
 /// Metadata
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug)]
@@ -53,7 +57,7 @@ impl Metadata {
     }
 
     /// parse exif
-    pub(crate) fn parse_exif(&mut self, binary_file: &[u8]) {
+    pub(crate) fn parse_exif(&mut self, binary_file: &[u8], file_extension: &str) {
         let cursor = Cursor::new(binary_file);
         let mut bufreader = std::io::BufReader::new(cursor);
         let parsed_exif = exif::Reader::new().read_from_container(&mut bufreader);
@@ -80,47 +84,7 @@ impl Metadata {
                 } else {
                     None
                 };
-                let thumbnail = if let Some(jpeg_interchange_format) =
-                    exif.get_field(exif::Tag::JPEGInterchangeFormat, exif::In::THUMBNAIL)
-                    && let Some(jpeg_interchange_format_length) =
-                        exif.get_field(exif::Tag::JPEGInterchangeFormatLength, exif::In::THUMBNAIL)
-                {
-                    if let exif::Value::Long(offset) = &jpeg_interchange_format.value
-                        && let Some(offset) = offset.first()
-                        && let exif::Value::Long(length) = &jpeg_interchange_format_length.value
-                        && let Some(length) = length.first()
-                    {
-                        let jpeg_size = offset + length;
-                        let parsed_data = parse_jpeg(binary_file);
-                        if let Ok(data) = parsed_data {
-                            if let Some(seg_exif) = data.iter().find(|seg| {
-                                if let Marker::APP(_i) = seg.marker
-                                    && let Some(seg_part) =
-                                        binary_file.get(seg.start..=seg.start + OFFSET_EXIF)
-                                    && seg_part[4..=9] == *b"Exif\0\0"
-                                {
-                                    true
-                                } else {
-                                    false
-                                }
-                            }) {
-                                let offset_exif = seg_exif.start + OFFSET_EXIF;
-                                let start = offset_exif + *offset as usize;
-                                let end = offset_exif + jpeg_size as usize - 1;
-                                let range_res = (start, end);
-                                Some(Ok(range_res))
-                            } else {
-                                Some(Err("No exif segment found in file".to_string()))
-                            }
-                        } else {
-                            Some(Err("Failed to parse exif of file".to_string()))
-                        }
-                    } else {
-                        Some(Err("Failed to get Thumbnail".to_string()))
-                    }
-                } else {
-                    None
-                };
+                let thumbnail = extract_thumbnail_position(&exif, binary_file, file_extension);
                 self.exif_data = Some(Ok(ExifData {
                     exif: Some(exif),
                     geo,
@@ -131,6 +95,85 @@ impl Metadata {
                 self.exif_data = Some(Err(format!("Failed to parse exif: {e}")));
             }
         }
+    }
+}
+
+/// Extract the thumbnail position
+fn extract_thumbnail_position(
+    exif: &Exif,
+    binary_file: &[u8],
+    file_extension: &str,
+) -> Option<Result<(usize, usize), String>> {
+    if let Some(jpeg_interchange_format) =
+        exif.get_field(exif::Tag::JPEGInterchangeFormat, exif::In::THUMBNAIL)
+        && let Some(jpeg_interchange_format_length) =
+            exif.get_field(exif::Tag::JPEGInterchangeFormatLength, exif::In::THUMBNAIL)
+    {
+        if let exif::Value::Long(offset) = &jpeg_interchange_format.value
+            && let Some(offset) = offset.first()
+            && let exif::Value::Long(length) = &jpeg_interchange_format_length.value
+            && let Some(length) = length.first()
+        {
+            if file_extension == "jpg" || file_extension == "jpeg" {
+                let jpeg_size = offset + length;
+                let parsed_data = parse_jpeg(binary_file);
+                if let Ok(data) = parsed_data {
+                    if let Some(seg_exif) = data.iter().find(|seg| {
+                        if let Marker::APP(_i) = seg.marker
+                            && let Some(seg_part) =
+                                binary_file.get(seg.start..=seg.start + OFFSET_EXIF_JPG)
+                            && seg_part[4..=9] == *b"Exif\0\0"
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    }) {
+                        let offset_exif = seg_exif.start + OFFSET_EXIF_JPG;
+                        let start = offset_exif + *offset as usize;
+                        let end = offset_exif + jpeg_size as usize - 1;
+                        let range_res = (start, end);
+                        Some(Ok(range_res))
+                    } else {
+                        Some(Err("No exif segment found in file".to_string()))
+                    }
+                } else {
+                    Some(Err(
+                        "Failed to parse jpg: cannot get exif segment".to_string()
+                    ))
+                }
+            } else if file_extension == "png" {
+                let png_size = offset + length;
+                let parsed_data = PngData::parse(binary_file);
+                if let Some(png_data) = parsed_data {
+                    if let Some(chunk) = png_data
+                        .chunks
+                        .iter()
+                        .find(|chunk| chunk.chunk_type == "eXIf")
+                    {
+                        let offset_exif = chunk.start + OFFSET_EXIF_PNG;
+                        let start = offset_exif + *offset as usize;
+                        let end = offset_exif + png_size as usize - 1;
+                        let range_res = (start, end);
+                        Some(Ok(range_res))
+                    } else {
+                        Some(Err("No exif chunk found in file".to_string()))
+                    }
+                } else {
+                    Some(Err(
+                        "Failed to parse png: cannot get exif segment".to_string()
+                    ))
+                }
+            } else {
+                Some(Err(format!(
+                    "Cannot get exif chunk of file type: {file_extension}"
+                )))
+            }
+        } else {
+            Some(Err("Failed to get Thumbnail".to_string()))
+        }
+    } else {
+        None
     }
 }
 
@@ -250,11 +293,12 @@ impl WombatApp {
         let Some(document) = self.documents.get_current_doc_mut() else {
             return;
         };
+        let extension = document.get_file_format().extension.clone();
         let metadata = &mut document.windows_data.metadata;
         if metadata.is_open {
             let mut is_open = metadata.is_open;
             if metadata.exif_data.is_none() {
-                metadata.parse_exif(&document.binary_file);
+                metadata.parse_exif(&document.binary_file, &extension);
             }
             egui::Window::new("Metadata")
                 .open(&mut is_open)

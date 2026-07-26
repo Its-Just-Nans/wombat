@@ -5,7 +5,7 @@
 mod cert;
 pub(crate) mod jpg;
 mod mp4;
-mod png;
+pub(crate) mod png;
 mod raw;
 mod xml;
 mod zip;
