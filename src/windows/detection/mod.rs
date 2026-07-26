@@ -3,7 +3,7 @@
 #![cfg(feature = "detection")]
 
 mod cert;
-mod jpg;
+pub(crate) mod jpg;
 mod mp4;
 mod png;
 mod raw;
