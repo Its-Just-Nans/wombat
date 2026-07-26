@@ -212,11 +212,10 @@ impl WombatApp {
                                         document.binary_file.get(thumb.0..=thumb.1)
                                         && ui.button("Open thumbnail in new document").clicked()
                                     {
-                                        let doc = Document {
-                                            binary_file: data.to_vec(),
-                                            filename: PathBuf::from("extracted.jpg"),
-                                            ..Default::default()
-                                        };
+                                        let doc = Document::new(
+                                            data.to_vec(),
+                                            PathBuf::from("extracted.jpg"),
+                                        );
                                         Some(doc)
                                     } else {
                                         None

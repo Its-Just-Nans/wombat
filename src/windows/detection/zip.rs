@@ -160,7 +160,7 @@ impl WombatApp {
                 if let EntryType::File = one_file.entry_type
                     && ui.button("Extract").clicked()
                 {
-                    let reader = Cursor::new(&document.binary_file);
+                    let reader = Cursor::new(&*document.binary_file);
                     let Ok(mut archive) = zip::ZipArchive::new(reader) else {
                         return;
                     };
@@ -168,11 +168,7 @@ impl WombatApp {
                     if let Ok(mut file) = archive.by_index(one_file.index) {
                         let mut buffer = Vec::new();
                         if file.read_to_end(&mut buffer).is_ok() {
-                            extracted_file = Some(Document {
-                                binary_file: buffer,
-                                filename: one_file.filename.clone(),
-                                ..Default::default()
-                            });
+                            extracted_file = Some(Document::new(buffer, one_file.filename.clone()));
                         }
                     }
                 }

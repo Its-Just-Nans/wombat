@@ -6,6 +6,7 @@ mod detection;
 mod hashing;
 mod histogram;
 mod metadata;
+mod previewer;
 mod searcher;
 #[cfg(feature = "yara")]
 mod yara;
@@ -13,12 +14,14 @@ mod yara;
 pub(crate) mod exporter;
 pub(crate) mod importer;
 
-use crate::{WombatApp, panels::FileInfoData, windows::metadata::Metadata};
+use crate::{WombatApp, panels::FileInfoData};
 
 use bladvak::{ErrorManager, eframe::egui};
 
 use file_format::FileFormat;
 use histogram::Histogram;
+use metadata::Metadata;
+use previewer::Previewer;
 use searcher::Searcher;
 
 /// File info
@@ -30,6 +33,8 @@ pub struct WindowsData {
     pub(crate) searcher: Searcher,
     /// metadata
     pub(crate) metadata: Metadata,
+    /// previewer
+    pub(crate) previewer: Previewer,
     /// detection
     #[cfg(feature = "detection")]
     pub(crate) detection: detection::Detection,
@@ -48,6 +53,7 @@ impl WindowsData {
         Self {
             histogram: Histogram::new(),
             metadata: Metadata::default(),
+            previewer: Previewer::default(),
             #[cfg(feature = "detection")]
             detection: detection::Detection::new(),
             searcher: Searcher::new(),
@@ -61,6 +67,7 @@ impl WindowsData {
     /// reset data
     pub(crate) fn reset(&mut self) {
         self.histogram.reset();
+        self.previewer.reset();
         self.metadata.reset();
         #[cfg(feature = "detection")]
         self.detection.reset();
@@ -82,6 +89,7 @@ impl WindowsData {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.searcher.is_open, "Searcher");
         ui.toggle_value(&mut self.metadata.is_open, "Metadata");
+        ui.toggle_value(&mut self.previewer.is_open, "Previewer");
         #[cfg(feature = "detection")]
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
@@ -114,7 +122,7 @@ impl WombatApp {
             .yara
             .ui(&document.binary_file, ui, error_manager);
         if document.file_format.is_none() {
-            let file_fmt = FileFormat::from_bytes(&document.binary_file);
+            let file_fmt = FileFormat::from_bytes(&*document.binary_file);
             let data = FileInfoData {
                 kind: file_fmt.kind(),
                 file_type: file_fmt.media_type().to_string(),
@@ -132,6 +140,10 @@ impl WombatApp {
         ) {
             document.go_to_range(range);
         }
+        document
+            .windows_data
+            .previewer
+            .ui(ui, error_manager, &document.binary_file);
         self.show_metadata_ui(ui, error_manager);
         #[cfg(feature = "detection")]
         if let Some(range) = self.show_detection_ui(ui, error_manager)

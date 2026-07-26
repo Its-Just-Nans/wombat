@@ -1,6 +1,6 @@
 //! Selection
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use bladvak::{
     ErrorManager,
@@ -200,7 +200,7 @@ impl BladvakPanel for PanelSelection {
             if document.binary_file.get(range.clone()).is_some()
                 && ui.button("Delete selection").clicked()
             {
-                document.binary_file.drain(range.clone());
+                Arc::make_mut(&mut document.binary_file).drain(range.clone());
                 *select1 = select1.checked_sub(1).unwrap_or(0);
                 *select2 = select1.checked_add(1).unwrap_or(0);
                 mark_selection_stale = true;
@@ -209,11 +209,7 @@ impl BladvakPanel for PanelSelection {
             if let Some(selection) = document.binary_file.get(range.clone())
                 && ui.button("Open in new document").clicked()
             {
-                let doc = Document {
-                    binary_file: selection.to_vec(),
-                    filename: PathBuf::from("selected.bin"),
-                    ..Default::default()
-                };
+                let doc = Document::new(selection.to_vec(), PathBuf::from("selected.bin"));
                 app.documents.push(doc);
             }
         } else {

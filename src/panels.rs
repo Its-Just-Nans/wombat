@@ -69,7 +69,7 @@ impl BladvakPanel for FileInfo {
                 ui.label(format!("Extension: .{}", fmt.extension));
             });
         } else if ui.button("Get file info").clicked() {
-            let file_fmt = FileFormat::from_bytes(&document.binary_file);
+            let file_fmt = FileFormat::from_bytes(&*document.binary_file);
             let data = FileInfoData {
                 kind: file_fmt.kind(),
                 file_type: file_fmt.media_type().to_string(),

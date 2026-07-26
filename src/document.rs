@@ -2,6 +2,7 @@
 
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use bladvak::utils::document::DocumentTrait;
 
@@ -15,7 +16,7 @@ use crate::windows::WindowsData;
 pub(crate) struct Document {
     /// Binary file data
     #[serde(skip)]
-    pub(crate) binary_file: Vec<u8>,
+    pub(crate) binary_file: Arc<Vec<u8>>,
     /// Filename of the file
     #[serde(skip)]
     pub(crate) filename: PathBuf,
@@ -35,7 +36,7 @@ pub(crate) struct Document {
 impl Default for Document {
     fn default() -> Self {
         Self {
-            binary_file: vec![],
+            binary_file: Arc::new(vec![]),
             filename: PathBuf::new(),
             selection: Selection::default(),
             offset: Offset::default(),
@@ -47,6 +48,14 @@ impl Default for Document {
 }
 
 impl Document {
+    /// create a new document
+    pub(crate) fn new(bytes: Vec<u8>, filename: PathBuf) -> Self {
+        Self {
+            binary_file: Arc::new(bytes),
+            filename,
+            ..Default::default()
+        }
+    }
     /// Go to the selected range
     pub(crate) fn go_to_range(&mut self, range: RangeInclusive<usize>) {
         let start = *range.start();

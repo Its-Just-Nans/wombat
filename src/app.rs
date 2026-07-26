@@ -43,11 +43,7 @@ const LOGO_ASSET: &[u8] = include_bytes!("../assets/icon-1024.png");
 impl Default for WombatApp {
     fn default() -> Self {
         let File { data, path } = Self::load_default_file();
-        let document = Document {
-            binary_file: data,
-            filename: path,
-            ..Default::default()
-        };
+        let document = Document::new(data, path);
         let mut documents = Documents::default();
         documents.push(document);
         Self {
@@ -102,11 +98,7 @@ impl BladvakApp<'_> for WombatApp {
     }
 
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
-        let mut document = Document {
-            binary_file: file.data,
-            filename: file.path,
-            ..Default::default()
-        };
+        let mut document = Document::new(file.data, file.path);
         let file_len = document.binary_file.len();
         self.stale();
         self.stale_selection();
@@ -206,11 +198,7 @@ impl BladvakApp<'_> for WombatApp {
                 let bytes = std::fs::read(&absolute_path).map_err(|e| {
                     format!("Unable to read file '{}': {e}", absolute_path.display())
                 })?;
-                let document = Document {
-                    binary_file: bytes,
-                    filename: absolute_path,
-                    ..Default::default()
-                };
+                let document = Document::new(bytes, absolute_path);
                 app.documents.push(document);
             }
             Ok(app)
