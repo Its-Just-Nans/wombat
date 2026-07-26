@@ -50,7 +50,7 @@ impl Previewer {
                     self.texture = Some(Err("Failed to load image from memory".to_string()));
                 }
             } else {
-                self.texture = Some(Err(format!("Cannot preview "{kind:?}" for the moment")));
+                self.texture = Some(Err(format!("Cannot preview '{kind:?}' for the moment")));
             }
         }
         if self.is_open {
