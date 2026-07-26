@@ -5,6 +5,7 @@ mod detection;
 #[cfg(feature = "hashing")]
 mod hashing;
 mod histogram;
+mod metadata;
 mod searcher;
 #[cfg(feature = "yara")]
 mod yara;
@@ -12,7 +13,7 @@ mod yara;
 pub(crate) mod exporter;
 pub(crate) mod importer;
 
-use crate::{WombatApp, panels::FileInfoData};
+use crate::{WombatApp, panels::FileInfoData, windows::metadata::Metadata};
 
 use bladvak::{ErrorManager, eframe::egui};
 
@@ -27,7 +28,8 @@ pub struct WindowsData {
     pub(crate) histogram: Histogram,
     /// searcher
     pub(crate) searcher: Searcher,
-
+    /// metadata
+    pub(crate) metadata: Metadata,
     /// detection
     #[cfg(feature = "detection")]
     pub(crate) detection: detection::Detection,
@@ -45,6 +47,7 @@ impl WindowsData {
     pub(crate) fn new() -> Self {
         Self {
             histogram: Histogram::new(),
+            metadata: Metadata::default(),
             #[cfg(feature = "detection")]
             detection: detection::Detection::new(),
             searcher: Searcher::new(),
@@ -58,6 +61,7 @@ impl WindowsData {
     /// reset data
     pub(crate) fn reset(&mut self) {
         self.histogram.reset();
+        self.metadata.reset();
         #[cfg(feature = "detection")]
         self.detection.reset();
         self.searcher.reset();
@@ -77,6 +81,7 @@ impl WindowsData {
     pub(crate) fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.searcher.is_open, "Searcher");
+        ui.toggle_value(&mut self.metadata.is_open, "Metadata");
         #[cfg(feature = "detection")]
         ui.toggle_value(&mut self.detection.is_open, "Detection");
         #[cfg(feature = "hashing")]
@@ -118,6 +123,7 @@ impl WombatApp {
             };
             document.file_format = Some(data);
         }
+
         if let Some(range) = document.windows_data.searcher.ui(
             &document.binary_file,
             &document.selection,
@@ -126,6 +132,7 @@ impl WombatApp {
         ) {
             document.go_to_range(range);
         }
+        self.show_metadata_ui(ui, error_manager);
         #[cfg(feature = "detection")]
         if let Some(range) = self.show_detection_ui(ui, error_manager)
             && let Some(document) = self.documents.get_current_doc_mut()

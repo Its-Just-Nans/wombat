@@ -1,17 +1,19 @@
 //! Selection
 
+use std::path::PathBuf;
+
 use bladvak::{
     ErrorManager,
     app::BladvakPanel,
     eframe::egui::{self, Color32, Theme},
 };
 
-use crate::WombatApp;
 use crate::display_settings::Accent;
 use crate::ui_table::ui_table_u16;
 use crate::ui_table::ui_table_u32;
 use crate::ui_table::ui_table_u64;
 use crate::ui_table::ui_table_u128;
+use crate::{WombatApp, document::Document};
 
 /// Selection
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -203,6 +205,16 @@ impl BladvakPanel for PanelSelection {
                 *select2 = select1.checked_add(1).unwrap_or(0);
                 mark_selection_stale = true;
                 mark_stale = true;
+            }
+            if let Some(selection) = document.binary_file.get(range.clone())
+                && ui.button("Open in new document").clicked()
+            {
+                let doc = Document {
+                    binary_file: selection.to_vec(),
+                    filename: PathBuf::from("selected.bin"),
+                    ..Default::default()
+                };
+                app.documents.push(doc);
             }
         } else {
             ui.label("No selection");
