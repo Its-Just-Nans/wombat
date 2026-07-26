@@ -21,7 +21,7 @@ use mvhd::Mvhd;
 use stsd::StsdBox;
 use stsz::StszBox;
 
-use crate::windows::detection::mp4::{co64::Co64Box, stco::StcoBox, stsc::StscBox, stts::SttsBox};
+use crate::windows::parsing::mp4::{co64::Co64Box, stco::StcoBox, stsc::StscBox, stts::SttsBox};
 
 /// Box header size
 const BOX_HEADER_SIZE: usize = 8;

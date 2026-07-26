@@ -11,8 +11,8 @@ use exif::Exif;
 
 use crate::WombatApp;
 use crate::document::Document;
-use crate::windows::detection::jpg::{Marker, parse_jpeg};
-use crate::windows::detection::png::PngData;
+use crate::windows::parsing::jpg::{Marker, parse_jpeg};
+use crate::windows::parsing::png::PngData;
 
 /// Exif data
 #[derive(serde::Serialize, serde::Deserialize)]

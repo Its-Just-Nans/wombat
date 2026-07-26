@@ -8,7 +8,7 @@ use std::{
 
 use bladvak::eframe::egui;
 
-use crate::{WombatApp, document::Document, windows::detection::DetectionCache};
+use crate::{WombatApp, document::Document, windows::parsing::ParsingCache};
 
 /// Entry type
 #[derive(Debug)]
@@ -97,13 +97,13 @@ impl ZipData {
 
 impl WombatApp {
     /// show zip data
-    pub(crate) fn detection_ui_zip(&mut self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+    pub(crate) fn parsing_ui_zip(&mut self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
         let mut extracted_file = None;
         let Some(document) = self.documents.get_current_doc() else {
             ui.label("Failed to get document");
             return None;
         };
-        let DetectionCache::Zip(data) = &document.windows_data.detection.cache else {
+        let ParsingCache::Zip(data) = &document.windows_data.parsing.cache else {
             ui.label("Failed to get detection");
             return None;
         };

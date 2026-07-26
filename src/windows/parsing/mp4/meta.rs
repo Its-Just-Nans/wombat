@@ -1,7 +1,7 @@
 //! meta atom
 
-use crate::windows::detection::mp4::BOX_HEADER_SIZE;
-use crate::windows::detection::mp4::Mp4Box;
+use crate::windows::parsing::mp4::BOX_HEADER_SIZE;
+use crate::windows::parsing::mp4::Mp4Box;
 
 /// Meta
 #[derive(Debug)]

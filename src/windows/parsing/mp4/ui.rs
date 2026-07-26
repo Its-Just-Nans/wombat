@@ -2,8 +2,8 @@
 
 use std::ops::RangeInclusive;
 
-use crate::windows::detection::mp4::Ftyp;
-use crate::windows::detection::mp4::{Mp4Box, Mp4BoxData, Mp4Data};
+use crate::windows::parsing::mp4::Ftyp;
+use crate::windows::parsing::mp4::{Mp4Box, Mp4BoxData, Mp4Data};
 use bladvak::eframe::egui::{self, CollapsingHeader};
 
 /// Show the UI of the cached data

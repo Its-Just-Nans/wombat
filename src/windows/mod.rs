@@ -1,11 +1,11 @@
 //! Wombat windows
 
-#[cfg(feature = "detection")]
-mod detection;
 #[cfg(feature = "hashing")]
 mod hashing;
 mod histogram;
 mod metadata;
+#[cfg(feature = "parsing")]
+mod parsing;
 mod previewer;
 mod searcher;
 #[cfg(feature = "yara")]
@@ -34,9 +34,9 @@ pub struct WindowsData {
     pub(crate) metadata: Metadata,
     /// previewer
     pub(crate) previewer: Previewer,
-    /// detection
-    #[cfg(feature = "detection")]
-    pub(crate) detection: detection::Detection,
+    /// parsing
+    #[cfg(feature = "parsing")]
+    pub(crate) parsing: parsing::Parsing,
 
     /// hashing
     #[cfg(feature = "hashing")]
@@ -53,8 +53,8 @@ impl WindowsData {
             histogram: Histogram::new(),
             metadata: Metadata::default(),
             previewer: Previewer::default(),
-            #[cfg(feature = "detection")]
-            detection: detection::Detection::new(),
+            #[cfg(feature = "parsing")]
+            parsing: parsing::Parsing::new(),
             searcher: Searcher::new(),
             #[cfg(feature = "hashing")]
             hashing: hashing::Hashing::new(),
@@ -68,8 +68,8 @@ impl WindowsData {
         self.histogram.reset();
         self.previewer.reset();
         self.metadata.reset();
-        #[cfg(feature = "detection")]
-        self.detection.reset();
+        #[cfg(feature = "parsing")]
+        self.parsing.reset();
         self.searcher.reset();
         #[cfg(feature = "hashing")]
         self.hashing.reset();
@@ -89,8 +89,8 @@ impl WindowsData {
         ui.toggle_value(&mut self.searcher.is_open, "Searcher");
         ui.toggle_value(&mut self.metadata.is_open, "Metadata");
         ui.toggle_value(&mut self.previewer.is_open, "Previewer");
-        #[cfg(feature = "detection")]
-        ui.toggle_value(&mut self.detection.is_open, "Detection");
+        #[cfg(feature = "parsing")]
+        ui.toggle_value(&mut self.parsing.is_open, "Parsing");
         #[cfg(feature = "hashing")]
         ui.toggle_value(&mut self.hashing.is_open, hashing::Hashing::window_title());
         #[cfg(feature = "yara")]
@@ -134,8 +134,8 @@ impl WombatApp {
             .previewer
             .ui(ui, error_manager, &document.binary_file, kind);
         self.show_metadata_ui(ui, error_manager);
-        #[cfg(feature = "detection")]
-        if let Some(range) = self.show_detection_ui(ui, error_manager)
+        #[cfg(feature = "parsing")]
+        if let Some(range) = self.show_parsing_ui(ui, error_manager)
             && let Some(document) = self.documents.get_current_doc_mut()
         {
             document.go_to_range(range);
