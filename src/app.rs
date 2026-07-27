@@ -196,8 +196,7 @@ impl BladvakApp<'_> for WombatApp {
                 let absolute_path = match fs::canonicalize(one_path) {
                     Ok(path) => path,
                     Err(e) => {
-                        error_manager
-                            .add_error(format!("Unable to access path '{one_path}': {e}"));
+                        error_manager.add_error(format!("Unable to access path '{one_path}': {e}"));
                         continue;
                     }
                 };
