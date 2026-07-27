@@ -182,7 +182,7 @@ impl BladvakApp<'_> for WombatApp {
         saved_state: Self,
         cc: &CreationContext<'_>,
         args: &[String],
-        _error_manager: &mut ErrorManager,
+        error_manager: &mut ErrorManager,
     ) -> Result<Self, AppError> {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
@@ -193,11 +193,24 @@ impl BladvakApp<'_> for WombatApp {
             let mut app = saved_state;
             app.documents.clear();
             for one_path in &args[1..] {
-                let absolute_path = fs::canonicalize(one_path)
-                    .map_err(|e| format!("Unable to canonicalize path '{one_path}': {e}"))?;
-                let bytes = std::fs::read(&absolute_path).map_err(|e| {
-                    format!("Unable to read file '{}': {e}", absolute_path.display())
-                })?;
+                let absolute_path = match fs::canonicalize(one_path) {
+                    Ok(path) => path,
+                    Err(e) => {
+                        error_manager
+                            .add_error(format!("Unable to access path '{one_path}': {e}"));
+                        continue;
+                    }
+                };
+                let bytes = match std::fs::read(&absolute_path) {
+                    Ok(bytes) => bytes,
+                    Err(e) => {
+                        error_manager.add_error(format!(
+                            "Unable to read file '{}': {e}",
+                            absolute_path.display()
+                        ));
+                        continue;
+                    }
+                };
                 let document = Document::new(bytes, absolute_path);
                 app.documents.push(document);
             }

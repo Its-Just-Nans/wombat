@@ -14,6 +14,8 @@ pub(crate) struct Previewer {
     /// egui texture
     #[serde(skip)]
     texture: Option<Result<egui::TextureHandle, String>>,
+    /// image max width
+    img_max_width: f32,
 }
 
 impl std::fmt::Debug for Previewer {
@@ -35,17 +37,18 @@ impl Previewer {
     ) {
         if self.texture.is_none() {
             if kind == Kind::Image {
+                #[allow(clippy::cast_precision_loss)]
                 if let Ok(img) = image::load_from_memory(binary_file) {
                     let img = img.to_rgba8();
                     let size = [img.width() as usize, img.height() as usize];
 
                     let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &img);
 
-                    self.texture = Some(Ok(ui.ctx().load_texture(
-                        "image",
-                        color_image,
-                        egui::TextureOptions::LINEAR,
-                    )));
+                    let texture =
+                        ui.ctx()
+                            .load_texture("image", color_image, egui::TextureOptions::LINEAR);
+                    self.img_max_width = texture.size()[0] as f32;
+                    self.texture = Some(Ok(texture));
                 } else {
                     self.texture = Some(Err("Failed to load image from memory".to_string()));
                 }
@@ -62,7 +65,15 @@ impl Previewer {
                     if let Some(res_texture) = &self.texture {
                         match res_texture {
                             Ok(texture) => {
-                                ui.image(texture);
+                                let img_max = texture.size()[0];
+                                ui.horizontal(|ui| {
+                                    ui.label("Max width: ");
+                                    ui.add(
+                                        egui::DragValue::new(&mut self.img_max_width)
+                                            .range(0..=img_max),
+                                    );
+                                });
+                                ui.add(egui::Image::new(texture).max_width(self.img_max_width));
                             }
                             Err(e) => {
                                 ui.label(e);
