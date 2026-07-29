@@ -47,7 +47,14 @@ impl Previewer {
                     let texture =
                         ui.ctx()
                             .load_texture("image", color_image, egui::TextureOptions::LINEAR);
-                    self.img_max_width = texture.size()[0] as f32;
+                    let width = texture.size()[0] as f32;
+                    let available_width = ui.available_width();
+                    let width = if available_width < width && available_width > 0.0 {
+                        available_width.floor()
+                    } else {
+                        width
+                    };
+                    self.img_max_width = width;
                     self.texture = Some(Ok(texture));
                 } else {
                     self.texture = Some(Err("Failed to load image from memory".to_string()));
