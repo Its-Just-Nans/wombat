@@ -81,8 +81,8 @@ impl BladvakPanel for FileInfo {
                     egui::DragValue::new(&mut document.offset.line_to_go)
                         .custom_parser(|v| {
                             if v.chars().all(|c| c.is_ascii_digit()) {
-                            v.parse::<f64>().ok()
-                        } else {
+                                v.parse::<f64>().ok()
+                            } else {
                                 #[allow(clippy::cast_precision_loss)]
                                 u64::from_str_radix(v.trim_start_matches("0x"), 16)
                                     .ok()
