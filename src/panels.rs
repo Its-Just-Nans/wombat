@@ -73,7 +73,14 @@ impl BladvakPanel for FileInfo {
 
         ui.separator();
         ui.label("Line length");
-        ui.add(egui::Slider::new(&mut document.bytes_per_line, 1..=64));
+        if ui.available_width() > 205.0 {
+            ui.add(egui::Slider::new(
+                &mut document.bytes_per_line,
+                1..=64,
+            ));
+        } else {
+            ui.add(egui::DragValue::new(&mut self.document.bytes_per_line).range(0..=64));
+        }
         ui.separator();
         let show_buttons = |ui: &mut egui::Ui| {
             if ui
