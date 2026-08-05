@@ -114,7 +114,7 @@ impl BladvakPanel for FileInfo {
             ui.horizontal(show_buttons);
         } else {
             ui.vertical(show_buttons);
-        }         
+        }
     }
 
     fn ui_settings(
