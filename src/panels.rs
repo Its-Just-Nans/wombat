@@ -41,24 +41,7 @@ impl BladvakPanel for FileInfo {
             return;
         };
         ui.label(format!("File: {}", document.filename.display()));
-        ui.label(format!("{} bytes", document.binary_file.len()));
-        #[allow(clippy::cast_precision_loss)]
-        let binary_len = document.binary_file.len() as f64;
-
-        let size_kb = binary_len / 1000.0;
-        if size_kb > 1.0 {
-            ui.label(format!("{:.3} KiB", binary_len / 1024.0))
-                .on_hover_text(format!("{binary_len} / 1024"));
-            ui.label(format!("{size_kb:.3} KB"))
-                .on_hover_text(format!("{binary_len} / 1000"));
-        }
-        let size_megab = binary_len / 1000.0 / 1000.0;
-        if size_megab > 1.0 {
-            ui.label(format!("{:.3} MiB", binary_len / 1024.0 / 1024.0))
-                .on_hover_text(format!("{binary_len} / (1024^2)"));
-            ui.label(format!("{size_megab:.3} MB"))
-                .on_hover_text(format!("{binary_len} / (1000^2)"));
-        }
+        bladvak::utils::show_size(ui, document.binary_file.len());
 
         if let Some(fmt) = &document.file_format {
             ui.collapsing("File info", |ui| {
