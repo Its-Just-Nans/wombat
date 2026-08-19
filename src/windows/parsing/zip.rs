@@ -7,6 +7,7 @@ use std::{
 };
 
 use bladvak::eframe::egui;
+use zip::HasZipMetadata;
 
 use crate::{WombatApp, document::Document, windows::parsing::ParsingCache};
 
@@ -24,6 +25,10 @@ pub(crate) enum EntryType {
 pub(crate) struct ZipFile {
     /// index
     pub(crate) index: usize,
+    /// local header start
+    pub(crate) local_header_start: usize,
+    /// central header start
+    pub(crate) central_header_start: usize,
     /// file type
     pub(crate) entry_type: EntryType,
     /// filename
@@ -84,8 +89,14 @@ impl ZipData {
             } else {
                 EntryType::File
             };
+            #[allow(clippy::cast_possible_truncation)]
+            let local_header_start = file.get_metadata().header_start as usize;
+            #[allow(clippy::cast_possible_truncation)]
+            let central_header_start = file.get_metadata().central_header_start as usize;
             files.push(ZipFile {
                 index,
+                local_header_start,
+                central_header_start,
                 entry_type,
                 filename,
                 compression,
@@ -104,7 +115,7 @@ impl WombatApp {
     /// show zip data
     pub(crate) fn parsing_ui_zip(&mut self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
         let mut extracted_file = None;
-        let Some(document) = self.documents.get_current_doc() else {
+        let Some(document) = self.documents.get_current_doc_mut() else {
             ui.label("Failed to get document");
             return None;
         };
@@ -120,6 +131,7 @@ impl WombatApp {
                 return None;
             }
         };
+        let mut go_to_range = None;
         for (one_idx, one_file) in data.files.iter().enumerate() {
             egui::CollapsingHeader::new(format!(
                 "{}: {} {}",
@@ -166,6 +178,16 @@ impl WombatApp {
                         ui.label(one_file.comment.clone());
                         ui.end_row();
                     });
+                if ui.button("Local block").clicked() {
+                    let start = one_file.local_header_start;
+                    let end = start + (30 - 1);
+                    go_to_range = Some(start..=end);
+                }
+                if ui.button("Central block").clicked() {
+                    let start = one_file.central_header_start;
+                    let end = start + (46 - 1);
+                    go_to_range = Some(start..=end);
+                }
                 if let EntryType::File = one_file.entry_type
                     && ui.button("Extract").clicked()
                 {
@@ -182,6 +204,9 @@ impl WombatApp {
                     }
                 }
             });
+        }
+        if let Some(range) = go_to_range {
+            document.go_to_range(range);
         }
         if let Some(extracted) = extracted_file {
             self.documents.push(extracted);
