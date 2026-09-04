@@ -35,6 +35,8 @@ pub struct WombatApp {
     pub(crate) importer: Importer,
     /// exporter
     pub(crate) exporter: Exporter,
+    /// font definitions
+    pub(crate) fonts_definitions: egui::FontDefinitions,
 }
 
 /// default file (wombat icon)
@@ -52,6 +54,7 @@ impl Default for WombatApp {
             visual_debug: false,
             importer: Importer::new(),
             exporter: Exporter::new(),
+            fonts_definitions: egui::FontDefinitions::default(),
         }
     }
 }

@@ -16,7 +16,7 @@ pub(crate) mod importer;
 
 use crate::WombatApp;
 
-use bladvak::{ErrorManager, eframe::egui};
+use bladvak::{ErrorManager, eframe::egui, utils::document::DocumentTrait};
 
 use detection::Detection;
 use histogram::Histogram;
@@ -129,10 +129,14 @@ impl WombatApp {
             document.go_to_range(range);
         }
         let kind = document.get_file_format().kind;
-        document
-            .windows_data
-            .previewer
-            .ui(ui, error_manager, &document.binary_file, kind);
+        document.windows_data.previewer.ui(
+            ui,
+            error_manager,
+            &mut self.fonts_definitions,
+            &format!("{}", document.name()),
+            &document.binary_file,
+            kind,
+        );
         self.show_detection_ui(ui, error_manager);
         #[cfg(feature = "parsing")]
         if let Some(range) = self.show_parsing_ui(ui, error_manager)

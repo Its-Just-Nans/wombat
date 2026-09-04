@@ -42,7 +42,14 @@ pub(crate) struct Previewer {
 
 impl Previewer {
     /// preapre the ui by loading it
-    pub(crate) fn prepare_ui(&mut self, ui: &egui::Ui, binary_file: &Arc<Vec<u8>>, kind: Kind) {
+    pub(crate) fn prepare_ui(
+        &mut self,
+        ui: &egui::Ui,
+        fonts_definitions: &mut egui::FontDefinitions,
+        filename: &str,
+        binary_file: &Arc<Vec<u8>>,
+        kind: Kind,
+    ) {
         if self.data == PreviewData::None {
             if kind == Kind::Image {
                 #[allow(clippy::cast_precision_loss)]
@@ -68,20 +75,18 @@ impl Previewer {
                         PreviewData::Image(Err("Failed to load image from memory".to_string()));
                 }
             } else if kind == Kind::Font {
-                let mut fonts = egui::FontDefinitions::default();
-
-                let font_name = "font_preview";
-                fonts.font_data.insert(
-                    font_name.to_owned(),
+                let font_name = filename.to_string();
+                fonts_definitions.font_data.insert(
+                    font_name.clone(),
                     std::sync::Arc::new(egui::FontData::from_owned((*binary_file).to_vec())),
                 );
-                let font_family = egui::FontFamily::Name("font_family_preview".into());
+                let font_family = egui::FontFamily::Name(font_name.clone().into());
                 // Register the custom family with the preview font as its only font.
-                fonts
+                fonts_definitions
                     .families
-                    .insert(font_family.clone(), vec![font_name.to_owned()]);
+                    .insert(font_family.clone(), vec![font_name.clone()]);
 
-                ui.ctx().set_fonts(fonts);
+                ui.ctx().set_fonts(fonts_definitions.clone());
                 let font_id = egui::FontId::new(12.0, font_family.clone());
                 self.data = PreviewData::Font(FontPreview::new(font_id));
             } else {
@@ -94,6 +99,8 @@ impl Previewer {
         &mut self,
         ui: &mut egui::Ui,
         _error_manager: &mut ErrorManager,
+        fonts_definitions: &mut egui::FontDefinitions,
+        filename: &str,
         binary_file: &Arc<Vec<u8>>,
         kind: Kind,
     ) {
@@ -134,7 +141,7 @@ impl Previewer {
                 });
             self.is_open = is_open;
         }
-        self.prepare_ui(ui, binary_file, kind);
+        self.prepare_ui(ui, fonts_definitions, filename, binary_file, kind);
     }
 
     /// reset
