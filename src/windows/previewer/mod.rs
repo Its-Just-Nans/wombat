@@ -41,7 +41,7 @@ pub(crate) struct Previewer {
 }
 
 impl Previewer {
-    /// preapre the ui by loading it
+    /// prepare the ui by loading it
     pub(crate) fn prepare_ui(
         &mut self,
         ui: &egui::Ui,
