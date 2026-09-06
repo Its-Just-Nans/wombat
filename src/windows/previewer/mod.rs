@@ -87,8 +87,7 @@ impl Previewer {
                     .insert(font_family.clone(), vec![font_name.clone()]);
 
                 ui.ctx().set_fonts(fonts_definitions.clone());
-                let font_id = egui::FontId::new(12.0, font_family.clone());
-                self.data = PreviewData::Font(FontPreview::new(font_id));
+                self.data = PreviewData::Font(FontPreview::new(font_family));
             } else {
                 self.data = PreviewData::Error(format!("Cannot preview '{kind:?}' for the moment"));
             }
