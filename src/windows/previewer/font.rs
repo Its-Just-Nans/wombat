@@ -1,6 +1,6 @@
 //! Font preview
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use bladvak::{
     eframe::egui::{self, Slider},
@@ -26,6 +26,28 @@ impl FontPreview {
             available_glyphs: BTreeSet::new(),
             text: "The quick brown fox jumps over the lazy dog".to_string(),
         }
+    }
+
+    /// Prepare the ui data
+    pub(crate) fn prepare_ui(
+        ui: &egui::Ui,
+        binary_file: &Arc<Vec<u8>>,
+        filename: &str,
+        fonts_definitions: &mut egui::FontDefinitions,
+    ) -> Self {
+        let font_name = filename.to_string();
+        fonts_definitions.font_data.insert(
+            font_name.clone(),
+            std::sync::Arc::new(egui::FontData::from_owned((*binary_file).to_vec())),
+        );
+        let font_family = egui::FontFamily::Name(font_name.clone().into());
+        // Register the custom family with the preview font as its only font.
+        fonts_definitions
+            .families
+            .insert(font_family.clone(), vec![font_name.clone()]);
+
+        ui.ctx().set_fonts(fonts_definitions.clone());
+        Self::new(font_family)
     }
     /// Show Ui
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
