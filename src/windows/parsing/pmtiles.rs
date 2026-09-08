@@ -136,14 +136,14 @@ impl PmTilesHeader {
             }
         });
         ui.horizontal(|ui| {
-            ui.label("Metaself.Offset");
+            ui.label("Metadata Offset");
             ui.label(self.metadata_offset.to_string());
             if ui.button("Show").clicked() {
                 return_range = Some(24..=31);
             }
         });
         ui.horizontal(|ui| {
-            ui.label("Metaself.Length");
+            ui.label("Metadata Length");
             ui.label(self.metadata_len.to_string());
             if ui.button("Show").clicked() {
                 return_range = Some(32..=39);
