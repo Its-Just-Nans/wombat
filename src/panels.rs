@@ -7,6 +7,7 @@ use bladvak::{BladvakApp, File};
 use std::path::PathBuf;
 
 use crate::WombatApp;
+use crate::windows::hex::hex_viewer_settings;
 
 /// File info
 #[derive(Debug, Default)]
@@ -55,53 +56,7 @@ impl BladvakPanel for FileInfo {
         }
 
         ui.separator();
-        ui.label("Line length");
-        if ui.available_width() > 205.0 {
-            ui.add(egui::Slider::new(&mut document.bytes_per_line, 1..=64));
-        } else {
-            ui.add(egui::DragValue::new(&mut document.bytes_per_line).range(0..=64));
-        }
-        ui.separator();
-        let show_buttons = |ui: &mut egui::Ui| {
-            if ui
-                .add(
-                    egui::DragValue::new(&mut document.offset.line_to_go)
-                        .custom_parser(|v| {
-                            if v.chars().all(|c| c.is_ascii_digit()) {
-                                v.parse::<f64>().ok()
-                            } else {
-                                #[allow(clippy::cast_precision_loss)]
-                                u64::from_str_radix(v.trim_start_matches("0x"), 16)
-                                    .ok()
-                                    .map(|n| n as f64)
-                            }
-                        })
-                        .speed(1.0),
-                )
-                .dragged()
-            {
-                document.offset.need_change = true;
-            }
-            if ui.button("Go to line").clicked() {
-                document.offset.need_change = true;
-            }
-            let line_to_go = document.offset.line_to_go / document.bytes_per_line;
-            if ui
-                .button("Go to index")
-                .on_hover_text(format!(
-                    "Go to line {line_to_go}\nDivide by the number of bytes per line"
-                ))
-                .clicked()
-            {
-                document.offset.line_to_go = line_to_go;
-                document.offset.need_change = true;
-            }
-        };
-        if ui.available_width() > 205.0 {
-            ui.horizontal(show_buttons);
-        } else {
-            ui.vertical(show_buttons);
-        }
+        hex_viewer_settings(ui, document);
     }
 
     fn ui_settings(

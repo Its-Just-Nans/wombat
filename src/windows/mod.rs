@@ -1,5 +1,4 @@
 //! Wombat windows
-
 mod detection;
 #[cfg(feature = "hashing")]
 mod hashing;
@@ -12,6 +11,7 @@ mod searcher;
 mod yara;
 
 pub(crate) mod exporter;
+pub(crate) mod hex;
 pub(crate) mod importer;
 
 use crate::WombatApp;
@@ -88,9 +88,9 @@ impl WindowsData {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.searcher.is_open, "Searcher");
         ui.toggle_value(&mut self.detection.is_open, "Detection");
-        ui.toggle_value(&mut self.previewer.is_open, "Previewer");
         #[cfg(feature = "parsing")]
         ui.toggle_value(&mut self.parsing.is_open, "Parsing");
+        ui.toggle_value(&mut self.previewer.is_open, "Previewer");
         #[cfg(feature = "hashing")]
         ui.toggle_value(&mut self.hashing.is_open, hashing::Hashing::window_title());
         #[cfg(feature = "yara")]
@@ -144,5 +144,6 @@ impl WombatApp {
         {
             document.go_to_range(range);
         }
+        self.show_hex_viewer_ui(ui);
     }
 }
