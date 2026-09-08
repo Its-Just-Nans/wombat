@@ -291,6 +291,18 @@ pub(crate) fn show_pmtiles_ui(
         return None;
     };
     let mut return_range = None;
+    ui.horizontal(|ui| {
+        ui.label("PMTiles");
+        if ui.button("Show").clicked() {
+            return_range = Some(0..=6);
+        }
+    });
+    ui.horizontal(|ui| {
+        ui.label("Version");
+        if ui.button("Show").clicked() {
+            return_range = Some(7..=7);
+        }
+    });
     ui.collapsing("Header", |ui| {
         if let Some(range) = data.header.ui(ui) {
             return_range = Some(range);
