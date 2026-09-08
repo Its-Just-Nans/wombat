@@ -34,9 +34,9 @@ const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
 
 impl PngData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8]) -> Option<Self> {
+    pub(crate) fn parse(binary_data: &[u8]) -> Result<Self, String> {
         if binary_data.len() < 8 || &binary_data[..8] != PNG_SIGNATURE {
-            return None;
+            return Err("Not a PNG signature".to_string());
         }
 
         let signature_hex = PNG_SIGNATURE
@@ -122,7 +122,12 @@ impl PngData {
             png_data.chunks.push(new_chunk);
             offset += 12 + length;
         }
-        Some(png_data)
+        Ok(png_data)
+    }
+
+    /// Show the ui
+    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        show_png_chunks(ui, self)
     }
 }
 /// CRC32 (IEEE) implementation
@@ -139,15 +144,7 @@ fn crc32(data: &[u8]) -> u32 {
 }
 
 /// show PNG chunks
-pub fn show_png_chunks(
-    ui: &mut egui::Ui,
-    png_data: Option<&PngData>,
-) -> Option<RangeInclusive<usize>> {
-    let Some(png_data) = png_data else {
-        ui.label("Failed to parse png");
-        return None;
-    };
-
+pub fn show_png_chunks(ui: &mut egui::Ui, png_data: &PngData) -> Option<RangeInclusive<usize>> {
     let mut return_range = None;
 
     ui.horizontal(|ui| {

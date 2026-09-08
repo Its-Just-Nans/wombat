@@ -20,14 +20,14 @@ impl XmlData {
             inner: xml_str.to_string(),
         }
     }
+    /// Show the ui
+    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        xml_tree_ui(ui, self)
+    }
 }
 
 /// Show XML tree
-pub fn xml_tree_ui(ui: &mut egui::Ui, xml: Option<&XmlData>) -> Option<RangeInclusive<usize>> {
-    let Some(xml) = xml else {
-        ui.label("Failed to parse xml");
-        return None;
-    };
+pub fn xml_tree_ui(ui: &mut egui::Ui, xml: &XmlData) -> Option<RangeInclusive<usize>> {
     let mut return_range = None;
     match Document::parse(&xml.inner) {
         Ok(doc) => {

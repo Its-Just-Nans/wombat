@@ -21,9 +21,9 @@ use crate::panels::FileInfoData;
 use crate::windows::parsing::cert::{CertData, show_certs};
 use crate::windows::parsing::jpg::{JpgData, show_jpg_data};
 use crate::windows::parsing::mp4::{Mp4Data, ui::show_mp4_ui};
-use crate::windows::parsing::png::{PngData, show_png_chunks};
-use crate::windows::parsing::raw::{StringType, show_raw_string_data};
-use crate::windows::parsing::xml::{XmlData, xml_tree_ui};
+use crate::windows::parsing::png::PngData;
+use crate::windows::parsing::raw::StringType;
+use crate::windows::parsing::xml::XmlData;
 use crate::windows::parsing::zip::ZipData;
 use pmtiles::{PmTilesData, show_pmtiles_ui};
 
@@ -31,23 +31,25 @@ use pmtiles::{PmTilesData, show_pmtiles_ui};
 #[derive(Default, Debug)]
 enum ParsingCache {
     /// png data cached
-    Png(Option<PngData>),
+    Png(PngData),
     /// jpg data cached
     Jpg(Option<JpgData>),
     /// xml data cached
-    Xml(Option<XmlData>),
+    Xml(XmlData),
     /// cert data cached
     Cert(Option<CertData>),
     /// mp4 data cached
     Mp4(Option<Mp4Data>),
     /// zip data cached
-    Zip(Result<ZipData, String>),
+    Zip(ZipData),
     /// pmtiles
     PmTiles(Option<PmTilesData>),
     /// Message
     Message(String),
     /// Raw String
-    RawString(Option<StringType>),
+    RawString(StringType),
+    /// Error
+    ErrorMessage(String),
     /// no cache
     #[default]
     Empty,
@@ -57,27 +59,30 @@ impl ParsingCache {
     /// parse to create cache
     fn parse(binary_data: &[u8], file_info: &FileInfoData, filename: &Path) -> Self {
         let filename_ext = filename.extension().unwrap_or_default().to_string_lossy();
-        for (idx, extension) in [file_info.extension.as_str(), &filename_ext]
-            .iter()
-            .enumerate()
-        {
-            if let Some(parsing_cache) = Self::parse_from_extension(binary_data, extension, idx) {
+        for extension in &[file_info.extension.as_str(), &filename_ext] {
+            if let Some(parsing_cache) = Self::parse_from_extension(binary_data, extension) {
                 return parsing_cache;
             }
+        }
+        if let Some(parsed) = StringType::parse(binary_data) {
+            return ParsingCache::RawString(parsed);
         }
         ParsingCache::Empty
     }
 
     /// parse to create cache
-    fn parse_from_extension(binary_data: &[u8], extension: &str, idx: usize) -> Option<Self> {
+    fn parse_from_extension(binary_data: &[u8], extension: &str) -> Option<Self> {
         let parsing_cache = match extension {
             "png" => {
-                let parsed = PngData::parse(binary_data);
+                let parsed = match PngData::parse(binary_data) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
                 ParsingCache::Png(parsed)
             }
             "xml" | "svg" | "html" => {
                 let parsed = XmlData::parse(binary_data);
-                ParsingCache::Xml(Some(parsed))
+                ParsingCache::Xml(parsed)
             }
             "crt" => {
                 let parsed = CertData::parse(binary_data, false);
@@ -96,12 +101,11 @@ impl ParsingCache {
                 ParsingCache::Mp4(parsed)
             }
             "zip" => {
-                let parsed = ZipData::parse(binary_data);
+                let parsed = match ZipData::parse(binary_data) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
                 ParsingCache::Zip(parsed)
-            }
-            "bin" if idx == 1 => {
-                let parsed = StringType::parse(binary_data);
-                ParsingCache::RawString(parsed)
             }
             "qoi" => ParsingCache::Message("A QOI (Quite OK Image) image".to_string()),
             "pmtiles" => ParsingCache::PmTiles(PmTilesData::parse(binary_data)),
@@ -174,9 +178,9 @@ impl WombatApp {
                     }
                     let parsing_cache = &document.windows_data.parsing.cache;
                     ret = match parsing_cache {
-                        ParsingCache::Png(data) => show_png_chunks(ui, data.as_ref()),
+                        ParsingCache::Png(data) => data.ui(ui),
                         ParsingCache::Jpg(data) => show_jpg_data(ui, data.as_ref()),
-                        ParsingCache::Xml(xml_str) => xml_tree_ui(ui, xml_str.as_ref()),
+                        ParsingCache::Xml(data) => data.ui(ui),
                         ParsingCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
                         ParsingCache::Message(str) => {
                             ui.label(str);
@@ -185,7 +189,11 @@ impl WombatApp {
                         ParsingCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
                         ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
                         ParsingCache::PmTiles(data) => show_pmtiles_ui(ui, data.as_ref()),
-                        ParsingCache::RawString(data) => show_raw_string_data(ui, data.as_ref()),
+                        ParsingCache::RawString(data) => data.ui(ui),
+                        ParsingCache::ErrorMessage(err) => {
+                            ui.label(err);
+                            None
+                        }
                         ParsingCache::Empty => {
                             ui.label("No data");
                             None

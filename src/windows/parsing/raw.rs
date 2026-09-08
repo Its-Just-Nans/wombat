@@ -104,7 +104,7 @@ impl StringType {
             } else if is_ged(s.as_bytes()) {
                 StringType::Ged
             } else {
-                StringType::Unknown
+                return None;
             };
             return Some(str_type);
         } else if is_ged(bin) {
@@ -112,17 +112,18 @@ impl StringType {
         }
         None
     }
+
+    /// Show the ui
+    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        show_raw_string_data(ui, self)
+    }
 }
 
 /// Show the ui
 pub(crate) fn show_raw_string_data(
     ui: &mut egui::Ui,
-    data: Option<&StringType>,
+    data: &StringType,
 ) -> Option<RangeInclusive<usize>> {
-    let Some(data) = data else {
-        ui.label("Unknown bin");
-        return None;
-    };
     ui.label(format!("Could be: {data}"));
     None
 }

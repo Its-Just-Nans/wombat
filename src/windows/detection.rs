@@ -51,6 +51,11 @@ pub(crate) struct Detection {
 }
 
 impl Detection {
+    /// title
+    pub(crate) fn title() -> &'static str {
+        "Forensics"
+    }
+
     /// reset
     pub(crate) fn reset(&mut self) {
         self.exif_data = None;
@@ -92,7 +97,7 @@ impl Detection {
                 }));
             }
             Err(e) => {
-                self.exif_data = Some(Err(format!("Failed to parse exif: {e}")));
+                self.exif_data = Some(Err(e.to_string()));
             }
         }
     }
@@ -145,24 +150,25 @@ fn extract_thumbnail_position(
             } else if file_extension == "png" {
                 let png_size = offset + length;
                 let parsed_data = PngData::parse(binary_file);
-                if let Some(png_data) = parsed_data {
-                    if let Some(chunk) = png_data
-                        .chunks
-                        .iter()
-                        .find(|chunk| chunk.chunk_type == "eXIf")
-                    {
-                        let offset_exif = chunk.start + OFFSET_EXIF_PNG;
-                        let start = offset_exif + *offset as usize;
-                        let end = offset_exif + png_size as usize - 1;
-                        let range_res = (start, end);
-                        Some(Ok(range_res))
-                    } else {
-                        Some(Err("No exif chunk found in file".to_string()))
+                match parsed_data {
+                    Ok(png_data) => {
+                        if let Some(chunk) = png_data
+                            .chunks
+                            .iter()
+                            .find(|chunk| chunk.chunk_type == "eXIf")
+                        {
+                            let offset_exif = chunk.start + OFFSET_EXIF_PNG;
+                            let start = offset_exif + *offset as usize;
+                            let end = offset_exif + png_size as usize - 1;
+                            let range_res = (start, end);
+                            Some(Ok(range_res))
+                        } else {
+                            Some(Err("No exif chunk found in file".to_string()))
+                        }
                     }
-                } else {
-                    Some(Err(
-                        "Failed to parse png: cannot get exif segment".to_string()
-                    ))
+                    Err(err) => Some(Err(format!(
+                        "Failed to parse png: cannot get exif segment {err}"
+                    ))),
                 }
             } else {
                 Some(Err(format!(
@@ -303,7 +309,7 @@ impl WombatApp {
             if detection.exif_data.is_none() {
                 detection.parse_exif(&document.binary_file, &extension);
             }
-            egui::Window::new("Detection")
+            egui::Window::new(Detection::title())
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {

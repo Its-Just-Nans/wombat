@@ -119,18 +119,15 @@ impl WombatApp {
             ui.label("Failed to get document");
             return None;
         };
-        let ParsingCache::Zip(cached_data) = &document.windows_data.parsing.cache else {
+        let ParsingCache::Zip(data) = &document.windows_data.parsing.cache else {
+            if let ParsingCache::ErrorMessage(err) = &document.windows_data.parsing.cache {
+                ui.label(format!("Failed to parse zip {err}"));
+                return None;
+            }
             ui.label("Failed to get detection");
             return None;
         };
-        let data = match cached_data {
-            Ok(data) => data,
-            Err(e) => {
-                ui.label("Failed to parse zip data");
-                ui.label(e);
-                return None;
-            }
-        };
+
         let mut go_to_range = None;
         for (one_idx, one_file) in data.files.iter().enumerate() {
             egui::CollapsingHeader::new(format!(

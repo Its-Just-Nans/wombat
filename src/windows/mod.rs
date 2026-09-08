@@ -87,7 +87,7 @@ impl WindowsData {
     pub(crate) fn ui_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.toggle_value(&mut self.histogram.is_open, "Histogram");
         ui.toggle_value(&mut self.searcher.is_open, "Searcher");
-        ui.toggle_value(&mut self.detection.is_open, "Detection");
+        ui.toggle_value(&mut self.detection.is_open, Detection::title());
         #[cfg(feature = "parsing")]
         ui.toggle_value(&mut self.parsing.is_open, "Parsing");
         ui.toggle_value(&mut self.previewer.is_open, "Previewer");
