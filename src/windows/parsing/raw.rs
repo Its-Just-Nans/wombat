@@ -3,10 +3,63 @@
 use std::ops::RangeInclusive;
 
 use bladvak::eframe::egui;
+use serde_json::Value;
 use uuid::Uuid;
 
-/// String Detection
+/// Raw type
 #[derive(Debug)]
+pub(crate) struct RawType {
+    /// name of the type
+    name: StringType,
+    /// data
+    data: Option<Result<String, String>>,
+}
+
+impl RawType {
+    /// parse
+    pub(crate) fn parse(bin: &[u8]) -> Option<Self> {
+        match StringType::parse(bin) {
+            Some(name) => {
+                let data = if name == StringType::Json {
+                    match std::str::from_utf8(bin) {
+                        Ok(raw_str) => {
+                            let json_value_res = serde_json::from_str::<Value>(raw_str);
+                            match json_value_res {
+                                Ok(json_value) => match serde_json::to_string_pretty(&json_value) {
+                                    Ok(res) => Some(Ok(res)),
+                                    Err(err) => {
+                                        Some(Err(format!("Failed to format JSON metadata {err}")))
+                                    }
+                                },
+                                Err(e) => Some(Err(format!("Error parsing the metadata: {e}"))),
+                            }
+                        }
+                        Err(_err) => Some(Err("Cannot convert metadata to string".to_string())),
+                    }
+                } else {
+                    None
+                };
+                Some(Self { name, data })
+            }
+            None => None,
+        }
+    }
+    /// Show ui
+    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        ui.label(format!("Could be: {}", self.name));
+        if let Some(res) = &self.data {
+            match res {
+                Ok(s) | Err(s) => {
+                    ui.label(s);
+                }
+            }
+        }
+        None
+    }
+}
+
+/// String Detection
+#[derive(Debug, PartialEq)]
 #[allow(dead_code)]
 pub(crate) enum StringType {
     /// Md5
@@ -112,18 +165,4 @@ impl StringType {
         }
         None
     }
-
-    /// Show the ui
-    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
-        show_raw_string_data(ui, self)
-    }
-}
-
-/// Show the ui
-pub(crate) fn show_raw_string_data(
-    ui: &mut egui::Ui,
-    data: &StringType,
-) -> Option<RangeInclusive<usize>> {
-    ui.label(format!("Could be: {data}"));
-    None
 }

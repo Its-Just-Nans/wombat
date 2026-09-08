@@ -3,12 +3,16 @@
 use std::ops::RangeInclusive;
 
 use bladvak::eframe::egui;
+use flate2::read::GzDecoder;
+use serde_json::Value;
 
 /// pmtiles data
 #[derive(Debug)]
 pub(crate) struct PmTilesData {
     /// header
     header: PmTilesHeader,
+    /// metadata
+    metadata: Result<Value, String>,
 }
 
 /// Position
@@ -80,39 +84,112 @@ pub(crate) struct PmTilesHeader {
 /// png signature
 const PMTILES_SIGNATURE: &[u8; 7] = b"PMTiles";
 
+/// read byte
+fn read_bytes(binary_data: &[u8], start: usize) -> Result<[u8; 8], String> {
+    let bytes = binary_data
+        .get(start..start + 8)
+        .ok_or_else(|| format!("Not enough data at offset {start}"))?;
+
+    let bytes: [u8; 8] = bytes
+        .try_into()
+        .map_err(|_| format!("Failed to read u64 at offset {start}"))?;
+
+    Ok(bytes)
+}
+
+/// read a u64 le
+fn read_u64_le(binary_data: &[u8], start: usize) -> Result<u64, String> {
+    let bytes = read_bytes(binary_data, start)?;
+    Ok(u64::from_le_bytes(bytes))
+}
+
 impl PmTilesData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8]) -> Option<Self> {
+    pub(crate) fn parse(binary_data: &[u8]) -> Result<Self, String> {
         if binary_data[0..7] != PMTILES_SIGNATURE[..] {
-            return None;
+            return Err("Wrong PMTiles Signature".to_string());
         }
         if binary_data[7] != 3 {
-            return None;
+            return Err("Wrong PMTiles version".to_string());
         }
         let header = PmTilesHeader {
-            root_directory_offset: u64::from_le_bytes(binary_data.get(8..16)?.try_into().ok()?),
-            root_directory_len: u64::from_le_bytes(binary_data.get(16..24)?.try_into().ok()?),
-            metadata_offset: u64::from_le_bytes(binary_data.get(24..32)?.try_into().ok()?),
-            metadata_len: u64::from_le_bytes(binary_data.get(32..40)?.try_into().ok()?),
-            leaf_directories_offset: u64::from_le_bytes(binary_data.get(40..48)?.try_into().ok()?),
-            leaf_directories_len: u64::from_le_bytes(binary_data.get(48..56)?.try_into().ok()?),
-            tile_data_offset: u64::from_le_bytes(binary_data.get(56..64)?.try_into().ok()?),
-            tile_data_len: u64::from_le_bytes(binary_data.get(64..72)?.try_into().ok()?),
-            num_addressed_tiles: u64::from_le_bytes(binary_data.get(72..80)?.try_into().ok()?),
-            number_tiles_entries: u64::from_le_bytes(binary_data.get(80..88)?.try_into().ok()?),
-            number_tiles_content: u64::from_le_bytes(binary_data.get(88..96)?.try_into().ok()?),
-            clustered: *binary_data.get(96)?,
-            internal_compression: *binary_data.get(97)?,
-            tile_compression: *binary_data.get(98)?,
-            tile_type: *binary_data.get(99)?,
-            min_zoom: *binary_data.get(100)?,
-            max_zoom: *binary_data.get(101)?,
-            min_position: Position::decode(binary_data.get(102..110)?.try_into().ok()?),
-            max_position: Position::decode(binary_data.get(110..118)?.try_into().ok()?),
-            center_zoom: *binary_data.get(118)?,
-            center_position: Position::decode(binary_data.get(118..126)?.try_into().ok()?),
+            root_directory_offset: read_u64_le(binary_data, 8)?,
+            root_directory_len: read_u64_le(binary_data, 16)?,
+            metadata_offset: read_u64_le(binary_data, 24)?,
+            metadata_len: read_u64_le(binary_data, 32)?,
+            leaf_directories_offset: read_u64_le(binary_data, 40)?,
+            leaf_directories_len: read_u64_le(binary_data, 48)?,
+            tile_data_offset: read_u64_le(binary_data, 56)?,
+            tile_data_len: read_u64_le(binary_data, 64)?,
+            num_addressed_tiles: read_u64_le(binary_data, 72)?,
+            number_tiles_entries: read_u64_le(binary_data, 80)?,
+            number_tiles_content: read_u64_le(binary_data, 88)?,
+            clustered: *binary_data
+                .get(96)
+                .ok_or_else(|| format!("Not enough data at offset {}", 96))?,
+            internal_compression: *binary_data
+                .get(97)
+                .ok_or_else(|| format!("Not enough data at offset {}", 97))?,
+            tile_compression: *binary_data
+                .get(98)
+                .ok_or_else(|| format!("Not enough data at offset {}", 98))?,
+            tile_type: *binary_data
+                .get(99)
+                .ok_or_else(|| format!("Not enough data at offset {}", 99))?,
+            min_zoom: *binary_data
+                .get(100)
+                .ok_or_else(|| format!("Not enough data at offset {}", 100))?,
+            max_zoom: *binary_data
+                .get(101)
+                .ok_or_else(|| format!("Not enough data at offset {}", 101))?,
+            min_position: Position::decode(read_bytes(binary_data, 102)?),
+            max_position: Position::decode(read_bytes(binary_data, 110)?),
+            center_zoom: *binary_data
+                .get(118)
+                .ok_or_else(|| format!("Not enough data at offset {}", 118))?,
+            center_position: Position::decode(read_bytes(binary_data, 118)?),
         };
-        Some(PmTilesData { header })
+
+        #[allow(clippy::cast_possible_truncation)]
+        let metadata_start = header.metadata_offset as usize;
+        #[allow(clippy::cast_possible_truncation)]
+        let metadata_end =
+            ((header.metadata_offset + header.metadata_len) as usize).saturating_sub(1);
+        let metadata = match binary_data.get(metadata_start..=metadata_end) {
+            Some(metadata) => {
+                let raw_metadata = if header.internal_compression == 0 {
+                    match std::str::from_utf8(metadata) {
+                        Ok(res) => Ok(res.to_string()),
+                        Err(_err) => Err("Cannot convert metadata to string".to_string()),
+                    }
+                } else if header.internal_compression == 2 {
+                    use std::io::Read;
+                    let mut d = GzDecoder::new(metadata);
+                    let mut s = String::new();
+                    if let Err(err) = d.read_to_string(&mut s) {
+                        Err(format!("Failed to decompressed metadata {err}"))
+                    } else {
+                        Ok(s)
+                    }
+                } else {
+                    Err("No compression".to_string())
+                };
+                match raw_metadata {
+                    Ok(meta) => match serde_json::from_str(&meta) {
+                        Ok(j) => Ok(j),
+                        Err(e) => Err(format!("Error parsing the metadata: {e}")),
+                    },
+                    Err(err) => Err(err),
+                }
+            }
+            None => Err("Cannot find metadata".to_string()),
+        };
+        Ok(PmTilesData { header, metadata })
+    }
+
+    /// Show ui
+    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        show_pmtiles_ui(ui, self)
     }
 }
 
@@ -284,12 +361,8 @@ impl PmTilesHeader {
 /// Show the pmtiles
 pub(crate) fn show_pmtiles_ui(
     ui: &mut egui::Ui,
-    opt_pmtiles: Option<&PmTilesData>,
+    data: &PmTilesData,
 ) -> Option<RangeInclusive<usize>> {
-    let Some(data) = opt_pmtiles else {
-        ui.label("Failed to parse pmtiles");
-        return None;
-    };
     let mut return_range = None;
     ui.horizontal(|ui| {
         ui.label("PMTiles");
@@ -306,6 +379,29 @@ pub(crate) fn show_pmtiles_ui(
     ui.collapsing("Header", |ui| {
         if let Some(range) = data.header.ui(ui) {
             return_range = Some(range);
+        }
+    });
+
+    ui.collapsing("Metadata", |ui| {
+        #[allow(clippy::cast_possible_truncation)]
+        if ui.button("Show").clicked() {
+            let metadata_start = data.header.metadata_offset as usize;
+            let metadata_end = ((data.header.metadata_offset + data.header.metadata_len) as usize)
+                .saturating_sub(1);
+            return_range = Some(metadata_start..=metadata_end);
+        }
+        match &data.metadata {
+            Ok(meta) => match serde_json::to_string_pretty(meta) {
+                Ok(res) => {
+                    ui.label(res);
+                }
+                Err(err) => {
+                    ui.label(format!("Failed to format JSON metadata {err}"));
+                }
+            },
+            Err(err) => {
+                ui.label(err);
+            }
         }
     });
     return_range

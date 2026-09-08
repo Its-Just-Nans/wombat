@@ -7,6 +7,7 @@ use bladvak::{
     app::BladvakPanel,
     eframe::egui::{self, Color32, Theme},
 };
+use flate2::read::GzDecoder;
 
 use crate::display_settings::Accent;
 use crate::ui_table::ui_table_u16;
@@ -138,11 +139,12 @@ impl BladvakPanel for PanelSelection {
         false
     }
 
-    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         let Some(document) = app.documents.get_current_doc_mut() else {
             return;
         };
-        let (mark_stale, mark_selection_stale, new_doc) = show_selection(ui, document);
+        let (mark_stale, mark_selection_stale, new_doc) =
+            show_selection(ui, document, error_manager);
         if let Some(new_document) = new_doc {
             app.documents.push(new_document);
         }
@@ -168,6 +170,7 @@ impl BladvakPanel for PanelSelection {
 pub(crate) fn show_selection(
     ui: &mut egui::Ui,
     document: &mut Document,
+    error_manager: &mut ErrorManager,
 ) -> (bool, bool, Option<Document>) {
     if document.binary_file.is_empty() {
         document.selection.range = None;
@@ -224,22 +227,40 @@ pub(crate) fn show_selection(
                     .go_to_index(*select2, document.bytes_per_line);
             }
         });
-        let range = *select1..=*select2;
-        if document.binary_file.get(range.clone()).is_some()
-            && ui.button("Delete selection").clicked()
-        {
-            Arc::make_mut(&mut document.binary_file).drain(range.clone());
-            *select1 = select1.checked_sub(1).unwrap_or(0);
-            *select2 = select1.checked_add(1).unwrap_or(0);
-            mark_selection_stale = true;
-            mark_stale = true;
-        }
-        if let Some(selection) = document.binary_file.get(range.clone())
-            && ui.button("Open in new document").clicked()
-        {
-            let doc = Document::new(selection.to_vec(), PathBuf::from("selected.bin"));
-            new_doc = Some(doc);
-        }
+        ui.collapsing("Actions", |ui| {
+            let range = *select1..=*select2;
+            if document.binary_file.get(range.clone()).is_some()
+                && ui.button("Delete selection").clicked()
+            {
+                Arc::make_mut(&mut document.binary_file).drain(range.clone());
+                *select1 = select1.checked_sub(1).unwrap_or(0);
+                *select2 = select1.checked_add(1).unwrap_or(0);
+                mark_selection_stale = true;
+                mark_stale = true;
+            }
+            if let Some(selection) = document.binary_file.get(range.clone())
+                && ui.button("Open in new document").clicked()
+            {
+                let doc = Document::new(selection.to_vec(), PathBuf::from("selected.bin"));
+                new_doc = Some(doc);
+            }
+            if let Some(selection) = document.binary_file.get(range.clone())
+                && ui.button("Decompress Gzip in new document").clicked()
+            {
+                use std::io::Read;
+                let mut d = GzDecoder::new(selection);
+                let mut buff = Vec::new();
+                match d.read_to_end(&mut buff) {
+                    Ok(_res) => {
+                        let doc = Document::new(buff, PathBuf::from("selected_ungzip.bin"));
+                        new_doc = Some(doc);
+                    }
+                    Err(err) => {
+                        error_manager.add_error(format!("Failed to Gzip selection: {err}"));
+                    }
+                }
+            }
+        });
     } else {
         ui.label("No selection");
     }

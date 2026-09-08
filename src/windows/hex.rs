@@ -1,7 +1,7 @@
 //! Hex view
 
 use bladvak::{
-    BladvakApp,
+    BladvakApp, ErrorManager,
     eframe::egui::{
         self, Color32, FontFamily, FontId, Painter, ScrollArea, Stroke, TextStyle, Theme, Vec2,
     },
@@ -29,9 +29,15 @@ impl WombatApp {
     }
 
     /// Show hex viewer as windows
-    pub(crate) fn show_hex_viewer_ui(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn show_hex_viewer_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+    ) {
         #[allow(unused)]
         ui;
+        #[allow(unused)]
+        error_manager;
         return; // TODO ?
         #[allow(unreachable_code)]
         let Some(document) = self.documents.get_current_doc_mut() else {
@@ -65,7 +71,7 @@ impl WombatApp {
                                         return;
                                     };
                                     let (mark_stale, mark_selection_stale, new_doc) =
-                                        show_selection(ui, document);
+                                        show_selection(ui, document, error_manager);
                                     if let Some(new_document) = new_doc {
                                         self.documents.push(new_document);
                                     }

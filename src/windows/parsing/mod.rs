@@ -22,10 +22,10 @@ use crate::windows::parsing::cert::{CertData, show_certs};
 use crate::windows::parsing::jpg::{JpgData, show_jpg_data};
 use crate::windows::parsing::mp4::{Mp4Data, ui::show_mp4_ui};
 use crate::windows::parsing::png::PngData;
-use crate::windows::parsing::raw::StringType;
+use crate::windows::parsing::raw::RawType;
 use crate::windows::parsing::xml::XmlData;
 use crate::windows::parsing::zip::ZipData;
-use pmtiles::{PmTilesData, show_pmtiles_ui};
+use pmtiles::PmTilesData;
 
 /// Histogram data cache
 #[derive(Default, Debug)]
@@ -43,11 +43,11 @@ enum ParsingCache {
     /// zip data cached
     Zip(ZipData),
     /// pmtiles
-    PmTiles(Option<PmTilesData>),
+    PmTiles(PmTilesData),
     /// Message
     Message(String),
-    /// Raw String
-    RawString(StringType),
+    /// Raw type
+    RawType(RawType),
     /// Error
     ErrorMessage(String),
     /// no cache
@@ -64,8 +64,8 @@ impl ParsingCache {
                 return parsing_cache;
             }
         }
-        if let Some(parsed) = StringType::parse(binary_data) {
-            return ParsingCache::RawString(parsed);
+        if let Some(parsed) = RawType::parse(binary_data) {
+            return ParsingCache::RawType(parsed);
         }
         ParsingCache::Empty
     }
@@ -108,7 +108,14 @@ impl ParsingCache {
                 ParsingCache::Zip(parsed)
             }
             "qoi" => ParsingCache::Message("A QOI (Quite OK Image) image".to_string()),
-            "pmtiles" => ParsingCache::PmTiles(PmTilesData::parse(binary_data)),
+            "pmtiles" => {
+                let parsed = match PmTilesData::parse(binary_data) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
+
+                ParsingCache::PmTiles(parsed)
+            }
             _ => {
                 return None;
             }
@@ -188,8 +195,8 @@ impl WombatApp {
                         }
                         ParsingCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
                         ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
-                        ParsingCache::PmTiles(data) => show_pmtiles_ui(ui, data.as_ref()),
-                        ParsingCache::RawString(data) => data.ui(ui),
+                        ParsingCache::PmTiles(data) => data.ui(ui),
+                        ParsingCache::RawType(data) => data.ui(ui),
                         ParsingCache::ErrorMessage(err) => {
                             ui.label(err);
                             None

@@ -144,6 +144,6 @@ impl WombatApp {
         {
             document.go_to_range(range);
         }
-        self.show_hex_viewer_ui(ui);
+        self.show_hex_viewer_ui(ui, error_manager);
     }
 }
