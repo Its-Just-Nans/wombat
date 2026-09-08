@@ -5,6 +5,7 @@
 mod cert;
 pub(crate) mod jpg;
 mod mp4;
+mod pmtiles;
 pub(crate) mod png;
 mod raw;
 mod xml;
@@ -13,6 +14,7 @@ mod zip;
 use bladvak::eframe::egui::{self};
 use bladvak::errors::ErrorManager;
 use std::ops::RangeInclusive;
+use std::path::Path;
 
 use crate::WombatApp;
 use crate::panels::FileInfoData;
@@ -23,6 +25,7 @@ use crate::windows::parsing::png::{PngData, show_png_chunks};
 use crate::windows::parsing::raw::{StringType, show_raw_string_data};
 use crate::windows::parsing::xml::{XmlData, xml_tree_ui};
 use crate::windows::parsing::zip::ZipData;
+use pmtiles::{PmTilesData, show_pmtiles_ui};
 
 /// Histogram data cache
 #[derive(Default, Debug)]
@@ -39,6 +42,8 @@ enum ParsingCache {
     Mp4(Option<Mp4Data>),
     /// zip data cached
     Zip(Result<ZipData, String>),
+    /// pmtiles
+    PmTiles(Option<PmTilesData>),
     /// Message
     Message(String),
     /// Raw String
@@ -50,8 +55,22 @@ enum ParsingCache {
 
 impl ParsingCache {
     /// parse to create cache
-    fn parse(binary_data: &[u8], file_info: &FileInfoData) -> Self {
-        match file_info.extension.as_str() {
+    fn parse(binary_data: &[u8], file_info: &FileInfoData, filename: &Path) -> Self {
+        let filename_ext = filename.extension().unwrap_or_default().to_string_lossy();
+        for (idx, extension) in [file_info.extension.as_str(), &filename_ext]
+            .iter()
+            .enumerate()
+        {
+            if let Some(parsing_cache) = Self::parse_from_extension(binary_data, extension, idx) {
+                return parsing_cache;
+            }
+        }
+        ParsingCache::Empty
+    }
+
+    /// parse to create cache
+    fn parse_from_extension(binary_data: &[u8], extension: &str, idx: usize) -> Option<Self> {
+        let parsing_cache = match extension {
             "png" => {
                 let parsed = PngData::parse(binary_data);
                 ParsingCache::Png(parsed)
@@ -80,13 +99,17 @@ impl ParsingCache {
                 let parsed = ZipData::parse(binary_data);
                 ParsingCache::Zip(parsed)
             }
-            "bin" => {
+            "bin" if idx == 1 => {
                 let parsed = StringType::parse(binary_data);
                 ParsingCache::RawString(parsed)
             }
             "qoi" => ParsingCache::Message("A QOI (Quite OK Image) image".to_string()),
-            _ => ParsingCache::Empty,
-        }
+            "pmtiles" => ParsingCache::PmTiles(PmTilesData::parse(binary_data)),
+            _ => {
+                return None;
+            }
+        };
+        Some(parsing_cache)
     }
 }
 
@@ -147,7 +170,7 @@ impl WombatApp {
                     if matches!(document.windows_data.parsing.cache, ParsingCache::Empty) {
                         let binary_data = &document.binary_file;
                         document.windows_data.parsing.cache =
-                            ParsingCache::parse(binary_data, file_info);
+                            ParsingCache::parse(binary_data, file_info, &document.filename);
                     }
                     let parsing_cache = &document.windows_data.parsing.cache;
                     ret = match parsing_cache {
@@ -161,6 +184,7 @@ impl WombatApp {
                         }
                         ParsingCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
                         ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
+                        ParsingCache::PmTiles(data) => show_pmtiles_ui(ui, data.as_ref()),
                         ParsingCache::RawString(data) => show_raw_string_data(ui, data.as_ref()),
                         ParsingCache::Empty => {
                             ui.label("No data");
