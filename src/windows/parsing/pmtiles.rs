@@ -382,6 +382,17 @@ pub(crate) fn show_pmtiles_ui(
         }
     });
 
+    ui.collapsing("Root directory", |ui| {
+        #[allow(clippy::cast_possible_truncation)]
+        if ui.button("Show").clicked() {
+            let start = data.header.root_directory_offset as usize;
+            let end = ((data.header.root_directory_offset + data.header.root_directory_len)
+                as usize)
+                .saturating_sub(1);
+            return_range = Some(start..=end);
+        }
+    });
+
     ui.collapsing("Metadata", |ui| {
         #[allow(clippy::cast_possible_truncation)]
         if ui.button("Show").clicked() {
@@ -402,6 +413,26 @@ pub(crate) fn show_pmtiles_ui(
             Err(err) => {
                 ui.label(err);
             }
+        }
+    });
+
+    ui.collapsing("Leaf directories", |ui| {
+        #[allow(clippy::cast_possible_truncation)]
+        if ui.button("Show").clicked() {
+            let start = data.header.leaf_directories_offset as usize;
+            let end = ((data.header.leaf_directories_offset + data.header.leaf_directories_len)
+                as usize)
+                .saturating_sub(1);
+            return_range = Some(start..=end);
+        }
+    });
+    ui.collapsing("Tile Data", |ui| {
+        #[allow(clippy::cast_possible_truncation)]
+        if ui.button("Show").clicked() {
+            let start = data.header.tile_data_offset as usize;
+            let end = ((data.header.tile_data_offset + data.header.tile_data_len) as usize)
+                .saturating_sub(1);
+            return_range = Some(start..=end);
         }
     });
     return_range
