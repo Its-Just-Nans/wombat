@@ -39,6 +39,7 @@ serde_json = "1.0.151"
 url = "2.5.8"
 kamadak-exif = "0.6.1"
 flate2 = "1.1.10"
+bzip2 = "0.6.1"
 
 [features]
 # yara only on native

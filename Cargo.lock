@@ -6898,6 +6898,7 @@ dependencies = [
  "base16ct 1.0.0",
  "base64 0.22.1",
  "bladvak",
+ "bzip2",
  "file-format",
  "flate2",
  "getrandom 0.3.4",

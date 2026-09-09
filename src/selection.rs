@@ -7,7 +7,6 @@ use bladvak::{
     app::BladvakPanel,
     eframe::egui::{self, Color32, Theme},
 };
-use flate2::read::GzDecoder;
 
 use crate::display_settings::Accent;
 use crate::ui_table::ui_table_u16;
@@ -167,6 +166,7 @@ impl BladvakPanel for PanelSelection {
 }
 
 /// show selection inputs
+#[allow(clippy::too_many_lines)]
 pub(crate) fn show_selection(
     ui: &mut egui::Ui,
     document: &mut Document,
@@ -238,31 +238,50 @@ pub(crate) fn show_selection(
                 mark_selection_stale = true;
                 mark_stale = true;
             }
-            if let Some(selection) = document.binary_file.get(range.clone())
-                && ui.button("Open in new document").clicked()
-            {
-                let doc = Document::new(selection.to_vec(), PathBuf::from("selected.bin"));
-                new_doc = Some(doc);
-            }
-            if let Some(selection) = document.binary_file.get(range.clone())
-                && ui.button("Decompress Gzip in new document").clicked()
-            {
-                use std::io::Read;
-                let mut d = GzDecoder::new(selection);
-                let mut buff = Vec::new();
-                match d.read_to_end(&mut buff) {
-                    Ok(_res) => {
-                        let doc = Document::new(buff, PathBuf::from("selected_ungzip.bin"));
-                        new_doc = Some(doc);
+            if let Some(selection) = document.binary_file.get(range.clone()) {
+                if ui.button("Open in new document").clicked() {
+                    let doc = Document::new(selection.to_vec(), PathBuf::from("selected.bin"));
+                    new_doc = Some(doc);
+                }
+                if ui.button("Decompress gzip in new document").clicked() {
+                    use flate2::read::GzDecoder;
+                    use std::io::Read;
+                    let mut d = GzDecoder::new(selection);
+                    let mut buff = Vec::new();
+                    match d.read_to_end(&mut buff) {
+                        Ok(_res) => {
+                            let doc = Document::new(buff, PathBuf::from("selected_ungzip.bin"));
+                            new_doc = Some(doc);
+                        }
+                        Err(err) => {
+                            error_manager.add_error(format!("Failed to Gzip selection: {err}"));
+                        }
                     }
-                    Err(err) => {
-                        error_manager.add_error(format!("Failed to Gzip selection: {err}"));
+                }
+                if ui.button("Decompress bzip2 in new document").clicked() {
+                    use bzip2::read::BzDecoder;
+                    use std::io::Read;
+                    let mut d = BzDecoder::new(selection);
+                    let mut buff = Vec::new();
+                    match d.read_to_end(&mut buff) {
+                        Ok(_res) => {
+                            let doc = Document::new(buff, PathBuf::from("selected_unbzip2.bin"));
+                            new_doc = Some(doc);
+                        }
+                        Err(err) => {
+                            error_manager.add_error(format!("Failed to bzip2 selection: {err}"));
+                        }
                     }
                 }
             }
         });
     } else {
         ui.label("No selection");
+        if ui.button("Select all").clicked() {
+            let end = document.binary_file.len();
+            document.selection.range = Some((0, end));
+            mark_selection_stale = true;
+        }
     }
     (mark_stale, mark_selection_stale, new_doc)
 }
