@@ -2,7 +2,7 @@
 
 use std::ops::RangeInclusive;
 
-use bladvak::eframe::egui;
+use bladvak::{eframe::egui, utils::custom_collapsing_header};
 use flate2::read::GzDecoder;
 use serde_json::Value;
 
@@ -11,6 +11,8 @@ use serde_json::Value;
 pub(crate) struct PmTilesData {
     /// header
     header: PmTilesHeader,
+    /// Rood directory
+    root_directory: Result<Vec<Entry>, String>,
     /// metadata
     metadata: Result<Value, String>,
 }
@@ -32,6 +34,34 @@ impl Position {
             lat: i32::from_le_bytes([pos[4], pos[5], pos[6], pos[7]]) / 10_000_000,
         }
     }
+}
+
+/// Decode a variable width int
+fn decode_varint(input: &[u8]) -> Result<(u64, usize), &'static str> {
+    let mut value = 0u64;
+
+    for (i, &byte) in input.iter().enumerate() {
+        // A u64 needs at most 10 bytes in Base-128.
+        if i >= 10 {
+            return Err("varint overflow");
+        }
+
+        #[allow(clippy::cast_lossless)]
+        let payload = (byte & 0x7f) as u64;
+
+        if i == 9 && payload > 1 {
+            return Err("varint overflow");
+        }
+
+        value |= payload << (i * 7);
+
+        // High bit clear means this is the final byte.
+        if byte & 0x80 == 0 {
+            return Ok((value, i + 1));
+        }
+    }
+
+    Err("incomplete varint")
 }
 
 /// pmtiles header
@@ -184,12 +214,125 @@ impl PmTilesData {
             }
             None => Err("Cannot find metadata".to_string()),
         };
-        Ok(PmTilesData { header, metadata })
+        #[allow(clippy::cast_possible_truncation)]
+        let root_dir_start = header.metadata_offset as usize;
+        #[allow(clippy::cast_possible_truncation)]
+        let root_dir_end =
+            ((header.metadata_offset + header.metadata_len) as usize).saturating_sub(1);
+        let root_directory = decode_root_dir(
+            binary_data,
+            root_dir_start,
+            root_dir_end,
+            header.internal_compression,
+        );
+        Ok(PmTilesData {
+            header,
+            root_directory,
+            metadata,
+        })
     }
 
     /// Show ui
     pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
         show_pmtiles_ui(ui, self)
+    }
+}
+
+/// Directory entry
+#[derive(Debug)]
+struct Entry {
+    /// id
+    tile_id: u64,
+    /// offset
+    offset: u64,
+    /// length
+    length: u64,
+    /// run length
+    run_length: u64,
+}
+
+/// decode root dir
+fn decode_root_dir(
+    binary_data: &[u8],
+    root_dir_start: usize,
+    root_dir_end: usize,
+    internal_compression: u8,
+) -> Result<Vec<Entry>, String> {
+    match binary_data.get(root_dir_start..=root_dir_end) {
+        Some(root_dir) => {
+            let raw_root_dir = if internal_compression == 0 {
+                Ok(root_dir.to_vec())
+            } else if internal_compression == 2 {
+                use std::io::Read;
+                let mut d = GzDecoder::new(root_dir);
+                let mut s = Vec::new();
+                if let Err(err) = d.read_to_end(&mut s) {
+                    Err(format!("Failed to decompressed root dir {err}"))
+                } else {
+                    Ok(s)
+                }
+            } else {
+                Err("No compression".to_string())
+            };
+            match raw_root_dir {
+                Ok(root_dir) => {
+                    let Ok((num_entries, bytes_read)) = decode_varint(&root_dir) else {
+                        return Err("Cannot read number of entries".to_string());
+                    };
+                    #[allow(clippy::cast_possible_truncation)]
+                    let num_entries = num_entries as usize;
+                    let mut buffer = &root_dir[bytes_read..];
+                    let mut entries = Vec::with_capacity(num_entries);
+
+                    // Tile IDs are delta-encoded.
+                    let mut last_id = 0;
+
+                    for _ in 0..num_entries {
+                        let (value, bytes_read) = decode_varint(buffer)?;
+                        buffer = &buffer[bytes_read..];
+                        last_id += value;
+
+                        entries.push(Entry {
+                            tile_id: last_id,
+                            run_length: 0,
+                            length: 0,
+                            offset: 0,
+                        });
+                    }
+
+                    // Read run lengths.
+                    for entry in &mut entries {
+                        let (value, bytes_read) = decode_varint(buffer)?;
+                        buffer = &buffer[bytes_read..];
+                        entry.run_length = value;
+                    }
+
+                    // Read lengths.
+                    for entry in &mut entries {
+                        let (value, bytes_read) = decode_varint(buffer)?;
+                        buffer = &buffer[bytes_read..];
+                        entry.length = value;
+                    }
+
+                    // Read offsets.
+                    for i in 0..num_entries {
+                        let (value, bytes_read) = decode_varint(buffer)?;
+                        buffer = &buffer[bytes_read..];
+
+                        if value == 0 && i > 0 {
+                            let prev = &entries[i - 1];
+
+                            entries[i].offset = prev.offset + prev.length;
+                        } else {
+                            entries[i].offset = value - 1;
+                        }
+                    }
+                    Ok(entries)
+                }
+                Err(err) => Err(err),
+            }
+        }
+        None => Err("Cannot find root dir".to_string()),
     }
 }
 
@@ -359,6 +502,7 @@ impl PmTilesHeader {
 }
 
 /// Show the pmtiles
+#[allow(clippy::too_many_lines)]
 pub(crate) fn show_pmtiles_ui(
     ui: &mut egui::Ui,
     data: &PmTilesData,
@@ -376,32 +520,83 @@ pub(crate) fn show_pmtiles_ui(
             return_range = Some(7..=7);
         }
     });
-    ui.collapsing("Header", |ui| {
-        if let Some(range) = data.header.ui(ui) {
-            return_range = Some(range);
-        }
-    });
+    {
+        let id = ui.make_persistent_id("pmtiles_heaer");
+        egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, true)
+            .show_header(ui, |ui| {
+                ui.label("Header");
+                if ui.button("Show").clicked() {
+                    return_range = Some(8..=126);
+                }
+            })
+            .body(|ui| {
+                if let Some(range) = data.header.ui(ui) {
+                    return_range = Some(range);
+                }
+            });
+    }
 
-    ui.collapsing("Root directory", |ui| {
-        #[allow(clippy::cast_possible_truncation)]
-        if ui.button("Show").clicked() {
-            let start = data.header.root_directory_offset as usize;
-            let end = ((data.header.root_directory_offset + data.header.root_directory_len)
-                as usize)
-                .saturating_sub(1);
-            return_range = Some(start..=end);
-        }
-    });
+    custom_collapsing_header(
+        ui,
+        "pmtiles_root_directory",
+        |ui| {
+            ui.label("Root directory");
+            #[allow(clippy::cast_possible_truncation)]
+            if ui.button("Show").clicked() {
+                let start = data.header.root_directory_offset as usize;
+                let end = ((data.header.root_directory_offset + data.header.root_directory_len)
+                    as usize)
+                    .saturating_sub(1);
+                return_range = Some(start..=end);
+            }
+        },
+        |ui| {
+            match &data.root_directory {
+                Ok(root) => {
+                    egui::Grid::new("char_info")
+                        .num_columns(5)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("Tile Id");
+                            ui.label("Offset");
+                            ui.label("Length");
+                            ui.label("RunLength");
+                            ui.label("");
+                            ui.end_row();
+                            for one_entry in root {
+                                ui.label(format!("{}", one_entry.tile_id));
+                                ui.label(format!("{}", one_entry.offset));
+                                ui.label(format!("{}", one_entry.length));
+                                ui.label(format!("{}", one_entry.run_length));
+                                if ui.button("Show").clicked() {
+                                    // TODO
+                                }
+                                ui.end_row();
+                            }
+                        });
+                }
+                Err(err) => {
+                    ui.label(err);
+                }
+            }
+        },
+    );
 
-    ui.collapsing("Metadata", |ui| {
-        #[allow(clippy::cast_possible_truncation)]
-        if ui.button("Show").clicked() {
-            let metadata_start = data.header.metadata_offset as usize;
-            let metadata_end = ((data.header.metadata_offset + data.header.metadata_len) as usize)
-                .saturating_sub(1);
-            return_range = Some(metadata_start..=metadata_end);
-        }
-        match &data.metadata {
+    custom_collapsing_header(
+        ui,
+        "pmtiles_metadata",
+        |ui| {
+            ui.label("Metadata");
+            #[allow(clippy::cast_possible_truncation)]
+            if ui.button("Show").clicked() {
+                let metadata_start = data.header.metadata_offset as usize;
+                let metadata_end = ((data.header.metadata_offset + data.header.metadata_len)
+                    as usize)
+                    .saturating_sub(1);
+                return_range = Some(metadata_start..=metadata_end);
+            }
+        },
+        |ui| match &data.metadata {
             Ok(meta) => match serde_json::to_string_pretty(meta) {
                 Ok(res) => {
                     ui.label(res);
@@ -413,27 +608,43 @@ pub(crate) fn show_pmtiles_ui(
             Err(err) => {
                 ui.label(err);
             }
-        }
-    });
+        },
+    );
 
-    ui.collapsing("Leaf directories", |ui| {
-        #[allow(clippy::cast_possible_truncation)]
-        if ui.button("Show").clicked() {
-            let start = data.header.leaf_directories_offset as usize;
-            let end = ((data.header.leaf_directories_offset + data.header.leaf_directories_len)
-                as usize)
-                .saturating_sub(1);
-            return_range = Some(start..=end);
-        }
-    });
-    ui.collapsing("Tile Data", |ui| {
-        #[allow(clippy::cast_possible_truncation)]
-        if ui.button("Show").clicked() {
-            let start = data.header.tile_data_offset as usize;
-            let end = ((data.header.tile_data_offset + data.header.tile_data_len) as usize)
-                .saturating_sub(1);
-            return_range = Some(start..=end);
-        }
-    });
+    custom_collapsing_header(
+        ui,
+        "pmtiles_leaf_directories",
+        |ui| {
+            ui.label("Leaf directories");
+            #[allow(clippy::cast_possible_truncation)]
+            if ui.button("Show").clicked() {
+                let start = data.header.leaf_directories_offset as usize;
+                let end = ((data.header.leaf_directories_offset + data.header.leaf_directories_len)
+                    as usize)
+                    .saturating_sub(1);
+                return_range = Some(start..=end);
+            }
+        },
+        |_ui| {
+            // TODO
+        },
+    );
+    custom_collapsing_header(
+        ui,
+        "pmtiles_tile_data",
+        |ui| {
+            ui.label("Tile data");
+            #[allow(clippy::cast_possible_truncation)]
+            if ui.button("Show").clicked() {
+                let start = data.header.tile_data_offset as usize;
+                let end = ((data.header.tile_data_offset + data.header.tile_data_len) as usize)
+                    .saturating_sub(1);
+                return_range = Some(start..=end);
+            }
+        },
+        |_ui| {
+            // TODO
+        },
+    );
     return_range
 }
