@@ -166,7 +166,7 @@ impl WombatApp {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    let Some(document) = self.documents.get_current_doc_mut() else {
+                    let Some(document) = self.documents.get_mut(current_index) else {
                         return;
                     };
                     let _ = document.get_file_format();

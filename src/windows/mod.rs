@@ -137,13 +137,13 @@ impl WombatApp {
             &document.binary_file,
             kind,
         );
-        self.show_detection_ui(ui, error_manager);
         #[cfg(feature = "parsing")]
         if let Some(range) = self.show_parsing_ui(ui, error_manager)
             && let Some(document) = self.documents.get_current_doc_mut()
         {
             document.go_to_range(range);
         }
+        self.show_detection_ui(ui, error_manager);
         self.show_hex_viewer_ui(ui, error_manager);
     }
 }

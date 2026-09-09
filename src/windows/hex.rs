@@ -40,7 +40,8 @@ impl WombatApp {
         error_manager;
         return; // TODO ?
         #[allow(unreachable_code)]
-        let Some(document) = self.documents.get_current_doc_mut() else {
+        let current_index = self.documents.get_current_index();
+        let Some(document) = self.documents.get_mut(current_index) else {
             return;
         };
         let mut is_open = document.windows_data.previewer.is_open; // TODO
@@ -52,7 +53,7 @@ impl WombatApp {
                     egui::Panel::right("hex_right_panel")
                         .frame(self.side_panel_frame(ui))
                         .show(ui, |ui| {
-                            let Some(document) = self.documents.get_current_doc_mut() else {
+                            let Some(document) = self.documents.get_mut(current_index) else {
                                 return;
                             };
                             egui::Frame::new()
@@ -66,7 +67,7 @@ impl WombatApp {
                                 .inner_margin(8)
                                 .fill(ui.ctx().global_style().visuals.panel_fill)
                                 .show(ui, |ui| {
-                                    let Some(document) = self.documents.get_current_doc_mut()
+                                    let Some(document) = self.documents.get_mut(current_index)
                                     else {
                                         return;
                                     };
@@ -86,7 +87,7 @@ impl WombatApp {
                         });
                     // Central panel is last
                     egui::CentralPanel::no_frame().show(ui, |ui| {
-                        let Some(document) = self.documents.get_current_doc_mut() else {
+                        let Some(document) = self.documents.get_mut(current_index) else {
                             return;
                         };
                         if HexViewer::show_hex(
@@ -100,7 +101,7 @@ impl WombatApp {
                     });
                 });
         }
-        if let Some(document) = self.documents.get_current_doc_mut()
+        if let Some(document) = self.documents.get_mut(current_index)
             && document.windows_data.previewer.is_open != is_open
         {
             document.windows_data.previewer.is_open = is_open;

@@ -14,7 +14,7 @@ use crate::windows::hex::hex_viewer_settings;
 pub(crate) struct FileInfo;
 
 /// File info
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct FileInfoData {
     /// Kind of file
     pub(crate) kind: file_format::Kind,

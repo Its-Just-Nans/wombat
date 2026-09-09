@@ -11,6 +11,7 @@ use exif::Exif;
 
 use crate::WombatApp;
 use crate::document::Document;
+use crate::panels::FileInfoData;
 use crate::windows::parsing::jpg::{Marker, parse_jpeg};
 use crate::windows::parsing::png::PngData;
 
@@ -41,6 +42,13 @@ const OFFSET_EXIF_JPG: usize = 2 + 2 + 6;
 /// Offset PNG of the exif
 const OFFSET_EXIF_PNG: usize = 4 + 4;
 
+/// Possible actions
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub enum Action {
+    /// Acropalypse issue
+    Acropalypse,
+}
+
 /// Detection
 #[derive(serde::Serialize, serde::Deserialize, Default, Debug)]
 pub(crate) struct Detection {
@@ -48,6 +56,8 @@ pub(crate) struct Detection {
     pub(crate) is_open: bool,
     /// exif
     exif_data: Option<Result<ExifData, String>>,
+    /// Actions
+    actions: Vec<Action>,
 }
 
 impl Detection {
@@ -59,6 +69,27 @@ impl Detection {
     /// reset
     pub(crate) fn reset(&mut self) {
         self.exif_data = None;
+    }
+
+    /// prepare ui
+    pub(crate) fn prepare_ui(&mut self, binary_file: &[u8], format: &FileInfoData) {
+        self.parse_exif(binary_file, &format.extension);
+        if format.extension == "png" {
+            let parsed_data = PngData::parse(binary_file);
+            match parsed_data {
+                Ok(png_data) => {
+                    if png_data
+                        .chunks
+                        .iter()
+                        .find(|chunk| chunk.chunk_type == "Invalid")
+                        .is_some()
+                    {
+                        self.actions.push(Action::Acropalypse);
+                    }
+                }
+                Err(_err) => {}
+            }
+        }
     }
 
     /// parse exif
@@ -96,8 +127,8 @@ impl Detection {
                     thumbnail,
                 }));
             }
-            Err(e) => {
-                self.exif_data = Some(Err(e.to_string()));
+            Err(err) => {
+                self.exif_data = Some(Err(format!("Exif: {err}")));
             }
         }
     }
@@ -302,18 +333,28 @@ impl WombatApp {
         let Some(document) = self.documents.get_current_doc_mut() else {
             return;
         };
-        let extension = document.get_file_format().extension.clone();
+        let file_info_data = document.get_file_format().clone();
         let detection = &mut document.windows_data.detection;
+        if detection.exif_data.is_none() {
+            detection.prepare_ui(&document.binary_file, &file_info_data);
+        }
         if detection.is_open {
             let mut is_open = detection.is_open;
-            if detection.exif_data.is_none() {
-                detection.parse_exif(&document.binary_file, &extension);
-            }
             egui::Window::new(Detection::title())
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
                     self.show_detection_exif(ui, error_manager);
+                    let Some(document) = self.documents.get_mut(current_index) else {
+                        return;
+                    };
+                    for one_action in &document.windows_data.detection.actions {
+                        match one_action {
+                            Action::Acropalypse => {
+                                ui.label("Possible to acropalypse");
+                            }
+                        }
+                    }
                 });
             if let Some(document) = self.documents.get_mut(current_index) {
                 document.windows_data.detection.is_open = is_open;
