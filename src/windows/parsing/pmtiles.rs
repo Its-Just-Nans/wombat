@@ -521,7 +521,7 @@ pub(crate) fn show_pmtiles_ui(
         }
     });
     {
-        let id = ui.make_persistent_id("pmtiles_heaer");
+        let id = ui.make_persistent_id("pmtiles_header");
         egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, true)
             .show_header(ui, |ui| {
                 ui.label("Header");
