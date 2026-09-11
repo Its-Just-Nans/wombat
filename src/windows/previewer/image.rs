@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use bladvak::{eframe::egui, image};
+use bladvak::{ErrorManager, eframe::egui, image};
 
 /// Image preview
 #[derive(PartialEq)]
@@ -50,7 +50,29 @@ impl ImagePreview {
     }
 
     /// Show the ui
-    pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        binary_file: &[u8],
+        error_manager: &mut ErrorManager,
+    ) {
+        if ui.button("Copy to clipboard").clicked() {
+            match image::load_from_memory(binary_file) {
+                Ok(img) => {
+                    if let Err(err) = bladvak::utils::set_image_in_clipboard(
+                        ui.ctx(),
+                        img.width() as usize,
+                        img.height() as usize,
+                        img.to_rgba8().as_flat_samples().as_slice(),
+                    ) {
+                        error_manager.add_error(err);
+                    }
+                }
+                Err(err) => {
+                    error_manager.add_error(err.to_string());
+                }
+            }
+        }
         let img_max_width = &mut self.size;
         let img_max = self.texture.size()[0];
         ui.horizontal(|ui| {

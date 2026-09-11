@@ -69,7 +69,7 @@ impl Previewer {
     pub(crate) fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
+        error_manager: &mut ErrorManager,
         fonts_definitions: &mut egui::FontDefinitions,
         filename: &str,
         binary_file: &Arc<Vec<u8>>,
@@ -82,7 +82,7 @@ impl Previewer {
                 .vscroll(true)
                 .show(ui.ctx(), |ui| match &mut self.data {
                     PreviewData::Image(image_preview) => {
-                        image_preview.ui(ui);
+                        image_preview.ui(ui, binary_file, error_manager);
                     }
                     PreviewData::Font(font) => {
                         font.ui(ui);
