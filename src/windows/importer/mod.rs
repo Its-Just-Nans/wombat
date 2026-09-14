@@ -201,6 +201,38 @@ impl Importer {
             }
             None => {}
         }
+        if ui.button("Import image from clipboard").clicked()
+            && let Err(err) = self.clipboard.launch_get_image()
+        {
+            error_manager.add_error(err);
+        }
+        match self.clipboard.image(ui.ctx()) {
+            Some(Ok((data, width, height))) => {
+                use image::{ImageBuffer, RgbaImage};
+                use std::io::Cursor;
+                #[allow(clippy::cast_possible_truncation)]
+                let img_buffer: Option<RgbaImage> =
+                    ImageBuffer::from_raw(width as u32, height as u32, data);
+                if let Some(img_b) = img_buffer {
+                    let mut buffer = Cursor::new(Vec::new());
+                    match img_b.write_to(&mut buffer, image::ImageFormat::Png) {
+                        Ok(()) => {
+                            ret = Some(Ok((
+                                PathBuf::from("imported_image.png"),
+                                buffer.into_inner(),
+                            )));
+                        }
+                        Err(err) => {
+                            error_manager.add_error(err.to_string());
+                        }
+                    }
+                }
+            }
+            Some(Err(err)) => {
+                ret = Some(Err(err));
+            }
+            None => {}
+        }
         if ui.button("Import text from clipboard").clicked()
             && let Err(err) = self.clipboard.launch_get_text()
         {

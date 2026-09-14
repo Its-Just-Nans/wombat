@@ -183,7 +183,7 @@ impl Exporter {
         ui.collapsing("QrCode", |ui| {
             let export_selection = match selection.range {
                 Some(curr_select) => curr_select.0..=curr_select.1,
-                None => 0..=(binary_file.len() - 1),
+                None => 0..=(binary_file.len().saturating_sub(1)),
             };
             if let Some(file_selection) = binary_file.get(export_selection.clone()) {
                 Self::qrcode_ui(ui, file_selection, error_manager);
@@ -219,7 +219,7 @@ impl Exporter {
             ui.horizontal(|ui| {
                 let export_selection = match selection.range {
                     Some(curr_select) => curr_select.0..=curr_select.1,
-                    None => 0..=(binary_file.len() - 1),
+                    None => 0..=(binary_file.len().saturating_sub(1)),
                 };
                 if ui.button("Copy to clipboard").clicked() {
                     if let Some(file_selection) = binary_file.get(export_selection.clone()) {
