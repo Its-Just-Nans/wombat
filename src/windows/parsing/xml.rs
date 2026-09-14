@@ -42,7 +42,11 @@ pub fn xml_tree_ui(ui: &mut egui::Ui, xml: &XmlData) -> Option<RangeInclusive<us
 }
 
 /// Draw node
-fn draw_node(ui: &mut egui::Ui, node: Node<'_, '_>, idx: usize) -> Option<RangeInclusive<usize>> {
+pub(crate) fn draw_node(
+    ui: &mut egui::Ui,
+    node: Node<'_, '_>,
+    idx: usize,
+) -> Option<RangeInclusive<usize>> {
     let mut count = idx;
     let mut return_range = None;
     match node.node_type() {

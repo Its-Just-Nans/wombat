@@ -3,8 +3,11 @@
 use std::ops::RangeInclusive;
 
 use bladvak::eframe::egui;
+use roxmltree::Document;
 use serde_json::Value;
 use uuid::Uuid;
+
+use crate::windows::parsing::xml::draw_node;
 
 /// Raw type
 #[derive(Debug)]
@@ -45,11 +48,34 @@ impl RawType {
         }
     }
     /// Show ui
-    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+    pub(crate) fn ui(
+        &self,
+        ui: &mut egui::Ui,
+        binary_file: &[u8],
+    ) -> Option<RangeInclusive<usize>> {
+        let mut return_range = None;
         ui.label(format!("Could be: {}", self.name));
-        if let StringType::Url(url) = &self.name {
-            use egui::Widget;
-            egui::Hyperlink::new(url).open_in_new_tab(true).ui(ui);
+        match &self.name {
+            StringType::Url(url) => {
+                use egui::Widget;
+                egui::Hyperlink::new(url).open_in_new_tab(true).ui(ui);
+            }
+            StringType::Xml => {
+                if let Ok(s) = std::str::from_utf8(binary_file) {
+                    match Document::parse(s) {
+                        Ok(doc) => {
+                            let root = doc.root_element();
+                            return_range = draw_node(ui, root, 0);
+                        }
+                        Err(err) => {
+                            ui.colored_label(egui::Color32::RED, err.to_string());
+                        }
+                    }
+                } else {
+                    ui.label("Failed to convert xml to string");
+                }
+            }
+            _ => {}
         }
         if let Some(res) = &self.data {
             match res {
@@ -58,7 +84,7 @@ impl RawType {
                 }
             }
         }
-        None
+        return_range
     }
 }
 
@@ -94,6 +120,8 @@ pub(crate) enum StringType {
     Base64Url,
     /// Gedcom
     Ged,
+    /// xml
+    Xml,
     /// unknown str
     Unknown,
 }
@@ -160,6 +188,8 @@ impl StringType {
                 StringType::Base64Url
             } else if is_ged(s.as_bytes()) {
                 StringType::Ged
+            } else if s.starts_with('<') {
+                StringType::Xml
             } else {
                 return None;
             };

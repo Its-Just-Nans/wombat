@@ -196,7 +196,7 @@ impl WombatApp {
                         ParsingCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
                         ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
                         ParsingCache::PmTiles(data) => data.ui(ui),
-                        ParsingCache::RawType(data) => data.ui(ui),
+                        ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
                         ParsingCache::ErrorMessage(err) => {
                             ui.label(err);
                             None
