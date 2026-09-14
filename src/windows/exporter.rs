@@ -128,7 +128,49 @@ impl Exporter {
             });
     }
 
+    /// Qr code ui. Copy to text and image
+    pub(crate) fn qrcode_ui(
+        ui: &mut egui::Ui,
+        file_selection: &[u8],
+        error_manager: &mut ErrorManager,
+    ) {
+        use qrcode::QrCode;
+        if ui.button("Copy QR as string").clicked() {
+            match QrCode::new(file_selection) {
+                Ok(code) => {
+                    let string = code.render().light_color(' ').dark_color('#').build();
+                    ui.copy_text(string);
+                }
+                Err(err) => {
+                    error_manager.add_error(format!("Qrcode error: {err}"));
+                }
+            }
+        }
+        if ui.button("Copy QR as image").clicked() {
+            use image::Rgba;
+            match QrCode::new(file_selection) {
+                Ok(code) => {
+                    let image = code.render::<Rgba<u8>>().build();
+                    let width = image.width() as usize;
+                    let height = image.height() as usize;
+                    if let Err(err) = bladvak::utils::set_image_in_clipboard(
+                        ui.ctx(),
+                        width,
+                        height,
+                        image.as_flat_samples().as_slice(),
+                    ) {
+                        error_manager.add_error(err);
+                    }
+                }
+                Err(err) => {
+                    error_manager.add_error(format!("Qrcode error: {err}"));
+                }
+            }
+        }
+    }
+
     /// Ui inside the windows of the exporter
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn windows_ui(
         &mut self,
         binary_file: &[u8],
@@ -138,6 +180,15 @@ impl Exporter {
         error_manager: &mut ErrorManager,
         limit_to_base_ascii: bool,
     ) {
+        ui.collapsing("QrCode", |ui| {
+            let export_selection = match selection.range {
+                Some(curr_select) => curr_select.0..=curr_select.1,
+                None => 0..=(binary_file.len() - 1),
+            };
+            if let Some(file_selection) = binary_file.get(export_selection.clone()) {
+                Self::qrcode_ui(ui, file_selection, error_manager);
+            }
+        });
         let previous_import_type = self.value_type.clone();
         ui.horizontal(|ui| {
             ui.label("Export selection to:");
