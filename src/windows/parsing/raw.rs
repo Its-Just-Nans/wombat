@@ -47,6 +47,10 @@ impl RawType {
     /// Show ui
     pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
         ui.label(format!("Could be: {}", self.name));
+        if let StringType::Url(url) = &self.name {
+            use egui::Widget;
+            egui::Hyperlink::new(url).open_in_new_tab(true).ui(ui);
+        }
         if let Some(res) = &self.data {
             match res {
                 Ok(s) | Err(s) => {
@@ -96,7 +100,7 @@ pub(crate) enum StringType {
 
 impl std::fmt::Display for StringType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+        write!(f, "{self:#?}")
     }
 }
 
