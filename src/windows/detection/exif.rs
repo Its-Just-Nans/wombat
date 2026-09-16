@@ -1,4 +1,4 @@
-//! Detection
+//! Exif detection
 
 use std::io::Cursor;
 use std::ops::RangeInclusive;
@@ -11,9 +11,14 @@ use exif::Exif;
 
 use crate::WombatApp;
 use crate::document::Document;
-use crate::panels::FileInfoData;
 use crate::windows::parsing::jpg::{Marker, parse_jpeg};
 use crate::windows::parsing::png::PngData;
+
+/// Offset JPG of the exif = 2 bytes (marker) + 2 bytes (length) + 6 byes ("Exif\0\0")
+const OFFSET_EXIF_JPG: usize = 2 + 2 + 6;
+
+/// Offset PNG of the exif
+const OFFSET_EXIF_PNG: usize = 4 + 4;
 
 /// Exif data
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -36,64 +41,9 @@ impl std::fmt::Debug for ExifData {
     }
 }
 
-/// Offset JPG of the exif = 2 bytes (marker) + 2 bytes (length) + 6 byes ("Exif\0\0")
-const OFFSET_EXIF_JPG: usize = 2 + 2 + 6;
-
-/// Offset PNG of the exif
-const OFFSET_EXIF_PNG: usize = 4 + 4;
-
-/// Possible actions
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub enum Action {
-    /// Acropalypse issue
-    Acropalypse,
-}
-
-/// Detection
-#[derive(serde::Serialize, serde::Deserialize, Default, Debug)]
-pub(crate) struct Detection {
-    /// Is open
-    pub(crate) is_open: bool,
-    /// exif
-    exif_data: Option<Result<ExifData, String>>,
-    /// Actions
-    actions: Vec<Action>,
-}
-
-impl Detection {
-    /// title
-    pub(crate) fn title() -> &'static str {
-        "Forensics"
-    }
-
-    /// reset
-    pub(crate) fn reset(&mut self) {
-        self.exif_data = None;
-    }
-
-    /// prepare ui
-    pub(crate) fn prepare_ui(&mut self, binary_file: &[u8], format: &FileInfoData) {
-        self.parse_exif(binary_file, &format.extension);
-        if format.extension == "png" {
-            let parsed_data = PngData::parse(binary_file);
-            match parsed_data {
-                Ok(png_data) => {
-                    if png_data
-                        .chunks
-                        .iter()
-                        .find(|chunk| chunk.chunk_type == "Invalid")
-                        .is_some()
-                    {
-                        self.actions.push(Action::Acropalypse);
-                    }
-                }
-                Err(_err) => {}
-            }
-        }
-    }
-
+impl ExifData {
     /// parse exif
-    pub(crate) fn parse_exif(&mut self, binary_file: &[u8], file_extension: &str) {
+    pub(crate) fn parse(binary_file: &[u8], file_extension: &str) -> Result<Self, String> {
         let cursor = Cursor::new(binary_file);
         let mut bufreader = std::io::BufReader::new(cursor);
         let parsed_exif = exif::Reader::new().read_from_container(&mut bufreader);
@@ -121,16 +71,29 @@ impl Detection {
                     None
                 };
                 let thumbnail = extract_thumbnail_position(&exif, binary_file, file_extension);
-                self.exif_data = Some(Ok(ExifData {
+                Ok(ExifData {
                     exif: Some(exif),
                     geo,
                     thumbnail,
-                }));
+                })
             }
-            Err(err) => {
-                self.exif_data = Some(Err(format!("Exif: {err}")));
-            }
+            Err(err) => Err(format!("Exif: {err}")),
         }
+    }
+}
+
+/// DMS to decimal
+pub(crate) fn dms_to_decimal(field: &exif::Field, positive: bool) -> Option<f64> {
+    match &field.value {
+        exif::Value::Rational(values) if values.len() == 3 => {
+            let deg = values[0].to_f64();
+            let min = values[1].to_f64();
+            let sec = values[2].to_f64();
+
+            let decimal = deg + min / 60.0 + sec / 3600.0;
+            Some(if positive { decimal } else { -decimal })
+        }
+        _ => None,
     }
 }
 
@@ -252,7 +215,11 @@ fn show_exif_table(ui: &mut egui::Ui, exif: &Exif) {
 
 impl WombatApp {
     /// show exif
-    fn show_detection_exif(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
+    pub(crate) fn show_detection_exif(
+        &mut self,
+        ui: &mut egui::Ui,
+        _error_manager: &mut ErrorManager,
+    ) {
         let Some(document) = self.documents.get_current_doc_mut() else {
             return;
         };
@@ -321,59 +288,5 @@ impl WombatApp {
         if let Some(doc) = doc {
             self.documents.push(doc);
         }
-    }
-
-    /// show detection ui
-    pub(crate) fn show_detection_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        error_manager: &mut ErrorManager,
-    ) {
-        let current_index = self.documents.get_current_index();
-        let Some(document) = self.documents.get_current_doc_mut() else {
-            return;
-        };
-        let file_info_data = document.get_file_format().clone();
-        let detection = &mut document.windows_data.detection;
-        if detection.exif_data.is_none() {
-            detection.prepare_ui(&document.binary_file, &file_info_data);
-        }
-        if detection.is_open {
-            let mut is_open = detection.is_open;
-            egui::Window::new(Detection::title())
-                .open(&mut is_open)
-                .vscroll(true)
-                .show(ui.ctx(), |ui| {
-                    self.show_detection_exif(ui, error_manager);
-                    let Some(document) = self.documents.get_mut(current_index) else {
-                        return;
-                    };
-                    for one_action in &document.windows_data.detection.actions {
-                        match one_action {
-                            Action::Acropalypse => {
-                                ui.label("Possible to acropalypse");
-                            }
-                        }
-                    }
-                });
-            if let Some(document) = self.documents.get_mut(current_index) {
-                document.windows_data.detection.is_open = is_open;
-            }
-        }
-    }
-}
-
-/// DMS to decimal
-fn dms_to_decimal(field: &exif::Field, positive: bool) -> Option<f64> {
-    match &field.value {
-        exif::Value::Rational(values) if values.len() == 3 => {
-            let deg = values[0].to_f64();
-            let min = values[1].to_f64();
-            let sec = values[2].to_f64();
-
-            let decimal = deg + min / 60.0 + sec / 3600.0;
-            Some(if positive { decimal } else { -decimal })
-        }
-        _ => None,
     }
 }

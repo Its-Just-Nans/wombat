@@ -90,13 +90,13 @@ impl Yara {
 
     /// Window UI
     #[cfg(target_arch = "wasm32")]
-    pub(crate) fn window_ui(_binary_data: &[u8], _data: &mut YaraData, ui: &mut egui::Ui) {
+    pub(crate) fn inner_window_ui(_binary_data: &[u8], _data: &mut YaraData, ui: &mut egui::Ui) {
         ui.label("Yara is not enabled in wasm32");
     }
 
     /// Window UI
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn window_ui(binary_data: &[u8], data: &mut YaraData, ui: &mut egui::Ui) {
+    pub(crate) fn inner_window_ui(binary_data: &[u8], data: &mut YaraData, ui: &mut egui::Ui) {
         use bladvak::egui_extras::{Column, TableBuilder};
         use yara_x::Compiler;
 
@@ -165,8 +165,26 @@ impl Yara {
         }
     }
 
-    /// Show the histogram ui
-    pub(crate) fn ui(
+    /// show the inner ui
+    pub(crate) fn inner_ui(&mut self, binary_data: &[u8], ui: &mut egui::Ui) {
+        if let Some(data) = &mut self.data {
+            let is_wasm = cfg!(target_arch = "wasm32");
+            ui.add_enabled_ui(!is_wasm, |ui| {
+                ui.text_edit_multiline(&mut data.rule);
+            });
+            Self::inner_window_ui(binary_data, data, ui);
+            if let Some(e) = &data.error {
+                ui.colored_label(egui::Color32::RED, "Error: ");
+                ui.colored_label(egui::Color32::RED, e);
+            }
+        } else {
+            let yara_data = YaraData::default();
+            self.data = Some(yara_data);
+        }
+    }
+
+    /// Show the ui
+    pub(crate) fn window_ui(
         &mut self,
         binary_data: &[u8],
         ui: &mut egui::Ui,
@@ -178,20 +196,7 @@ impl Yara {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    if let Some(data) = &mut self.data {
-                        let is_wasm = cfg!(target_arch = "wasm32");
-                        ui.add_enabled_ui(!is_wasm, |ui| {
-                            ui.text_edit_multiline(&mut data.rule);
-                        });
-                        Self::window_ui(binary_data, data, ui);
-                        if let Some(e) = &data.error {
-                            ui.colored_label(egui::Color32::RED, "Error: ");
-                            ui.colored_label(egui::Color32::RED, e);
-                        }
-                    } else {
-                        let yara_data = YaraData::default();
-                        self.data = Some(yara_data);
-                    }
+                    self.inner_ui(binary_data, ui);
                 });
             self.is_open = is_open;
         }

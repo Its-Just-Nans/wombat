@@ -102,8 +102,54 @@ impl Hashing {
         }
     }
 
+    /// inner ui
+    pub(crate) fn inner_ui(
+        &mut self,
+        binary_data: &[u8],
+        selection: &Selection,
+        ui: &mut egui::Ui,
+    ) {
+        if let Some(data) = &mut self.data {
+            if selection.range.is_some() && data.selection.is_none() {
+                data.selection = Self::calculate_hashes_selection(binary_data, selection);
+            }
+            ui.label("File hashes:");
+            ui.label("sha1");
+            ui.label(&data.file.sha1);
+            ui.separator();
+            ui.label("sha256");
+            ui.label(&data.file.sha256);
+            ui.separator();
+            ui.label("sha512");
+            ui.label(&data.file.sha512);
+            ui.separator();
+            ui.label("md5");
+            ui.label(&data.file.md5);
+
+            if let Some(select) = &data.selection {
+                ui.separator();
+                ui.label("Selection hashes");
+                ui.label("sha1");
+                ui.label(&select.sha1);
+                ui.separator();
+                ui.label("sha256");
+                ui.label(&select.sha256);
+                ui.separator();
+                ui.label("sha512");
+                ui.label(&select.sha512);
+                ui.separator();
+                ui.label("md5");
+                ui.label(&select.md5);
+            }
+        } else if binary_data.is_empty() {
+            ui.label("File is empty");
+        } else {
+            self.data = Some(Self::calculate_hash_data(binary_data, selection));
+        }
+    }
+
     /// Show the hashing ui
-    pub(crate) fn ui(
+    pub(crate) fn window_ui(
         &mut self,
         binary_data: &[u8],
         selection: &Selection,
@@ -112,55 +158,13 @@ impl Hashing {
     ) {
         if self.is_open {
             let mut is_open = self.is_open;
-            if let Some(data) = &mut self.data {
-                if selection.range.is_some() && data.selection.is_none() {
-                    data.selection = Self::calculate_hashes_selection(binary_data, selection);
-                }
-                egui::Window::new(Self::window_title())
-                    .open(&mut is_open)
-                    .vscroll(true)
-                    .show(ui.ctx(), |ui| {
-                        ui.label("File hashes:");
-                        ui.label("sha1");
-                        ui.label(&data.file.sha1);
-                        ui.separator();
-                        ui.label("sha256");
-                        ui.label(&data.file.sha256);
-                        ui.separator();
-                        ui.label("sha512");
-                        ui.label(&data.file.sha512);
-                        ui.separator();
-                        ui.label("md5");
-                        ui.label(&data.file.md5);
-
-                        if let Some(select) = &data.selection {
-                            ui.separator();
-                            ui.label("Selection hashes");
-                            ui.label("sha1");
-                            ui.label(&select.sha1);
-                            ui.separator();
-                            ui.label("sha256");
-                            ui.label(&select.sha256);
-                            ui.separator();
-                            ui.label("sha512");
-                            ui.label(&select.sha512);
-                            ui.separator();
-                            ui.label("md5");
-                            ui.label(&select.md5);
-                        }
-                    });
-                self.is_open = is_open;
-            } else if binary_data.is_empty() {
-                egui::Window::new(Self::window_title())
-                    .open(&mut is_open)
-                    .vscroll(true)
-                    .show(ui.ctx(), |ui| {
-                        ui.label("File is empty");
-                    });
-                self.is_open = is_open;
-            } else {
-                self.data = Some(Self::calculate_hash_data(binary_data, selection));
-            }
+            egui::Window::new(Self::window_title())
+                .open(&mut is_open)
+                .vscroll(true)
+                .show(ui.ctx(), |ui| {
+                    self.inner_ui(binary_data, selection, ui);
+                });
+            self.is_open = is_open;
         }
     }
 }

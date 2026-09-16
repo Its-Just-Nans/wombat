@@ -2,6 +2,8 @@
 
 use std::ops::RangeInclusive;
 
+use crate::windows::DataView;
+
 /// Display setting
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub(crate) struct DisplaySettings {
@@ -11,6 +13,8 @@ pub(crate) struct DisplaySettings {
     pub(crate) limit_to_base_ascii: bool,
     /// show color picket
     pub(crate) show_color_picker: bool,
+    /// current data view
+    pub(crate) data_view: DataView,
 }
 
 impl Default for DisplaySettings {
@@ -19,6 +23,7 @@ impl Default for DisplaySettings {
             display_lsb: false,
             limit_to_base_ascii: true,
             show_color_picker: true,
+            data_view: DataView::Hex,
         }
     }
 }

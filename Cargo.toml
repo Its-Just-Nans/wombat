@@ -42,6 +42,7 @@ flate2 = "1.1.10"
 bzip2 = "0.6.1"
 qrcode = "0.14.1"
 image = "0.25.10"
+pdf = "0.10.0"
 
 [features]
 # yara only on native

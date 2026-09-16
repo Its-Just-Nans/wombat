@@ -151,61 +151,73 @@ impl Parsing {
 }
 
 impl WombatApp {
-    /// Show detection
-    pub(crate) fn show_parsing_ui(
+    /// Show ui
+    pub(crate) fn show_parsing_inner_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        current_idx: usize,
+    ) -> Option<RangeInclusive<usize>> {
+        let document = self.documents.get_mut(current_idx)?;
+        let _ = document.get_file_format();
+        let Some(file_info) = &document.file_format else {
+            return None;
+        };
+        ui.label(format!(
+            "Name: {} ({}) - {}",
+            file_info.name, file_info.file_type, file_info.extension
+        ));
+        ui.separator();
+        if matches!(document.windows_data.parsing.cache, ParsingCache::Empty) {
+            let binary_data = &document.binary_file;
+            document.windows_data.parsing.cache =
+                ParsingCache::parse(binary_data, file_info, &document.filename);
+        }
+        let parsing_cache = &document.windows_data.parsing.cache;
+        match parsing_cache {
+            ParsingCache::Png(data) => data.ui(ui),
+            ParsingCache::Jpg(data) => show_jpg_data(ui, data.as_ref()),
+            ParsingCache::Xml(data) => data.ui(ui),
+            ParsingCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
+            ParsingCache::Message(str) => {
+                ui.label(str);
+                None
+            }
+            ParsingCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
+            ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
+            ParsingCache::PmTiles(data) => data.ui(ui),
+            ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
+            ParsingCache::ErrorMessage(err) => {
+                ui.label(err);
+                None
+            }
+            ParsingCache::Empty => {
+                ui.label("No data");
+                None
+            }
+        }
+    }
+
+    /// Show window ui
+    pub(crate) fn show_parsing_window_ui(
         &mut self,
         ui: &mut egui::Ui,
         _error_manager: &mut ErrorManager,
     ) -> Option<RangeInclusive<usize>> {
-        let parsing = &self.documents.get_current_doc()?.windows_data.parsing;
+        let is_open = self
+            .documents
+            .get_current_doc()?
+            .windows_data
+            .parsing
+            .is_open;
         let current_index = self.documents.get_current_index();
-        if parsing.is_open {
-            let mut is_open = parsing.is_open;
+        if is_open {
+            let mut is_open = is_open;
             let mut ret = None;
             egui::Window::new("Parsing")
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    let Some(document) = self.documents.get_mut(current_index) else {
-                        return;
-                    };
-                    let _ = document.get_file_format();
-                    let Some(file_info) = &document.file_format else {
-                        return;
-                    };
-                    ui.label(format!(
-                        "Name: {} ({}) - {}",
-                        file_info.name, file_info.file_type, file_info.extension
-                    ));
-                    ui.separator();
-                    if matches!(document.windows_data.parsing.cache, ParsingCache::Empty) {
-                        let binary_data = &document.binary_file;
-                        document.windows_data.parsing.cache =
-                            ParsingCache::parse(binary_data, file_info, &document.filename);
-                    }
-                    let parsing_cache = &document.windows_data.parsing.cache;
-                    ret = match parsing_cache {
-                        ParsingCache::Png(data) => data.ui(ui),
-                        ParsingCache::Jpg(data) => show_jpg_data(ui, data.as_ref()),
-                        ParsingCache::Xml(data) => data.ui(ui),
-                        ParsingCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
-                        ParsingCache::Message(str) => {
-                            ui.label(str);
-                            None
-                        }
-                        ParsingCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
-                        ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
-                        ParsingCache::PmTiles(data) => data.ui(ui),
-                        ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
-                        ParsingCache::ErrorMessage(err) => {
-                            ui.label(err);
-                            None
-                        }
-                        ParsingCache::Empty => {
-                            ui.label("No data");
-                            None
-                        }
-                    };
+                    ret = self.show_parsing_inner_ui(ui, current_index);
                 });
             if let Some(document) = self.documents.get_mut(current_index) {
                 document.windows_data.parsing.is_open = is_open;

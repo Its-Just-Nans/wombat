@@ -7,6 +7,7 @@ use bladvak::{BladvakApp, File};
 use std::path::PathBuf;
 
 use crate::WombatApp;
+use crate::windows::DataView;
 use crate::windows::hex::hex_viewer_settings;
 
 /// File info
@@ -55,8 +56,11 @@ impl BladvakPanel for FileInfo {
             let _ = document.get_file_format();
         }
 
-        ui.separator();
-        hex_viewer_settings(ui, document);
+        let is_global_hex_viewer = app.display_settings.data_view == DataView::Hex;
+        if !is_global_hex_viewer {
+            ui.separator();
+            hex_viewer_settings(ui, document);
+        }
     }
 
     fn ui_settings(
@@ -92,5 +96,21 @@ impl BladvakPanel for FileInfo {
             &mut app.display_settings.show_color_picker,
             "Show color picker",
         );
+        egui::ComboBox::from_id_salt("data_view_combo_box")
+            .selected_text(app.display_settings.data_view.title())
+            .show_ui(ui, |ui| {
+                for one_view in DataView::all() {
+                    ui.selectable_value(
+                        &mut app.display_settings.data_view,
+                        one_view.clone(),
+                        one_view.title(),
+                    );
+                }
+                ui.selectable_value(
+                    &mut app.display_settings.data_view,
+                    DataView::Empty,
+                    DataView::Empty.title(),
+                );
+            });
     }
 }

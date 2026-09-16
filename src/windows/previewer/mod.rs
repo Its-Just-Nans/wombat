@@ -65,8 +65,32 @@ impl Previewer {
         }
     }
 
+    /// inner ui
+    pub(crate) fn inner_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+        fonts_definitions: &mut egui::FontDefinitions,
+        filename: &str,
+        binary_file: &Arc<Vec<u8>>,
+        kind: Kind,
+    ) {
+        match &mut self.data {
+            PreviewData::Image(image_preview) => {
+                image_preview.ui(ui, binary_file, error_manager);
+            }
+            PreviewData::Font(font) => {
+                font.ui(ui);
+            }
+            PreviewData::Error(err) => {
+                ui.label(err.as_str());
+            }
+            PreviewData::None => {}
+        }
+        self.prepare_ui(ui, fonts_definitions, filename, binary_file, kind);
+    }
     /// ui
-    pub(crate) fn ui(
+    pub(crate) fn window_ui(
         &mut self,
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
@@ -80,21 +104,18 @@ impl Previewer {
             egui::Window::new("Previewer")
                 .open(&mut is_open)
                 .vscroll(true)
-                .show(ui.ctx(), |ui| match &mut self.data {
-                    PreviewData::Image(image_preview) => {
-                        image_preview.ui(ui, binary_file, error_manager);
-                    }
-                    PreviewData::Font(font) => {
-                        font.ui(ui);
-                    }
-                    PreviewData::Error(err) => {
-                        ui.label(err.as_str());
-                    }
-                    PreviewData::None => {}
+                .show(ui.ctx(), |ui| {
+                    self.inner_ui(
+                        ui,
+                        error_manager,
+                        fonts_definitions,
+                        filename,
+                        binary_file,
+                        kind,
+                    );
                 });
             self.is_open = is_open;
         }
-        self.prepare_ui(ui, fonts_definitions, filename, binary_file, kind);
     }
 
     /// reset

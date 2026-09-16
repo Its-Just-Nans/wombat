@@ -124,7 +124,9 @@ impl BladvakApp<'_> for WombatApp {
         ui.separator();
         if let Some(document) = self.documents.get_current_doc_mut() {
             ui.menu_button("Windows", |ui| {
-                document.windows_data.ui_top_bar(ui);
+                document
+                    .windows_data
+                    .ui_top_bar(ui, &self.display_settings.data_view);
             });
             ui.separator();
         }

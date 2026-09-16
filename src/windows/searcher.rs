@@ -60,7 +60,7 @@ impl Searcher {
     }
 
     /// Ui inside the windows of the searcher
-    pub(crate) fn windows_ui(
+    pub(crate) fn inner_ui(
         &mut self,
         binary_file: &[u8],
         selection: &Selection,
@@ -127,7 +127,7 @@ impl Searcher {
     }
 
     /// Show the search ui
-    pub(crate) fn ui(
+    pub(crate) fn window_ui(
         &mut self,
         binary_file: &[u8],
         selection: &Selection,
@@ -141,7 +141,7 @@ impl Searcher {
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    range = self.windows_ui(binary_file, selection, ui);
+                    range = self.inner_ui(binary_file, selection, ui);
                 });
             self.is_open = is_open;
         }

@@ -48,35 +48,39 @@ impl Histogram {
         map
     }
 
+    /// Show the ui
+    pub(crate) fn inner_ui(&mut self, binary_data: &[u8], ui: &mut egui::Ui) {
+        if self.data.is_none() {
+            self.data = Some(Self::calculate_histogram(binary_data));
+        }
+        ui.horizontal(|ui| {
+            ui.label("Orientation:");
+            ui.selectable_value(&mut self.vertical, true, "Vertical");
+            ui.selectable_value(&mut self.vertical, false, "Horizontal");
+        });
+        ui.horizontal(|ui| {
+            ui.label("Bar width");
+            ui.add(egui::Slider::new(&mut self.bar_width, 0.001..=2.0));
+        });
+        self.show_plot(ui);
+    }
+
     /// Show the histogram ui
-    pub(crate) fn ui(
+    pub(crate) fn window_ui(
         &mut self,
         binary_data: &[u8],
         ui: &mut egui::Ui,
         _error_manager: &mut ErrorManager,
     ) {
         if self.is_open {
-            if self.data.is_some() {
-                let mut is_open = self.is_open;
-                egui::Window::new("Histogram")
-                    .open(&mut is_open)
-                    .vscroll(true)
-                    .show(ui.ctx(), |ui| {
-                        ui.horizontal(|ui| {
-                            ui.label("Orientation:");
-                            ui.selectable_value(&mut self.vertical, true, "Vertical");
-                            ui.selectable_value(&mut self.vertical, false, "Horizontal");
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Bar width");
-                            ui.add(egui::Slider::new(&mut self.bar_width, 0.001..=2.0));
-                        });
-                        self.show_plot(ui);
-                    });
-                self.is_open = is_open;
-            } else {
-                self.data = Some(Self::calculate_histogram(binary_data));
-            }
+            let mut is_open = self.is_open;
+            egui::Window::new("Histogram")
+                .open(&mut is_open)
+                .vscroll(true)
+                .show(ui.ctx(), |ui| {
+                    self.inner_ui(binary_data, ui);
+                });
+            self.is_open = is_open;
         }
     }
 
