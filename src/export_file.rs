@@ -84,13 +84,12 @@ impl WombatApp {
             error_manager.add_error("No document to save");
             return;
         };
-        let extension = file_export_type.extension();
-        let current_save_path =
-            if document.filename.extension().and_then(|e| e.to_str()) == Some(extension) {
-                document.filename.clone()
-            } else {
-                document.filename.with_extension(extension)
-            };
+        let current_save_path = if let Some(_ext) = document.filename.extension() {
+            document.filename.clone()
+        } else {
+            let extension = file_export_type.extension();
+            document.filename.with_extension(extension)
+        };
         let save_path = bladvak::utils::get_save_path(Some(&current_save_path));
         match save_path {
             Ok(save_p) => {

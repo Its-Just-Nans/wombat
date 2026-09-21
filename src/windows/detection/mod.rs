@@ -19,7 +19,9 @@ pub enum Action {
     /// Acropalypse issue
     Acropalypse,
     /// Extract images
-    ExtractImages,
+    PdfExtractImages,
+    /// Extract page
+    PdfExtractPage(u32),
 }
 
 /// Detection
@@ -64,7 +66,8 @@ impl Detection {
             }
         }
         if format.extension == "pdf" {
-            self.actions.push(Action::ExtractImages);
+            self.actions.push(Action::PdfExtractImages);
+            self.actions.push(Action::PdfExtractPage(0));
         }
     }
 }
@@ -77,6 +80,7 @@ impl WombatApp {
         error_manager: &mut ErrorManager,
         current_idx: usize,
     ) {
+        // exif
         let Some(document) = self.documents.get_mut(current_idx) else {
             return;
         };
@@ -85,26 +89,44 @@ impl WombatApp {
         if detection.exif_data.is_none() {
             detection.prepare_ui(&document.binary_file, &file_info_data);
         }
-
         self.show_detection_exif(ui, error_manager);
+
+        // actions
         let Some(document) = self.documents.get_mut(current_idx) else {
             return;
         };
-        let actions = document.windows_data.detection.actions.clone();
-        for one_action in actions {
+        let mut actions = document.windows_data.detection.actions.clone();
+        for one_action in &mut actions {
             match one_action {
                 Action::Acropalypse => {
                     ui.label("Possible to acropalypse");
                 }
-                Action::ExtractImages => {
-                    // if ui.button("Extract images").clicked()
+                Action::PdfExtractImages => {
+                    // if ui.button("extract images").clicked()
+                    //     && let err(err) = self.extract_pdf_images(current_idx)
+                    // {
+                    //     error_manager.add_error(err);
+                    // }
+                    // if ui.button("extract images").clicked()
                     //     && let Err(err) = self.extract_pdf_images(current_idx)
                     // {
                     //     error_manager.add_error(err);
                     // }
                 }
+                Action::PdfExtractPage(page_num) => {
+                    ui.add(egui::DragValue::new(page_num));
+                    if ui.button("Extract page").clicked()
+                        && let Err(err) = self.extract_pdf_page(current_idx, *page_num)
+                    {
+                        error_manager.add_error(err);
+                    }
+                }
             }
         }
+        let Some(document) = self.documents.get_mut(current_idx) else {
+            return;
+        };
+        document.windows_data.detection.actions = actions;
     }
 
     /// show detection ui
