@@ -8,6 +8,7 @@ use bladvak::ErrorManager;
 use bladvak::eframe::egui;
 
 use crate::WombatApp;
+use crate::document::Document;
 use crate::panels::FileInfoData;
 use crate::windows::detection::exif::ExifData;
 // use crate::windows::detection::pdf_image::pdf_image_to_png;
@@ -103,11 +104,6 @@ impl WombatApp {
                 }
                 Action::PdfExtractImages => {
                     // if ui.button("extract images").clicked()
-                    //     && let err(err) = self.extract_pdf_images(current_idx)
-                    // {
-                    //     error_manager.add_error(err);
-                    // }
-                    // if ui.button("extract images").clicked()
                     //     && let Err(err) = self.extract_pdf_images(current_idx)
                     // {
                     //     error_manager.add_error(err);
@@ -127,6 +123,77 @@ impl WombatApp {
             return;
         };
         document.windows_data.detection.actions = actions;
+
+        if ui.button("Open in tarsier").clicked() {
+            #[cfg(target_arch = "wasm32")]
+            Self::open_in_tarsier(document, error_manager);
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn open_in_tarsier(document: &Document, error_manager: &mut ErrorManager) {
+        use bladvak::wasm_bindgen::prelude::*;
+        use bladvak::{js_sys, web_sys};
+        let data = document.binary_file.clone();
+        let Some(window) = web_sys::window() else {
+            error_manager.add_error("Cannot create window");
+            return;
+        };
+
+        let parts = js_sys::Array::new();
+        let bytes = js_sys::Uint8Array::from(data.as_slice());
+        parts.push(&bytes);
+
+        let options = web_sys::BlobPropertyBag::new();
+        options.set_type("application/octet-stream");
+
+        let Ok(blob) = web_sys::Blob::new_with_str_sequence_and_options(&parts, &options) else {
+            error_manager.add_error("Cannot create blob");
+            return;
+        };
+
+        // Open Tab B
+        let target_website = "https://tarsier.n4n5.dev";
+        let Ok(res_tab) = window.open_with_url_and_target(target_website, "_blank") else {
+            error_manager.add_error("Cannot open URL");
+            return;
+        };
+
+        let Some(tab_b) = res_tab else {
+            error_manager.add_error("Cannot get WindowProxy");
+            return;
+        };
+
+        let message = js_sys::Object::new();
+
+        if let Err(_err) = js_sys::Reflect::set(&message, &JsValue::from_str("blob"), &blob) {
+            error_manager.add_error("Cannot had blob to message");
+            return;
+        };
+        if let Err(_err) = js_sys::Reflect::set(
+            &message,
+            &JsValue::from_str("filename"),
+            &JsValue::from_str(&document.filename.to_string_lossy().to_string()),
+        ) {
+            error_manager.add_error("Cannot had filename to message");
+            return;
+        };
+        let callback = Closure::once(move || {
+            // Send to Tab B
+            if let Err(_err) = tab_b.post_message(&message, target_website) {
+                return;
+            }
+        });
+
+        let Err(_err) = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+            callback.as_ref().unchecked_ref(),
+            2000,
+        ) else {
+            error_manager.add_error("Cannot set timeout");
+            return;
+        };
+
+        callback.forget();
     }
 
     /// show detection ui
