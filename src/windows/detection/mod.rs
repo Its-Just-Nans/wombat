@@ -8,7 +8,6 @@ use bladvak::ErrorManager;
 use bladvak::eframe::egui;
 
 use crate::WombatApp;
-use crate::document::Document;
 use crate::panels::FileInfoData;
 use crate::windows::detection::exif::ExifData;
 // use crate::windows::detection::pdf_image::pdf_image_to_png;
@@ -131,9 +130,10 @@ impl WombatApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn open_in_tarsier(document: &Document, error_manager: &mut ErrorManager) {
-        use bladvak::wasm_bindgen::prelude::*;
+    fn open_in_tarsier(document: &crate::document::Document, error_manager: &mut ErrorManager) {
+        use bladvak::wasm_bindgen::{JsCast, JsValue, closure::Closure};
         use bladvak::{js_sys, web_sys};
+
         let data = document.binary_file.clone();
         let Some(window) = web_sys::window() else {
             error_manager.add_error("Cannot create window");
