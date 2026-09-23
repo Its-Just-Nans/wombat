@@ -134,9 +134,7 @@ impl HexViewer {
                 ui.scroll_with_delta(offset_needed);
                 document.offset.need_change = false;
             }
-            let margin = ui.visuals().clip_rect_margin;
-
-            document.offset.current = ui.clip_rect().top() - ui.min_rect().top() + margin;
+            document.offset.current = ui.clip_rect().top() - ui.min_rect().top();
             // 1) compute text metrics: row height using monospace TextStyle if available
             // Choose a monospace font id. Use the style's size for monospace if available:
             let font_size = ui
