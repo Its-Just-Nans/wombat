@@ -4,6 +4,7 @@ use bladvak::app::BladvakPanel;
 use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
 use bladvak::{BladvakApp, File};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::WombatApp;
@@ -15,10 +16,8 @@ use crate::windows::hex::hex_viewer_settings;
 pub(crate) struct FileInfo;
 
 /// File info
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct FileInfoData {
-    /// Kind of file
-    pub(crate) kind: file_format::Kind,
     /// Type of file
     pub(crate) file_type: String,
     /// Extension of file format
@@ -45,16 +44,15 @@ impl BladvakPanel for FileInfo {
         ui.label(format!("File: {}", document.filename.display()));
         bladvak::utils::show_size(ui, document.binary_file.len());
 
-        if let Some(fmt) = &document.file_format {
-            ui.collapsing("File info", |ui| {
-                ui.label(format!("Kind: {:?}", fmt.kind));
-                ui.label(format!("Type: {}", fmt.file_type));
-                ui.label(format!("Name: {}", fmt.name));
-                ui.label(format!("Extension: .{}", fmt.extension));
-            });
-        } else if ui.button("Get file info").clicked() {
-            let _ = document.get_file_format();
-        }
+        let fmt = &document.file_format;
+        ui.collapsing("File info", |ui| {
+            let format =
+                file_format::FileFormat::from_extension(&document.file_format.extension)[0];
+            ui.label(format!("Kind: {:?}", format.kind()));
+            ui.label(format!("Type: {}", fmt.file_type));
+            ui.label(format!("Name: {}", fmt.name));
+            ui.label(format!("Extension: .{}", fmt.extension));
+        });
 
         let is_global_hex_viewer = app.display_settings.data_view == DataView::Hex;
         if !is_global_hex_viewer {

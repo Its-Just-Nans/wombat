@@ -11,7 +11,6 @@ use bladvak::{
     utils::Documents,
 };
 use std::fmt::Debug;
-use std::path::PathBuf;
 
 use crate::display_settings::DisplaySettings;
 use crate::document::Document;
@@ -39,13 +38,9 @@ pub struct WombatApp {
     pub(crate) fonts_definitions: egui::FontDefinitions,
 }
 
-/// default file (wombat icon)
-const LOGO_ASSET: &[u8] = include_bytes!("../assets/icon-1024.png");
-
 impl Default for WombatApp {
     fn default() -> Self {
-        let File { data, path } = Self::load_default_file();
-        let document = Document::new(data, path);
+        let document = Document::default();
         let mut documents = Documents::default();
         documents.push(document);
         Self {
@@ -63,10 +58,8 @@ impl WombatApp {
     /// Load the default file (wombat icon)
     #[must_use]
     pub fn load_default_file() -> File {
-        File {
-            data: LOGO_ASSET.to_vec(),
-            path: PathBuf::from("wombat.png"),
-        }
+        let (data, path) = Document::load_default_file();
+        File { data, path }
     }
 
     /// Mark data as stale

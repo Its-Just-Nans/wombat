@@ -159,9 +159,7 @@ impl WombatApp {
     ) -> Option<RangeInclusive<usize>> {
         let document = self.documents.get_mut(current_idx)?;
         let _ = document.get_file_format();
-        let Some(file_info) = &document.file_format else {
-            return None;
-        };
+        let file_info = &document.file_format;
         ui.label(format!(
             "Name: {} ({}) - {}",
             file_info.name, file_info.file_type, file_info.extension

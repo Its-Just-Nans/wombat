@@ -26,8 +26,7 @@ pub(crate) struct Document {
     /// Scroll area offset
     pub(crate) offset: Offset,
     /// File info
-    #[serde(skip)]
-    pub(crate) file_format: Option<FileInfoData>,
+    pub(crate) file_format: FileInfoData,
     /// Bytes per line
     pub(crate) bytes_per_line: usize,
     /// Windows
@@ -36,39 +35,56 @@ pub(crate) struct Document {
 
 impl Default for Document {
     fn default() -> Self {
+        let (data, path) = Self::load_default_file();
+        let file_fmt = FileFormat::from_bytes(&data);
+        let file_format = FileInfoData {
+            file_type: file_fmt.media_type().to_string(),
+            extension: file_fmt.extension().to_string(),
+            name: file_fmt.name().to_string(),
+        };
         Self {
-            binary_file: Arc::new(vec![]),
-            filename: PathBuf::new(),
+            binary_file: Arc::new(data),
+            filename: path,
+            file_format,
             selection: Selection::default(),
             offset: Offset::default(),
-            file_format: None,
             bytes_per_line: 32,
             windows_data: WindowsData::new(),
         }
     }
 }
 
+/// default file (wombat icon)
+const LOGO_ASSET: &[u8] = include_bytes!("../assets/icon-1024.png");
+
 impl Document {
+    /// Load default file
+    pub(crate) fn load_default_file() -> (Vec<u8>, PathBuf) {
+        (LOGO_ASSET.to_vec(), PathBuf::from("wombat.png"))
+    }
+
     /// create a new document
     pub(crate) fn new(bytes: Vec<u8>, filename: PathBuf) -> Self {
+        let file_fmt = FileFormat::from_bytes(&bytes);
+        let file_format = FileInfoData {
+            file_type: file_fmt.media_type().to_string(),
+            extension: file_fmt.extension().to_string(),
+            name: file_fmt.name().to_string(),
+        };
         Self {
             binary_file: Arc::new(bytes),
             filename,
-            ..Default::default()
+            file_format,
+            selection: Selection::default(),
+            offset: Offset::default(),
+            bytes_per_line: 32,
+            windows_data: WindowsData::new(),
         }
     }
 
     /// Get file info - load if needed
     pub(crate) fn get_file_format(&mut self) -> &FileInfoData {
-        self.file_format.get_or_insert_with(|| {
-            let file_fmt = FileFormat::from_bytes(&*self.binary_file);
-            FileInfoData {
-                kind: file_fmt.kind(),
-                file_type: file_fmt.media_type().to_string(),
-                extension: file_fmt.extension().to_string(),
-                name: file_fmt.name().to_string(),
-            }
-        })
+        &self.file_format
     }
     /// Go to the selected range
     pub(crate) fn go_to_range(&mut self, range: RangeInclusive<usize>) {
@@ -79,7 +95,12 @@ impl Document {
 
     /// Mark document as stale
     pub(crate) fn stale(&mut self) {
-        self.file_format = None;
+        let file_fmt = FileFormat::from_bytes(&*self.binary_file);
+        self.file_format = FileInfoData {
+            file_type: file_fmt.media_type().to_string(),
+            extension: file_fmt.extension().to_string(),
+            name: file_fmt.name().to_string(),
+        };
     }
 
     /// Handle selection click

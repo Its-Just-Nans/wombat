@@ -459,7 +459,7 @@ pub(crate) fn hex_viewer_settings(ui: &mut egui::Ui, document: &mut Document) {
     if ui.available_width() > 205.0 {
         ui.add(egui::Slider::new(&mut document.bytes_per_line, 1..=64));
     } else {
-        ui.add(egui::DragValue::new(&mut document.bytes_per_line).range(0..=64));
+        ui.add(egui::DragValue::new(&mut document.bytes_per_line).range(1..=64));
     }
     ui.separator();
     let show_buttons = |ui: &mut egui::Ui| {
