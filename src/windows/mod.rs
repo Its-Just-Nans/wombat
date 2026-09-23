@@ -18,7 +18,7 @@ use std::slice::Iter;
 
 use crate::{WombatApp, windows::hex::HexViewer};
 
-use bladvak::{ErrorManager, eframe::egui, utils::document::DocumentTrait};
+use bladvak::{ErrorManager, eframe::egui};
 
 use detection::Detection;
 use histogram::Histogram;
@@ -251,7 +251,7 @@ impl WombatApp {
                     ui,
                     error_manager,
                     &mut self.fonts_definitions,
-                    &format!("{}", document.name()),
+                    &document.filename,
                     &document.binary_file,
                     format.kind(),
                 );

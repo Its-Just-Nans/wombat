@@ -1,6 +1,6 @@
 //! Font preview
 
-use std::{collections::BTreeSet, sync::Arc};
+use std::{collections::BTreeSet, path::Path, sync::Arc};
 
 use bladvak::{
     eframe::egui::{self, Slider},
@@ -32,10 +32,10 @@ impl FontPreview {
     pub(crate) fn prepare_ui(
         ui: &egui::Ui,
         binary_file: &Arc<Vec<u8>>,
-        filename: &str,
+        filename: &Path,
         fonts_definitions: &mut egui::FontDefinitions,
     ) -> Self {
-        let font_name = filename.to_string();
+        let font_name = filename.to_string_lossy().to_string();
         fonts_definitions.font_data.insert(
             font_name.clone(),
             std::sync::Arc::new(egui::FontData::from_owned((*binary_file).to_vec())),

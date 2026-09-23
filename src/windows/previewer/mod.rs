@@ -1,5 +1,6 @@
 //! Preview
 
+use std::path::Path;
 use std::sync::Arc;
 
 use bladvak::ErrorManager;
@@ -42,7 +43,7 @@ impl Previewer {
         &mut self,
         ui: &egui::Ui,
         fonts_definitions: &mut egui::FontDefinitions,
-        filename: &str,
+        filename: &Path,
         binary_file: &Arc<Vec<u8>>,
         kind: Kind,
     ) {
@@ -71,13 +72,13 @@ impl Previewer {
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
         fonts_definitions: &mut egui::FontDefinitions,
-        filename: &str,
+        filename: &Path,
         binary_file: &Arc<Vec<u8>>,
         kind: Kind,
     ) {
         match &mut self.data {
             PreviewData::Image(image_preview) => {
-                image_preview.ui(ui, binary_file, error_manager);
+                image_preview.ui(ui, binary_file, filename, error_manager);
             }
             PreviewData::Font(font) => {
                 font.ui(ui);
@@ -95,7 +96,7 @@ impl Previewer {
         ui: &mut egui::Ui,
         error_manager: &mut ErrorManager,
         fonts_definitions: &mut egui::FontDefinitions,
-        filename: &str,
+        filename: &Path,
         binary_file: &Arc<Vec<u8>>,
         kind: Kind,
     ) {

@@ -2,7 +2,6 @@
 
 use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
-use bladvak::utils::document::DocumentTrait;
 
 use crate::WombatApp;
 use crate::windows::DataView;
@@ -67,7 +66,7 @@ impl WombatApp {
                     ui,
                     error_manager,
                     &mut self.fonts_definitions,
-                    &format!("{}", document.name()),
+                    &document.filename,
                     &document.binary_file,
                     format.kind(),
                 );

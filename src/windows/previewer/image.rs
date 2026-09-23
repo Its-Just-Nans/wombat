@@ -1,6 +1,6 @@
 //! Image previewer
 
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use bladvak::{ErrorManager, eframe::egui, image};
 
@@ -54,8 +54,17 @@ impl ImagePreview {
         &mut self,
         ui: &mut egui::Ui,
         binary_file: &[u8],
+        filename: &Path,
         error_manager: &mut ErrorManager,
     ) {
+        if ui.button("Open in tarsier").clicked() {
+            bladvak::utils::open_external(
+                binary_file.to_vec(),
+                filename,
+                error_manager,
+                "https://tarsier.n4n5.dev",
+            );
+        }
         if ui.button("Copy to clipboard").clicked() {
             match image::load_from_memory(binary_file) {
                 Ok(img) => {
