@@ -167,4 +167,8 @@ impl DocumentTrait for Document {
     fn path(&self) -> &Path {
         &self.filename
     }
+
+    fn set_path(&mut self, new_path: PathBuf) {
+        self.filename = new_path;
+    }
 }
