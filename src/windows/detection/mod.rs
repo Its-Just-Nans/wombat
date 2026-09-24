@@ -115,6 +115,11 @@ impl WombatApp {
                     {
                         error_manager.add_error(err);
                     }
+                    if ui.button("Extract all pages").clicked()
+                        && let Err(err) = self.extract_pdf_all_pages(current_idx, error_manager)
+                    {
+                        error_manager.add_error(err);
+                    }
                 }
             }
         }
