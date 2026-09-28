@@ -12,7 +12,7 @@ pub struct Co64Box {
 impl Co64Box {
     /// parse co64
     #[allow(clippy::unnecessary_wraps)]
-    pub fn parse(data: &[u8]) -> Option<Self> {
+    pub fn parse(data: &[u8]) -> Result<Self, String> {
         let mut offset = 0;
 
         // version + flags
@@ -42,7 +42,7 @@ impl Co64Box {
             offset += 8;
         }
 
-        Some(Self { chunk_offsets })
+        Ok(Self { chunk_offsets })
     }
 
     /// show co64

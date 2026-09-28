@@ -20,7 +20,7 @@ pub struct StsdBox {
 
 impl StsdBox {
     /// parse
-    pub fn parse(data: &[u8]) -> Option<Self> {
+    pub fn parse(data: &[u8]) -> Result<Self, String> {
         let mut offset = 0;
         // version + flags
         offset += 4;
@@ -52,8 +52,12 @@ impl StsdBox {
             ];
             offset += 4;
 
-            let payload_size = size.checked_sub(8)?;
-            let payload = data.get(offset..offset + payload_size)?;
+            let Some(payload_size) = size.checked_sub(8) else {
+                return Err("Cannot subtract size for stsd".to_string());
+            };
+            let Some(payload) = data.get(offset..offset + payload_size) else {
+                return Err("Cannot get data for stsd".to_string());
+            };
             offset += payload_size;
 
             entries.push(StsdEntry {
@@ -63,7 +67,7 @@ impl StsdBox {
             offset += payload_size;
         }
 
-        Some(Self { entries })
+        Ok(Self { entries })
     }
 
     /// show

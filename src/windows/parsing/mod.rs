@@ -5,6 +5,7 @@
 mod cert;
 pub(crate) mod jpg;
 mod mp4;
+mod pdf;
 mod pmtiles;
 pub(crate) mod png;
 mod raw;
@@ -18,9 +19,10 @@ use std::path::Path;
 
 use crate::WombatApp;
 use crate::panels::FileInfoData;
-use crate::windows::parsing::cert::{CertData, show_certs};
-use crate::windows::parsing::jpg::{JpgData, show_jpg_data};
-use crate::windows::parsing::mp4::{Mp4Data, ui::show_mp4_ui};
+use crate::windows::parsing::cert::CertData;
+use crate::windows::parsing::jpg::JpgData;
+use crate::windows::parsing::mp4::Mp4Data;
+use crate::windows::parsing::pdf::PdfData;
 use crate::windows::parsing::png::PngData;
 use crate::windows::parsing::raw::RawType;
 use crate::windows::parsing::xml::XmlData;
@@ -33,17 +35,19 @@ enum ParsingCache {
     /// png data cached
     Png(PngData),
     /// jpg data cached
-    Jpg(Option<JpgData>),
+    Jpg(JpgData),
     /// xml data cached
     Xml(XmlData),
     /// cert data cached
-    Cert(Option<CertData>),
+    Cert(CertData),
     /// mp4 data cached
-    Mp4(Option<Mp4Data>),
+    Mp4(Mp4Data),
     /// zip data cached
     Zip(ZipData),
     /// pmtiles
     PmTiles(PmTilesData),
+    /// Pdf
+    Pdf(PdfData),
     /// Message
     Message(String),
     /// Raw type
@@ -85,19 +89,31 @@ impl ParsingCache {
                 ParsingCache::Xml(parsed)
             }
             "crt" => {
-                let parsed = CertData::parse(binary_data, false);
+                let parsed = match CertData::parse(binary_data, false) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
                 ParsingCache::Cert(parsed)
             }
             "der" => {
-                let parsed = CertData::parse(binary_data, true);
+                let parsed = match CertData::parse(binary_data, true) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
                 ParsingCache::Cert(parsed)
             }
             "jpg" => {
-                let parsed = JpgData::parse(binary_data);
+                let parsed = match JpgData::parse(binary_data) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
                 ParsingCache::Jpg(parsed)
             }
             "mp4" => {
-                let parsed = Mp4Data::parse(binary_data);
+                let parsed = match Mp4Data::parse(binary_data) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
                 ParsingCache::Mp4(parsed)
             }
             "zip" => {
@@ -115,6 +131,13 @@ impl ParsingCache {
                 };
 
                 ParsingCache::PmTiles(parsed)
+            }
+            "pdf" => {
+                let parsed = match PdfData::parse(binary_data) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
+                ParsingCache::Pdf(parsed)
             }
             _ => {
                 return None;
@@ -173,17 +196,18 @@ impl WombatApp {
         let parsing_cache = &document.windows_data.parsing.cache;
         match parsing_cache {
             ParsingCache::Png(data) => data.ui(ui),
-            ParsingCache::Jpg(data) => show_jpg_data(ui, data.as_ref()),
+            ParsingCache::Jpg(data) => data.ui(ui),
             ParsingCache::Xml(data) => data.ui(ui),
-            ParsingCache::Cert(xml_str) => show_certs(ui, xml_str.as_ref()),
+            ParsingCache::Cert(data) => data.ui(ui),
+            ParsingCache::Mp4(data) => data.ui(ui),
+            ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
+            ParsingCache::PmTiles(data) => data.ui(ui),
+            ParsingCache::Pdf(data) => data.ui(ui),
+            ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
             ParsingCache::Message(str) => {
                 ui.label(str);
                 None
             }
-            ParsingCache::Mp4(data) => show_mp4_ui(ui, data.as_ref()),
-            ParsingCache::Zip(_) => self.parsing_ui_zip(ui),
-            ParsingCache::PmTiles(data) => data.ui(ui),
-            ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
             ParsingCache::ErrorMessage(err) => {
                 ui.label(err);
                 None

@@ -13,8 +13,10 @@ pub(crate) struct Ftyp {
 
 impl Ftyp {
     /// Parse the Ftyp box
-    pub(crate) fn parse(data: &[u8]) -> Option<Self> {
-        let major = data.get(0..4)?;
+    pub(crate) fn parse(data: &[u8]) -> Result<Self, String> {
+        let Some(major) = data.get(0..4) else {
+            return Err("Cannot get major of ftyp".to_string());
+        };
         let major_brand = String::from_utf8_lossy(major).to_string();
 
         let minor_version = u32::from_be_bytes([data[4], data[5], data[6], data[7]]);
@@ -27,7 +29,7 @@ impl Ftyp {
             i += 4;
         }
 
-        Some(Self {
+        Ok(Self {
             major_brand,
             minor_version,
             compatible_brands,

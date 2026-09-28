@@ -21,7 +21,7 @@ pub struct SttsBox {
 impl SttsBox {
     /// parset stts atom
     #[allow(clippy::unnecessary_wraps)]
-    pub fn parse(data: &[u8]) -> Option<Self> {
+    pub fn parse(data: &[u8]) -> Result<Self, String> {
         let mut offset = 0;
 
         // version + flags
@@ -60,7 +60,7 @@ impl SttsBox {
             });
         }
 
-        Some(Self { entries })
+        Ok(Self { entries })
     }
 
     /// show struct

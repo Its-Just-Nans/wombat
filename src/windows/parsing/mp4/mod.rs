@@ -72,13 +72,15 @@ pub(crate) struct Mp4Box {
 
 impl Mp4Box {
     /// Parse
-    fn parse(data: &[u8], offset: usize) -> Option<Self> {
-        let header = data.get(..BOX_HEADER_SIZE)?;
+    fn parse(data: &[u8], offset: usize) -> Result<Self, String> {
+        let Some(header) = data.get(..BOX_HEADER_SIZE) else {
+            return Err("Invalid len: no header".to_string());
+        };
 
         let size = u32::from_be_bytes([header[0], header[1], header[2], header[3]]) as usize;
 
         if size < BOX_HEADER_SIZE || size > data.len() {
-            return None;
+            return Err("Invalid len".to_string());
         }
 
         let name = String::from_utf8_lossy(&header[4..8]).to_string();
@@ -108,7 +110,7 @@ impl Mp4Box {
             _ => Mp4BoxData::Unknown(raw.into()),
         };
 
-        Some(Self {
+        Ok(Self {
             offset: offset as u64,
             size: size as u64,
             name,
@@ -117,13 +119,15 @@ impl Mp4Box {
     }
 
     /// Parse all
-    fn parse_all(data: &[u8], base_offset: usize) -> Option<Vec<Self>> {
+    fn parse_all(data: &[u8], base_offset: usize) -> Result<Vec<Self>, String> {
         let mut boxes = Vec::new();
         let mut offset = 0;
 
         while offset + BOX_HEADER_SIZE <= data.len() {
             let b = Self::parse(&data[offset..], base_offset + offset)?;
-            let size = usize::try_from(b.size).ok()?;
+            let Ok(size) = usize::try_from(b.size) else {
+                return Err("Failed to convert usize".to_string());
+            };
 
             if size == 0 {
                 break;
@@ -133,7 +137,7 @@ impl Mp4Box {
             offset += size;
         }
 
-        Some(boxes)
+        Ok(boxes)
     }
 }
 
@@ -146,8 +150,8 @@ pub(crate) struct Mp4Data {
 
 impl Mp4Data {
     /// parse
-    pub(crate) fn parse(binary_data: &[u8]) -> Option<Self> {
-        Some(Self {
+    pub(crate) fn parse(binary_data: &[u8]) -> Result<Self, String> {
+        Ok(Self {
             boxes: Mp4Box::parse_all(binary_data, 0)?,
         })
     }

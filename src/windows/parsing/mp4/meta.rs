@@ -16,9 +16,9 @@ pub(crate) struct MetaBox {
 
 impl MetaBox {
     /// Parse the meta
-    pub(crate) fn parse(data: &[u8], offset: usize) -> Option<Self> {
+    pub(crate) fn parse(data: &[u8], offset: usize) -> Result<Self, String> {
         if data.len() < 4 {
-            return None;
+            return Err("Invalid len: metabox".to_string());
         }
 
         let version = data[0];
@@ -26,7 +26,7 @@ impl MetaBox {
 
         let children = Mp4Box::parse_all(&data[4..], offset + BOX_HEADER_SIZE + 4)?;
 
-        Some(Self {
+        Ok(Self {
             version,
             flags,
             children,

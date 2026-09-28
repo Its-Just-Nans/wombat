@@ -17,7 +17,7 @@ pub struct StszBox {
 impl StszBox {
     /// parse stsz
     #[allow(clippy::unnecessary_wraps)]
-    pub fn parse(data: &[u8]) -> Option<StszBox> {
+    pub fn parse(data: &[u8]) -> Result<StszBox, String> {
         let mut offset = 0;
 
         // version + flags
@@ -55,7 +55,7 @@ impl StszBox {
             }
         }
 
-        Some(StszBox {
+        Ok(StszBox {
             sample_size,
             sample_count,
             sample_sizes,

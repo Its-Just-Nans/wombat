@@ -13,9 +13,9 @@ pub(crate) struct JpgData {
 
 impl JpgData {
     /// parse the data
-    pub(crate) fn parse(binary_file: &[u8]) -> Option<Self> {
-        let segments = parse_jpeg(binary_file).ok()?;
-        Some(Self { segments })
+    pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
+        let segments = parse_jpeg(binary_file)?;
+        Ok(Self { segments })
     }
 }
 
@@ -237,34 +237,29 @@ fn marker(id: u8) -> Marker {
     }
 }
 
-/// show jpg data
-pub(crate) fn show_jpg_data(
-    ui: &mut egui::Ui,
-    jpg_data: Option<&JpgData>,
-) -> Option<RangeInclusive<usize>> {
-    let Some(data) = jpg_data else {
-        ui.label("Failed to parse the JPG data");
-        return None;
-    };
-    let mut return_range = None;
-    egui::Grid::new("jpg_table").striped(true).show(ui, |ui| {
-        ui.label("Marker");
-        ui.label("Start");
-        ui.label("End");
-        ui.end_row();
-
-        for one_segment in &data.segments {
-            ui.label(format!("{:?}", one_segment.marker))
-                .on_hover_ui(|ui| {
-                    ui.label(one_segment.marker.info());
-                });
-            ui.label(one_segment.start.to_string());
-            ui.label(one_segment.end.to_string());
-            if ui.button("Show").clicked() {
-                return_range = Some(RangeInclusive::new(one_segment.start, one_segment.end));
-            }
+impl JpgData {
+    /// show jpg data
+    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        let mut return_range = None;
+        egui::Grid::new("jpg_table").striped(true).show(ui, |ui| {
+            ui.label("Marker");
+            ui.label("Start");
+            ui.label("End");
             ui.end_row();
-        }
-    });
-    return_range
+
+            for one_segment in &self.segments {
+                ui.label(format!("{:?}", one_segment.marker))
+                    .on_hover_ui(|ui| {
+                        ui.label(one_segment.marker.info());
+                    });
+                ui.label(one_segment.start.to_string());
+                ui.label(one_segment.end.to_string());
+                if ui.button("Show").clicked() {
+                    return_range = Some(RangeInclusive::new(one_segment.start, one_segment.end));
+                }
+                ui.end_row();
+            }
+        });
+        return_range
+    }
 }

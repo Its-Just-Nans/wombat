@@ -23,7 +23,7 @@ pub struct StscBox {
 impl StscBox {
     /// parse stsc
     #[allow(clippy::unnecessary_wraps)]
-    pub fn parse(data: &[u8]) -> Option<Self> {
+    pub fn parse(data: &[u8]) -> Result<Self, String> {
         let mut offset = 0;
 
         // version + flags
@@ -71,7 +71,7 @@ impl StscBox {
             });
         }
 
-        Some(Self { entries })
+        Ok(Self { entries })
     }
 
     /// show stcs
