@@ -48,30 +48,22 @@ impl WombatApp {
         }
         Ok(())
     }
-
-    /// extract pdf page
-    pub(crate) fn extract_pdf_page(
-        &mut self,
-        current_idx: usize,
-        page_num: u32,
-    ) -> Result<Document, AppError> {
-        let Some(document) = self.documents.get(current_idx) else {
-            return Err("Cannot found documents".into());
-        };
-        let backend = document.binary_file.as_ref().clone();
-        let Ok(old_file) = pdf::file::FileOptions::cached().load(backend) else {
-            return Err("Cannot load pdf".into());
-        };
-        let Ok(old_page) = old_file.get_page(page_num) else {
-            return Err(format!("Cannot find page {page_num} in PDF").into());
-        };
-        extract_pdf_single_page(
-            &old_page,
-            old_file.resolver(),
-            old_file.trailer.info_dict.clone(),
-            PathBuf::from(format!("extracted_page_{page_num}.pdf")),
-        )
-    }
+}
+/// extract pdf page
+pub(crate) fn extract_pdf_page(document: &Document, page_num: u32) -> Result<Document, AppError> {
+    let backend = document.binary_file.as_ref().clone();
+    let Ok(old_file) = pdf::file::FileOptions::cached().load(backend) else {
+        return Err("Cannot load pdf".into());
+    };
+    let Ok(old_page) = old_file.get_page(page_num) else {
+        return Err(format!("Cannot find page {page_num} in PDF").into());
+    };
+    extract_pdf_single_page(
+        &old_page,
+        old_file.resolver(),
+        old_file.trailer.info_dict.clone(),
+        PathBuf::from(format!("extracted_page_{page_num}.pdf")),
+    )
 }
 /// extract pdf single page
 pub(crate) fn extract_pdf_single_page(

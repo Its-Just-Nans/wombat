@@ -10,6 +10,7 @@ use bladvak::eframe::egui;
 use crate::WombatApp;
 use crate::panels::FileInfoData;
 use crate::windows::detection::exif::ExifData;
+use crate::windows::detection::pdf::extract_pdf_page;
 // use crate::windows::detection::pdf_image::pdf_image_to_png;
 use crate::windows::parsing::png::PngData;
 
@@ -110,10 +111,23 @@ impl WombatApp {
                 }
                 Action::PdfExtractPage(page_num) => {
                     ui.add(egui::DragValue::new(page_num));
-                    if ui.button("Extract page").clicked()
-                        && let Err(err) = self.extract_pdf_page(current_idx, *page_num)
-                    {
-                        error_manager.add_error(err);
+                    if ui.button("Extract page").clicked() {
+                        let new_doc_opt =
+                            if let Some(curr_document) = self.documents.get(current_idx) {
+                                match extract_pdf_page(curr_document, *page_num) {
+                                    Ok(new_doc) => Some(new_doc),
+                                    Err(err) => {
+                                        error_manager.add_error(err);
+                                        None
+                                    }
+                                }
+                            } else {
+                                error_manager.add_error("Cannot get document");
+                                None
+                            };
+                        if let Some(new_doc) = new_doc_opt {
+                            self.documents.push(new_doc);
+                        }
                     }
                     if ui.button("Extract all pages").clicked()
                         && let Err(err) = self.extract_pdf_all_pages(current_idx, error_manager)
