@@ -33,7 +33,7 @@ impl WombatApp {
     pub(crate) fn show_hex_inner_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
+        error_manager: &mut ErrorManager,
         current_idx: usize,
     ) {
         egui::Panel::right("hex_right_panel")
@@ -75,7 +75,12 @@ impl WombatApp {
             let Some(document) = self.documents.get_mut(current_idx) else {
                 return;
             };
-            if HexViewer::show_hex(ui, document, &self.display_settings, self.visual_debug) {
+            if HexViewer::show_hex(
+                ui,
+                document,
+                &self.display_settings,
+                error_manager.is_debug(),
+            ) {
                 self.stale_selection();
             }
         });
@@ -117,7 +122,7 @@ impl HexViewer {
         ui: &mut egui::Ui,
         document: &mut Document,
         display_settings: &DisplaySettings,
-        visual_debug: bool,
+        debug: bool,
     ) -> bool {
         let text_style = TextStyle::Monospace;
         let row_height = ui.text_style_height(&text_style).max(14.0) + 1.0; // fallback
@@ -169,7 +174,7 @@ impl HexViewer {
             if Self::show_lines(
                 ui,
                 display_settings,
-                visual_debug,
+                debug,
                 document,
                 left,
                 font_size,
@@ -192,7 +197,7 @@ impl HexViewer {
     pub(crate) fn show_lines(
         ui: &mut egui::Ui,
         display_settings: &DisplaySettings,
-        visual_debug: bool,
+        debug: bool,
         document: &mut Document,
         left: f32,
         font_size: f32,
@@ -300,7 +305,7 @@ impl HexViewer {
 
             let offset_clicked = Self::interact_offset(
                 ui,
-                if visual_debug { Some(painter) } else { None },
+                if debug { Some(painter) } else { None },
                 origin,
                 bytes_per_line,
                 char_width,
@@ -329,12 +334,12 @@ impl HexViewer {
                     ui.id().with(("hex", line, idx)),
                     egui::Sense::click(),
                 );
-                if visual_debug {
+                if debug {
                     painter.rect(
                         byte_rect,
                         1.0,
                         Color32::TRANSPARENT,
-                        Stroke::new(0.5, Color32::BLACK),
+                        Stroke::new(1.0, Color32::RED),
                         egui::StrokeKind::Middle,
                     );
                 }
@@ -368,12 +373,12 @@ impl HexViewer {
                     ui.id().with(("ascii", line, idx)),
                     egui::Sense::click(),
                 );
-                if visual_debug {
+                if debug {
                     painter.rect(
                         byte_rect,
                         1.0,
                         Color32::TRANSPARENT,
-                        Stroke::new(1.0, Color32::BLACK),
+                        Stroke::new(1.0, Color32::RED),
                         egui::StrokeKind::Outside,
                     );
                 }
@@ -431,7 +436,7 @@ impl HexViewer {
                 byte_rect,
                 1.0,
                 Color32::TRANSPARENT,
-                Stroke::new(0.5, Color32::RED),
+                Stroke::new(1.0, Color32::RED),
                 egui::StrokeKind::Middle,
             );
         }

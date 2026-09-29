@@ -28,8 +28,6 @@ pub struct WombatApp {
     pub(crate) documents: Documents<Document>,
     /// Display settings
     pub(crate) display_settings: DisplaySettings,
-    /// Visual debug
-    pub(crate) visual_debug: bool,
     /// importer
     pub(crate) importer: Importer,
     /// exporter
@@ -46,7 +44,6 @@ impl Default for WombatApp {
         Self {
             documents,
             display_settings: DisplaySettings::default(),
-            visual_debug: false,
             importer: Importer::new(),
             exporter: Exporter::new(),
             fonts_definitions: egui::FontDefinitions::default(),
