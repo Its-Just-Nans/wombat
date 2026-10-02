@@ -19,7 +19,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [dependencies]
 # bladvak = { path = "../bladvak" }
-bladvak = "1.4.1"
+bladvak = "1.4.3"
 file-format = "0.29.0"
 roxmltree = { version = "0.21.1", features = ["positions"] }
 serde = { version = "1", features = ["derive"] }
@@ -53,10 +53,10 @@ yara = ["dep:yara-x"]
 parsing = []
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-yara-x = { version = "1.20.0", optional = true }
+yara-x = { version = "1.21.0", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.3.4", features = ["wasm_js"] }
+getrandom = { version = "0.4.3", features = ["wasm_js"] }
 
 [profile.release]
 opt-level = 2 # fast and small wasm

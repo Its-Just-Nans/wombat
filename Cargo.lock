@@ -774,9 +774,9 @@ dependencies = [
 
 [[package]]
 name = "bladvak"
-version = "1.4.2"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "044a670166e5df7a6066ca9f8a29d67471d2f1d9700f573e9faf9ca48bf479d3"
+checksum = "03f72379430f2f697c33c8126b551803c692901e86cd57b6c3d639041ec322eb"
 dependencies = [
  "arboard",
  "eframe",
@@ -2378,11 +2378,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "r-efi 5.3.0",
  "wasip2",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -7262,7 +7260,7 @@ dependencies = [
  "bzip2",
  "file-format",
  "flate2",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "image",
  "kamadak-exif",
  "md-5 0.11.0",

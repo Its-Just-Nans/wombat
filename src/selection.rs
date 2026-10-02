@@ -16,7 +16,7 @@ use crate::ui_table::ui_table_u128;
 use crate::{WombatApp, document::Document};
 
 /// Selection
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub(crate) struct Selection {
     /// Selection range
     pub(crate) range: Option<(usize, usize)>,

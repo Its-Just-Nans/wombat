@@ -167,8 +167,18 @@ impl DocumentTrait for Document {
     fn path(&self) -> &Path {
         &self.filename
     }
-
     fn set_path(&mut self, new_path: PathBuf) {
         self.filename = new_path;
+    }
+    fn deep_clone(&self) -> Self {
+        Self {
+            binary_file: Arc::new(self.binary_file.as_ref().clone()),
+            filename: self.filename.clone(),
+            selection: self.selection.clone(),
+            offset: self.offset.clone(),
+            file_format: self.file_format.clone(),
+            bytes_per_line: self.bytes_per_line,
+            windows_data: WindowsData::new(),
+        }
     }
 }

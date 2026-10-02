@@ -1,7 +1,7 @@
 //! Offset
 
 /// Offset of the application
-#[derive(serde::Deserialize, serde::Serialize, Debug, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Default, Clone)]
 pub(crate) struct Offset {
     /// The current offset
     pub(crate) current: f32,
