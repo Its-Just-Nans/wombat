@@ -1,6 +1,7 @@
 //! Detection
 
 pub(crate) mod exif;
+pub(crate) mod gif;
 pub(crate) mod pdf;
 // pub(crate) mod pdf_image;
 
@@ -23,6 +24,8 @@ pub enum Action {
     PdfExtractImages,
     /// Extract page
     PdfExtractPage(u32),
+    /// Extract gif
+    ExtractGif,
 }
 
 /// Detection
@@ -65,10 +68,11 @@ impl Detection {
                 }
                 Err(_err) => {}
             }
-        }
-        if format.extension == "pdf" {
+        } else if format.extension == "pdf" {
             self.actions.push(Action::PdfExtractImages);
             self.actions.push(Action::PdfExtractPage(0));
+        } else if format.extension == "gif" {
+            self.actions.push(Action::ExtractGif);
         }
     }
 }
@@ -101,6 +105,13 @@ impl WombatApp {
             match one_action {
                 Action::Acropalypse => {
                     ui.label("Possible to acropalypse");
+                }
+                Action::ExtractGif => {
+                    if ui.button("Extract gif").clicked()
+                        && let Err(err) = self.extract_gif_images(current_idx, error_manager)
+                    {
+                        error_manager.add_error(err);
+                    }
                 }
                 Action::PdfExtractImages => {
                     // if ui.button("extract images").clicked()
