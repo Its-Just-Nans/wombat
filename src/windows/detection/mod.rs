@@ -7,11 +7,12 @@ pub(crate) mod pdf_signature;
 // pub(crate) mod pdf_image;
 
 use std::path::PathBuf;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use bladvak::ErrorManager;
 use bladvak::eframe::egui::{self, Color32};
 use der::{DateTime, Encode};
+use time::OffsetDateTime;
 
 use crate::WombatApp;
 use crate::document::Document;
@@ -176,8 +177,23 @@ impl WombatApp {
                                         ));
                                         let validity =
                                             one_res.certificate.tbs_certificate().validity();
+                                        let now = OffsetDateTime::now_utc();
+                                        #[allow(clippy::cast_precision_loss)]
+                                        #[allow(clippy::cast_possible_truncation)]
+                                        #[allow(clippy::cast_sign_loss)]
+                                        let system_time = if now.unix_timestamp_nanos() >= 0 {
+                                            UNIX_EPOCH
+                                                + Duration::from_nanos(
+                                                    now.unix_timestamp_nanos() as u64
+                                                )
+                                        } else {
+                                            UNIX_EPOCH
+                                                - Duration::from_nanos(
+                                                    (-now.unix_timestamp_nanos()) as u64,
+                                                )
+                                        };
                                         let Ok(current_datetime) =
-                                            DateTime::from_system_time(SystemTime::now())
+                                            DateTime::from_system_time(system_time)
                                         else {
                                             ui.label("Error cannot get current time");
                                             return;
