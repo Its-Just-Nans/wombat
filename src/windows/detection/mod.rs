@@ -7,7 +7,7 @@ pub(crate) mod pdf_signature;
 // pub(crate) mod pdf_image;
 
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, UNIX_EPOCH};
 
 use bladvak::ErrorManager;
 use bladvak::eframe::egui::{self, Color32};
