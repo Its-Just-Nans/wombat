@@ -19,8 +19,8 @@ pub(crate) enum FileExportType {
 impl Display for FileExportType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Raw => write!(f, "Raw"),
-            Self::Text(exp) => write!(f, "{exp}"),
+            Self::Raw => write!(f, "File"),
+            Self::Text(exp) => write!(f, "As {}", exp.to_string().to_lowercase()),
         }
     }
 }
@@ -84,8 +84,13 @@ impl WombatApp {
             error_manager.add_error("No document to save");
             return;
         };
-        let current_save_path = if let Some(_ext) = document.filename.extension() {
-            document.filename.clone()
+        let current_save_path = if let Some(current_ext) = document.filename.extension() {
+            match &file_export_type {
+                FileExportType::Raw => document.filename.clone(),
+                FileExportType::Text(_) => document
+                    .filename
+                    .with_extension(format!("{}.txt", current_ext.to_string_lossy())),
+            }
         } else {
             let extension = file_export_type.extension();
             document.filename.with_extension(extension)
