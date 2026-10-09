@@ -7,10 +7,11 @@ pub(crate) mod pdf_signature;
 // pub(crate) mod pdf_image;
 
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use bladvak::ErrorManager;
 use bladvak::eframe::egui::{self, Color32};
-use der::Encode;
+use der::{DateTime, Encode};
 
 use crate::WombatApp;
 use crate::document::Document;
@@ -146,6 +147,9 @@ impl WombatApp {
                 }
                 Action::PdfExtractSignature(res) => {
                     if let Some(results) = &res {
+                        if results.is_empty() {
+                            ui.label("No ByteRange found");
+                        }
                         for one_byte_range_res in results {
                             let head_text = format!("Bytes range {:?}", one_byte_range_res.range);
                             ui.collapsing(head_text, |ui| {
@@ -155,6 +159,9 @@ impl WombatApp {
                                     );
                                     let end = one_byte_range_res.range[2].saturating_sub(2);
                                     go_to_range = Some(start..=end);
+                                }
+                                if one_byte_range_res.results.is_empty() {
+                                    ui.label("No signature results");
                                 }
                                 for (idx, one_res) in one_byte_range_res.results.iter().enumerate()
                                 {
@@ -167,14 +174,46 @@ impl WombatApp {
                                             "Issuer: {}",
                                             one_res.certificate.tbs_certificate().issuer()
                                         ));
-                                        ui.label(format!(
-                                            "Not before: {}",
-                                            one_res
-                                                .certificate
-                                                .tbs_certificate()
-                                                .validity()
-                                                .not_before
-                                        ));
+                                        let validity =
+                                            one_res.certificate.tbs_certificate().validity();
+                                        let Ok(current_datetime) =
+                                            DateTime::from_system_time(SystemTime::now())
+                                        else {
+                                            ui.label("Error cannot get current time");
+                                            return;
+                                        };
+                                        ui.horizontal(|ui| {
+                                            ui.label(format!(
+                                                "Not before: {} - ",
+                                                validity.not_before
+                                            ));
+                                            let is_valid = validity.not_before.to_date_time()
+                                                < current_datetime;
+                                            ui.colored_label(
+                                                if is_valid {
+                                                    Color32::GREEN
+                                                } else {
+                                                    Color32::RED
+                                                },
+                                                if is_valid { "true" } else { "false" },
+                                            );
+                                        });
+                                        ui.horizontal(|ui| {
+                                            ui.label(format!(
+                                                "Not after: {} - ",
+                                                validity.not_after
+                                            ));
+                                            let is_valid = validity.not_after.to_date_time()
+                                                > current_datetime;
+                                            ui.colored_label(
+                                                if is_valid {
+                                                    Color32::GREEN
+                                                } else {
+                                                    Color32::RED
+                                                },
+                                                if is_valid { "true" } else { "false" },
+                                            );
+                                        });
                                         ui.label(format!(
                                             "Not after: {}",
                                             one_res
