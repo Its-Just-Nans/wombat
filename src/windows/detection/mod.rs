@@ -3,6 +3,7 @@
 pub(crate) mod exif;
 pub(crate) mod gif;
 pub(crate) mod pdf;
+pub(crate) mod pdf_signature;
 // pub(crate) mod pdf_image;
 
 use bladvak::ErrorManager;
@@ -11,12 +12,14 @@ use bladvak::eframe::egui;
 use crate::WombatApp;
 use crate::panels::FileInfoData;
 use crate::windows::detection::exif::ExifData;
-use crate::windows::detection::pdf::extract_pdf_page;
+use crate::windows::detection::gif::extract_gif_images;
+use crate::windows::detection::pdf::{extract_pdf_all_pages, extract_pdf_page};
+use crate::windows::detection::pdf_signature::{SignResult, extract_pdf_signatures};
 // use crate::windows::detection::pdf_image::pdf_image_to_png;
 use crate::windows::parsing::png::PngData;
 
 /// Possible actions
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(Debug)]
 pub enum Action {
     /// Acropalypse issue
     Acropalypse,
@@ -24,6 +27,8 @@ pub enum Action {
     PdfExtractImages,
     /// Extract page
     PdfExtractPage(u32),
+    /// Extract Signature
+    PdfExtractSignature(Option<Vec<Vec<SignResult>>>),
     /// Extract gif
     ExtractGif,
 }
@@ -36,6 +41,7 @@ pub(crate) struct Detection {
     /// exif
     exif_data: Option<Result<ExifData, String>>,
     /// Actions
+    #[serde(skip)]
     actions: Vec<Action>,
 }
 
@@ -48,6 +54,7 @@ impl Detection {
     /// reset
     pub(crate) fn reset(&mut self) {
         self.exif_data = None;
+        self.actions = Vec::new();
     }
 
     /// prepare ui
@@ -71,6 +78,7 @@ impl Detection {
         } else if format.extension == "pdf" {
             self.actions.push(Action::PdfExtractImages);
             self.actions.push(Action::PdfExtractPage(0));
+            self.actions.push(Action::PdfExtractSignature(None));
         } else if format.extension == "gif" {
             self.actions.push(Action::ExtractGif);
         }
@@ -100,17 +108,24 @@ impl WombatApp {
         let Some(document) = self.documents.get_mut(current_idx) else {
             return;
         };
-        let mut actions = document.windows_data.detection.actions.clone();
-        for one_action in &mut actions {
+        let mut new_docs = Vec::new();
+        for one_action in &mut document.windows_data.detection.actions {
             match one_action {
                 Action::Acropalypse => {
                     ui.label("Possible to acropalypse");
                 }
                 Action::ExtractGif => {
-                    if ui.button("Extract gif").clicked()
-                        && let Err(err) = self.extract_gif_images(current_idx, error_manager)
-                    {
-                        error_manager.add_error(err);
+                    if ui.button("Extract gif").clicked() {
+                        match extract_gif_images(&document.binary_file.as_slice(), error_manager) {
+                            Ok(docs) => {
+                                for one_doc in docs {
+                                    new_docs.push(one_doc);
+                                }
+                            }
+                            Err(err) => {
+                                error_manager.add_error(err);
+                            }
+                        }
                     }
                 }
                 Action::PdfExtractImages => {
@@ -120,38 +135,52 @@ impl WombatApp {
                     //     error_manager.add_error(err);
                     // }
                 }
+                Action::PdfExtractSignature(res) => {
+                    if let Some(res) = res {
+                        ui.label(format!("{:#?}", res));
+                    } else if ui.button("Extract signatures").clicked() {
+                        match extract_pdf_signatures(document.binary_file.as_slice()) {
+                            Ok(parsed) => {
+                                *res = Some(parsed);
+                            }
+
+                            Err(err) => {
+                                error_manager.add_error(err);
+                            }
+                        }
+                    }
+                }
                 Action::PdfExtractPage(page_num) => {
                     ui.add(egui::DragValue::new(page_num));
                     if ui.button("Extract page").clicked() {
-                        let new_doc_opt =
-                            if let Some(curr_document) = self.documents.get(current_idx) {
-                                match extract_pdf_page(curr_document, *page_num) {
-                                    Ok(new_doc) => Some(new_doc),
-                                    Err(err) => {
-                                        error_manager.add_error(err);
-                                        None
-                                    }
-                                }
-                            } else {
-                                error_manager.add_error("Cannot get document");
-                                None
-                            };
-                        if let Some(new_doc) = new_doc_opt {
-                            self.documents.push(new_doc);
+                        match extract_pdf_page(document.binary_file.as_slice(), *page_num) {
+                            Ok(new_doc) => {
+                                new_docs.push(new_doc);
+                            }
+                            Err(err) => {
+                                error_manager.add_error(err);
+                            }
                         }
                     }
-                    if ui.button("Extract all pages").clicked()
-                        && let Err(err) = self.extract_pdf_all_pages(current_idx, error_manager)
-                    {
-                        error_manager.add_error(err);
+                    if ui.button("Extract all pages").clicked() {
+                        match extract_pdf_all_pages(document.binary_file.as_slice(), error_manager)
+                        {
+                            Ok(docs) => {
+                                for doc in docs {
+                                    new_docs.push(doc);
+                                }
+                            }
+                            Err(err) => {
+                                error_manager.add_error(err);
+                            }
+                        }
                     }
                 }
             }
         }
-        let Some(document) = self.documents.get_mut(current_idx) else {
-            return;
-        };
-        document.windows_data.detection.actions = actions;
+        for one_doc in new_docs {
+            self.documents.push(one_doc);
+        }
     }
 
     /// show detection ui

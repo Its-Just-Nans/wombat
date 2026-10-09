@@ -24,8 +24,6 @@ file-format = "0.29.0"
 roxmltree = { version = "0.21.1", features = ["positions"] }
 serde = { version = "1", features = ["derive"] }
 x509-parser = "0.18.1"
-sha1 = { version = "0.11.0", optional = true }
-sha2 = { version = "0.11.0", optional = true }
 md-5 = { version = "0.11.0", optional = true }
 
 # temp fix https://github.com/rusticata/x509-parser/pull/231
@@ -43,11 +41,20 @@ bzip2 = "0.6.1"
 qrcode = "0.14.1"
 image = "0.25.10"
 pdf = "0.10.0"
+cms = "0.3.0-pre.2"
+der = "0.8.2"
+hex = "0.4.3"
+rsa = "0.10.0-rc.19"
+x509-cert = "0.3.0"
+digest = "0.11.3"
+signature = "3.0.0"
+sha1 = "0.11.0"
+sha2 = "0.11.0"
 
 [features]
 # yara only on native
 default = ["hashing", "yara", "parsing"]
-hashing = ["dep:sha1", "dep:sha2", "dep:md-5"]
+hashing = ["dep:md-5"]
 yara = ["dep:yara-x"]
 # used to disable the parsing window
 parsing = []
