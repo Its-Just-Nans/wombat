@@ -13,15 +13,18 @@ use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use signature::Verifier;
 use std::error::Error;
-use x509_cert::TbsCertificate;
+use x509_cert::certificate::CertificateInner;
 
+/// message digest oid
 const MESSAGE_DIGEST_OID: &str = "1.2.840.113549.1.9.4";
+/// sha256
 const SHA256_OID: &str = "2.16.840.1.101.3.4.2.1";
+/// sha1 oid
 const SHA1_OID: &str = "1.3.14.3.2.26";
 
 /// extract pdf images
-pub(crate) fn extract_pdf_signatures(input: &[u8]) -> Result<Vec<Vec<SignResult>>, AppError> {
-    let mut results = Vec::new();
+pub(crate) fn extract_pdf_signatures(input: &[u8]) -> Result<Vec<ByteRangeResult>, AppError> {
+    let mut range_results = Vec::new();
     for range in find_byte_ranges(input) {
         let range = [
             usize::try_from(range[0]).map_err(|e| e.to_string())?,
@@ -29,18 +32,32 @@ pub(crate) fn extract_pdf_signatures(input: &[u8]) -> Result<Vec<Vec<SignResult>
             usize::try_from(range[2]).map_err(|e| e.to_string())?,
             usize::try_from(range[3]).map_err(|e| e.to_string())?,
         ];
-        let res = verify_pdf_signature(input, range).map_err(|e| e.to_string())?;
-        results.push(res);
+        let results = verify_pdf_signature(input, range).map_err(|e| e.to_string())?;
+        range_results.push(ByteRangeResult { range, results });
     }
-    Ok(results)
+    Ok(range_results)
 }
 
+/// Byte Range result
+#[derive(Debug)]
+pub(crate) struct ByteRangeResult {
+    /// range of the signature
+    pub(crate) range: [usize; 4],
+    /// results
+    pub(crate) results: Vec<SignResult>,
+}
+
+/// Signature result
 #[derive(Debug)]
 pub(crate) struct SignResult {
-    tbs_certificate: TbsCertificate,
-    is_valid: bool,
+    /// certificate
+    pub(crate) certificate: CertificateInner,
+    /// is valid
+    pub(crate) is_valid: bool,
 }
 
+/// Verify PDF signature
+#[allow(clippy::too_many_lines)]
 fn verify_pdf_signature(
     pdf: &[u8],
     byte_range: [usize; 4],
@@ -151,10 +168,7 @@ fn verify_pdf_signature(
             let tbs_certificate = certificate.tbs_certificate();
             let spki_der = tbs_certificate.subject_public_key_info().to_der()?;
 
-            let is_valid = if let Ok(key) = RsaPublicKey::from_public_key_der(&spki_der) {
-                let public_key = Some(key);
-                let public_key = public_key.ok_or("No RSA certificate found")?;
-
+            let is_valid = if let Ok(public_key) = RsaPublicKey::from_public_key_der(&spki_der) {
                 // 8. Verify the authenticated attributes signature.
                 // CMS signatures cover the DER encoding of SignedAttributes as SET OF.
                 let attrs_der = attrs.to_der()?;
@@ -180,7 +194,7 @@ fn verify_pdf_signature(
                 false
             };
             result.push(SignResult {
-                tbs_certificate: tbs_certificate.clone(),
+                certificate: certificate.clone(),
                 is_valid,
             });
         }
@@ -188,6 +202,7 @@ fn verify_pdf_signature(
     Ok(result)
 }
 
+/// check the der object length
 fn der_object_length(data: &[u8]) -> Result<usize, &'static str> {
     if data.len() < 2 {
         return Err("DER data too short");
