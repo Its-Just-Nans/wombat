@@ -14,7 +14,7 @@ A simple hex file viewer.
 cargo install wombat --locked
 
 # usage as CLI
-wombat path/to/file.png # an image
+wombat path/to/file.png # a file
 # or
 wombat
 ```

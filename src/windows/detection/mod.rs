@@ -184,7 +184,7 @@ impl WombatApp {
                                         };
                                         ui.horizontal(|ui| {
                                             ui.label(format!(
-                                                "Not before: {} - ",
+                                                "Not before: {} -",
                                                 validity.not_before
                                             ));
                                             let is_valid = validity.not_before.to_date_time()
@@ -200,7 +200,7 @@ impl WombatApp {
                                         });
                                         ui.horizontal(|ui| {
                                             ui.label(format!(
-                                                "Not after: {} - ",
+                                                "Not after: {} -",
                                                 validity.not_after
                                             ));
                                             let is_valid = validity.not_after.to_date_time()
@@ -214,16 +214,8 @@ impl WombatApp {
                                                 if is_valid { "true" } else { "false" },
                                             );
                                         });
-                                        ui.label(format!(
-                                            "Not after: {}",
-                                            one_res
-                                                .certificate
-                                                .tbs_certificate()
-                                                .validity()
-                                                .not_after
-                                        ));
                                         ui.horizontal(|ui| {
-                                            ui.label("Is signature valid");
+                                            ui.label("Is signature valid:");
                                             ui.colored_label(
                                                 if one_res.is_valid {
                                                     Color32::GREEN
