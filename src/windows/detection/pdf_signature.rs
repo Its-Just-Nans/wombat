@@ -23,6 +23,7 @@ const SHA256_OID: &str = "2.16.840.1.101.3.4.2.1";
 const SHA1_OID: &str = "1.3.14.3.2.26";
 
 /// extract pdf images
+/// Not all algorithms supported
 pub(crate) fn extract_pdf_signatures(input: &[u8]) -> Result<Vec<ByteRangeResult>, AppError> {
     let mut range_results = Vec::new();
     for range in find_byte_ranges(input) {
