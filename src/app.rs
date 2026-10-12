@@ -3,6 +3,7 @@
 use bladvak::app::BladvakPanel;
 use bladvak::eframe::CreationContext;
 use bladvak::eframe::egui;
+use bladvak::eframe::egui::Modal;
 use bladvak::utils::is_native;
 use bladvak::{File, egui_extras};
 use bladvak::{
@@ -12,6 +13,7 @@ use bladvak::{
 };
 use std::fmt::Debug;
 
+use crate::bulk_operations::BulkOperations;
 use crate::display_settings::DisplaySettings;
 use crate::document::Document;
 use crate::panels::FileInfo;
@@ -32,6 +34,8 @@ pub struct WombatApp {
     pub(crate) importer: Importer,
     /// exporter
     pub(crate) exporter: Exporter,
+    /// bulk operations
+    pub(crate) bulk_operations: BulkOperations,
     /// font definitions
     pub(crate) fonts_definitions: egui::FontDefinitions,
 }
@@ -44,6 +48,7 @@ impl Default for WombatApp {
         Self {
             documents,
             display_settings: DisplaySettings::default(),
+            bulk_operations: BulkOperations::default(),
             importer: Importer::new(),
             exporter: Exporter::new(),
             fonts_definitions: egui::FontDefinitions::default(),
@@ -131,12 +136,21 @@ impl BladvakApp<'_> for WombatApp {
         if self.documents.get_current_doc_mut().is_some() {
             ui.toggle_value(&mut self.exporter.is_open, "Export");
             self.export_file_ui(ui, error_manager);
+            ui.toggle_value(&mut self.bulk_operations.is_open, "Bulk operations");
         }
     }
 
     fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         self.app_central_panel(ui, error_manager);
         self.ui_windows(ui, error_manager);
+        if self.bulk_operations.is_open {
+            let modal = Modal::new(ui.id().with("modal_bulk")).show(ui.ctx(), |ui| {
+                self.show_bulk_modal(ui, error_manager);
+            });
+            if modal.should_close() {
+                self.bulk_operations.is_open = false;
+            }
+        }
         if let Some(document) = self.documents.get_current_doc_mut() {
             self.exporter.ui(
                 &document.binary_file,

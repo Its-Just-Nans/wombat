@@ -26,6 +26,7 @@
 #![allow(clippy::multiple_crate_versions)]
 
 mod app;
+mod bulk_operations;
 mod central_panel;
 mod display_settings;
 mod document;
