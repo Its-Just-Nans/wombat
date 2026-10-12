@@ -3,8 +3,8 @@
 pub(crate) mod exif;
 pub(crate) mod gif;
 pub(crate) mod pdf;
+pub(crate) mod pdf_image;
 pub(crate) mod pdf_signature;
-// pub(crate) mod pdf_image;
 
 use std::path::PathBuf;
 use std::time::{Duration, UNIX_EPOCH};
@@ -21,7 +21,6 @@ use crate::windows::detection::exif::ExifData;
 use crate::windows::detection::gif::extract_gif_images;
 use crate::windows::detection::pdf::{extract_pdf_all_pages, extract_pdf_page};
 use crate::windows::detection::pdf_signature::{ByteRangeResult, extract_pdf_signatures};
-// use crate::windows::detection::pdf_image::pdf_image_to_png;
 use crate::windows::parsing::png::PngData;
 
 /// Possible actions
@@ -140,11 +139,21 @@ impl WombatApp {
                     }
                 }
                 Action::PdfExtractImages => {
-                    // if ui.button("extract images").clicked()
-                    //     && let Err(err) = self.extract_pdf_images(current_idx)
-                    // {
-                    //     error_manager.add_error(err);
-                    // }
+                    if ui.button("extract images").clicked() {
+                        match pdf_image::extract_pdf_images(
+                            document.binary_file.clone(),
+                            error_manager,
+                        ) {
+                            Ok(docs) => {
+                                for one_doc in docs {
+                                    new_docs.push(one_doc);
+                                }
+                            }
+                            Err(err) => {
+                                error_manager.add_error(err);
+                            }
+                        }
+                    }
                 }
                 Action::PdfExtractSignature(res) => {
                     if let Some(results) = &res {
