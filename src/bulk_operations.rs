@@ -14,7 +14,6 @@ pub(crate) struct BulkOperations {
 impl WombatApp {
     /// ui bulk
     fn show_ui_bulk(&mut self, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        ui.label("Bulk operations");
         let num_doc = self.documents.len();
         ui.label(format!("Number of documents: {num_doc}"));
         if ui.button("Open previewer on files").clicked() {

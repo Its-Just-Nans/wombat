@@ -134,8 +134,8 @@ impl BladvakApp<'_> for WombatApp {
         ui.toggle_value(&mut self.importer.is_open, "Import");
         if self.documents.get_current_doc_mut().is_some() {
             ui.toggle_value(&mut self.exporter.is_open, "Export");
-            self.export_file_ui(ui, error_manager);
             ui.toggle_value(&mut self.bulk_operations.is_open, "Bulk operations");
+            self.export_file_ui(ui, error_manager);
         }
     }
 
