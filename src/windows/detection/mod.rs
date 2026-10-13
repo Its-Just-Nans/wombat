@@ -31,7 +31,7 @@ pub enum Action {
     /// Extract images
     PdfExtractImages,
     /// Extract page
-    PdfExtractPage(u32),
+    PdfExtractPage(usize),
     /// Extract Signature
     PdfExtractSignature(Option<Vec<ByteRangeResult>>),
     /// Extract gif
@@ -280,7 +280,7 @@ impl WombatApp {
                 Action::PdfExtractPage(page_num) => {
                     ui.add(egui::DragValue::new(page_num));
                     if ui.button("Extract page").clicked() {
-                        match extract_pdf_page(document.binary_file.as_slice(), *page_num) {
+                        match extract_pdf_page(document.binary_file.clone(), *page_num) {
                             Ok(new_doc) => {
                                 new_docs.push(new_doc);
                             }
@@ -290,8 +290,7 @@ impl WombatApp {
                         }
                     }
                     if ui.button("Extract all pages").clicked() {
-                        match extract_pdf_all_pages(document.binary_file.as_slice(), error_manager)
-                        {
+                        match extract_pdf_all_pages(document.binary_file.clone(), error_manager) {
                             Ok(docs) => {
                                 for doc in docs {
                                     new_docs.push(doc);

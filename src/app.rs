@@ -3,7 +3,6 @@
 use bladvak::app::BladvakPanel;
 use bladvak::eframe::CreationContext;
 use bladvak::eframe::egui;
-use bladvak::eframe::egui::Modal;
 use bladvak::utils::is_native;
 use bladvak::{File, egui_extras};
 use bladvak::{
@@ -143,14 +142,7 @@ impl BladvakApp<'_> for WombatApp {
     fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         self.app_central_panel(ui, error_manager);
         self.ui_windows(ui, error_manager);
-        if self.bulk_operations.is_open {
-            let modal = Modal::new(ui.id().with("modal_bulk")).show(ui.ctx(), |ui| {
-                self.show_bulk_modal(ui, error_manager);
-            });
-            if modal.should_close() {
-                self.bulk_operations.is_open = false;
-            }
-        }
+        self.ui_bulk(ui, error_manager);
         if let Some(document) = self.documents.get_current_doc_mut() {
             self.exporter.ui(
                 &document.binary_file,
