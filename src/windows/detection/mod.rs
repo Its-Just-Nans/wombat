@@ -278,17 +278,19 @@ impl WombatApp {
                     }
                 }
                 Action::PdfExtractPage(page_num) => {
-                    ui.add(egui::DragValue::new(page_num));
-                    if ui.button("Extract page").clicked() {
-                        match extract_pdf_page(document.binary_file.clone(), *page_num) {
-                            Ok(new_doc) => {
-                                new_docs.push(new_doc);
-                            }
-                            Err(err) => {
-                                error_manager.add_error(err);
+                    ui.horizontal(|ui| {
+                        ui.add(egui::DragValue::new(page_num));
+                        if ui.button("Extract page").clicked() {
+                            match extract_pdf_page(document.binary_file.clone(), *page_num) {
+                                Ok(new_doc) => {
+                                    new_docs.push(new_doc);
+                                }
+                                Err(err) => {
+                                    error_manager.add_error(err);
+                                }
                             }
                         }
-                    }
+                    });
                     if ui.button("Extract all pages").clicked() {
                         match extract_pdf_all_pages(document.binary_file.clone(), error_manager) {
                             Ok(docs) => {
