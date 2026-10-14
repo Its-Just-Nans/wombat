@@ -16,6 +16,7 @@ use bladvak::eframe::egui::{self};
 use bladvak::errors::ErrorManager;
 use std::ops::RangeInclusive;
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::WombatApp;
 use crate::panels::FileInfoData;
@@ -61,21 +62,23 @@ enum ParsingCache {
 
 impl ParsingCache {
     /// parse to create cache
-    fn parse(binary_data: &[u8], file_info: &FileInfoData, filename: &Path) -> Self {
+    fn parse(binary_file: &Arc<Vec<u8>>, file_info: &FileInfoData, filename: &Path) -> Self {
         let filename_ext = filename.extension().unwrap_or_default().to_string_lossy();
         for extension in &[file_info.extension.as_str(), &filename_ext] {
-            if let Some(parsing_cache) = Self::parse_from_extension(binary_data, extension) {
+            if let Some(parsing_cache) = Self::parse_from_extension(binary_file.clone(), extension)
+            {
                 return parsing_cache;
             }
         }
-        if let Some(parsed) = RawType::parse(binary_data) {
+        if let Some(parsed) = RawType::parse(binary_file.as_ref().as_slice()) {
             return ParsingCache::RawType(parsed);
         }
         ParsingCache::Empty
     }
 
     /// parse to create cache
-    fn parse_from_extension(binary_data: &[u8], extension: &str) -> Option<Self> {
+    fn parse_from_extension(binary_file: Arc<Vec<u8>>, extension: &str) -> Option<Self> {
+        let binary_data = &binary_file;
         let parsing_cache = match extension {
             "png" => {
                 let parsed = match PngData::parse(binary_data) {
@@ -133,7 +136,7 @@ impl ParsingCache {
                 ParsingCache::PmTiles(parsed)
             }
             "pdf" => {
-                let parsed = match PdfData::parse(binary_data) {
+                let parsed = match PdfData::parse(binary_file) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
@@ -189,9 +192,9 @@ impl WombatApp {
         ));
         ui.separator();
         if matches!(document.windows_data.parsing.cache, ParsingCache::Empty) {
-            let binary_data = &document.binary_file;
+            let binary_file = &document.binary_file;
             document.windows_data.parsing.cache =
-                ParsingCache::parse(binary_data, file_info, &document.filename);
+                ParsingCache::parse(binary_file, file_info, &document.filename);
         }
         let parsing_cache = &document.windows_data.parsing.cache;
         match parsing_cache {

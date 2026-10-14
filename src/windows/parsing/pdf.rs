@@ -1,28 +1,29 @@
 //! PDF
 
-use std::ops::RangeInclusive;
+use std::{ops::RangeInclusive, sync::Arc};
 
 use bladvak::eframe::egui;
-use pdf::object::InfoDict;
+use hayro::hayro_syntax::{Pdf, metadata::Metadata};
 
 /// Pdf data
 #[derive(Debug)]
 pub(crate) struct PdfData {
     /// page number
-    page_number: u32,
+    page_number: usize,
     /// info dict
-    info_dict: Option<InfoDict>,
+    info_dict: Metadata,
 }
 
 impl PdfData {
     /// parse the data
-    pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
-        let Ok(old_file) = pdf::file::FileOptions::cached().load(binary_file) else {
+    pub(crate) fn parse(binary_file: Arc<Vec<u8>>) -> Result<Self, String> {
+        let Ok(file) = Pdf::new(binary_file) else {
             return Err("Cannot parse pdf".to_string());
         };
+        let page_number = file.pages().iter().count();
         Ok(Self {
-            page_number: old_file.num_pages(),
-            info_dict: old_file.trailer.info_dict,
+            page_number,
+            info_dict: file.metadata().clone(),
         })
     }
 
