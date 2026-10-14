@@ -1,6 +1,6 @@
 # wombat [![crates.io version](https://img.shields.io/crates/v/wombat)](https://crates.io/crates/wombat) ![crates.io downloads](https://img.shields.io/crates/d/wombat) [![docs.rs](https://img.shields.io/docsrs/wombat)](https://docs.rs/wombat)
 
-A simple hex file viewer.
+A simple file investigator.
 
 - <https://wombat.n4n5.dev/> - demo
 - <https://github.com/Its-Just-Nans/wombat> - repo
