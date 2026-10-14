@@ -6,7 +6,7 @@ use bladvak::{AppError, ErrorManager};
 use hayro::hayro_syntax::Pdf;
 use hayro_write::{
     ChunkSettings, ExtractionQuery, extract,
-    pdf_writer::{self, Ref},
+    pdf_writer::{self, Date, Ref, TextStr},
 };
 
 use crate::document::Document;
@@ -79,13 +79,72 @@ pub(crate) fn extract_pdf_single_page(
     let Ok(page_ref) = page_ref else {
         return Err(format!("Cannot extract pdf page {page_num}: no root refs").into());
     };
-    let parent = extraction_result.page_tree_parent_ref;
+    let parent_ref = extraction_result.page_tree_parent_ref;
 
-    let catalog_id = new_ref();
     let mut out_pdf = pdf_writer::Pdf::with_settings(ChunkSettings { pretty: false });
     out_pdf.extend(&chunk);
-    out_pdf.catalog(catalog_id).pages(parent);
-    out_pdf.pages(parent).kids([*page_ref]).count(1);
+    // Copy metadata
+    {
+        let metadata = pdf.metadata().clone();
+        let ref_metadata = new_ref();
+        let mut document_info = out_pdf.document_info(ref_metadata);
+        if let Some(date) = metadata.creation_date {
+            let new_date = Date::new(date.year)
+                .month(date.month)
+                .day(date.day)
+                .hour(date.hour)
+                .minute(date.minute)
+                .second(date.second)
+                .utc_offset_hour(date.utc_offset_hour)
+                .utc_offset_minute(date.utc_offset_minute);
+            document_info.creation_date(new_date);
+        }
+        if let Some(date) = metadata.modification_date {
+            let new_date = Date::new(date.year)
+                .month(date.month)
+                .day(date.day)
+                .hour(date.hour)
+                .minute(date.minute)
+                .second(date.second)
+                .utc_offset_hour(date.utc_offset_hour)
+                .utc_offset_minute(date.utc_offset_minute);
+            document_info.modified_date(new_date);
+        }
+        if let Some(key) = metadata.title
+            && let Ok(stringed) = std::str::from_utf8(&key)
+        {
+            document_info.title(TextStr(stringed));
+        }
+        if let Some(key) = metadata.author
+            && let Ok(stringed) = std::str::from_utf8(&key)
+        {
+            document_info.author(TextStr(stringed));
+        }
+        if let Some(key) = metadata.subject
+            && let Ok(stringed) = std::str::from_utf8(&key)
+        {
+            document_info.subject(TextStr(stringed));
+        }
+        if let Some(key) = metadata.keywords
+            && let Ok(stringed) = std::str::from_utf8(&key)
+        {
+            document_info.keywords(TextStr(stringed));
+        }
+        if let Some(key) = metadata.creator
+            && let Ok(stringed) = std::str::from_utf8(&key)
+        {
+            document_info.creator(TextStr(stringed));
+        }
+        if let Some(key) = metadata.producer
+            && let Ok(stringed) = std::str::from_utf8(&key)
+        {
+            document_info.producer(TextStr(stringed));
+        }
+    }
+
+    let catalog_id = new_ref();
+    out_pdf.catalog(catalog_id).pages(parent_ref);
+    out_pdf.pages(parent_ref).kids([*page_ref]).count(1);
 
     let data = out_pdf.finish();
     Ok(Document::new(data, out_path))
