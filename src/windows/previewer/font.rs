@@ -95,6 +95,20 @@ impl FontPreview {
                 .copied()
                 .unwrap_or('\0') as usize;
             let max_char = max_char / 15 + 1;
+            let fill_color = if ui.ctx().global_style().visuals.dark_mode {
+                let color = 37; // 27 is default
+                egui::Color32::from_rgb(color, color, color)
+            } else {
+                let color = 238; // 248 is default
+                egui::Color32::from_rgb(color, color, color)
+            };
+            let color_text = if ui.ctx().global_style().visuals.dark_mode {
+                let color = 139; // 129 is default
+                egui::Color32::from_rgb(color, color, color)
+            } else {
+                let color = 110; // 130 is default
+                egui::Color32::from_rgb(color, color, color)
+            };
             let table = TableBuilder::new(ui).columns(Column::exact(col_width), 16);
             table.body(|body| {
                 body.rows(self.font_id.size * 1.5, max_char, |mut row| {
@@ -111,18 +125,15 @@ impl FontPreview {
                         row.col(|ui| {
                             if let Some(chr) = to_show {
                                 let rect = ui.available_rect_before_wrap();
-                                ui.painter().rect_filled(
-                                    rect,
-                                    0.0,
-                                    egui::Color32::from_rgb(220, 235, 255),
-                                );
+                                ui.painter().rect_filled(rect, 0.0, fill_color);
                                 let tooltip_ui = |ui: &mut egui::Ui| {
                                     let font_id = self.font_id.clone();
 
                                     char_info_ui(ui, chr, font_id);
                                 };
-                                let text =
-                                    egui::RichText::new(chr.to_string()).font(self.font_id.clone());
+                                let text = egui::RichText::new(chr.to_string())
+                                    .font(self.font_id.clone())
+                                    .color(color_text);
                                 if ui
                                     .put(rect, egui::Label::new(text).halign(egui::Align::Center))
                                     .on_hover_ui(tooltip_ui)
