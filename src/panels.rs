@@ -18,6 +18,8 @@ pub(crate) struct FileInfo;
 /// File info
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct FileInfoData {
+    /// Kind of file
+    pub(crate) kind: String,
     /// Type of file
     pub(crate) file_type: String,
     /// Extension of file format
@@ -46,9 +48,7 @@ impl BladvakPanel for FileInfo {
 
         let fmt = &document.file_format;
         ui.collapsing("File info", |ui| {
-            let format =
-                file_format::FileFormat::from_extension(&document.file_format.extension)[0];
-            ui.label(format!("Kind: {:?}", format.kind()));
+            ui.label(format!("Kind: {}", fmt.kind));
             ui.label(format!("Type: {}", fmt.file_type));
             ui.label(format!("Name: {}", fmt.name));
             ui.label(format!("Extension: .{}", fmt.extension));

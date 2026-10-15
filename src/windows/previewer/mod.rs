@@ -45,15 +45,16 @@ impl Previewer {
         fonts_definitions: &mut egui::FontDefinitions,
         filename: &Path,
         binary_file: &Arc<Vec<u8>>,
-        kind: Kind,
+        kind: &str,
     ) {
         if self.data == PreviewData::None {
-            if kind == Kind::Image {
+            if kind == format!("{:?}", Kind::Image) {
                 self.data = match ImagePreview::prepare_ui(ui, binary_file) {
                     Ok(data) => PreviewData::Image(data),
                     Err(err) => PreviewData::Error(err),
                 }
-            } else if kind == Kind::Font {
+            }
+            if kind == format!("{:?}", Kind::Font) {
                 self.data = PreviewData::Font(FontPreview::prepare_ui(
                     ui,
                     binary_file,
@@ -74,7 +75,7 @@ impl Previewer {
         fonts_definitions: &mut egui::FontDefinitions,
         filename: &Path,
         binary_file: &Arc<Vec<u8>>,
-        kind: Kind,
+        kind: &str,
     ) {
         match &mut self.data {
             PreviewData::Image(image_preview) => {
@@ -98,7 +99,7 @@ impl Previewer {
         fonts_definitions: &mut egui::FontDefinitions,
         filename: &Path,
         binary_file: &Arc<Vec<u8>>,
-        kind: Kind,
+        kind: &str,
     ) {
         if self.is_open {
             let mut is_open = self.is_open;

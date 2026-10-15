@@ -38,6 +38,7 @@ impl Default for Document {
         let (data, path) = Self::load_default_file();
         let file_fmt = FileFormat::from_bytes(&data);
         let file_format = FileInfoData {
+            kind: format!("{:?}", file_fmt.kind()),
             file_type: file_fmt.media_type().to_string(),
             extension: file_fmt.extension().to_string(),
             name: file_fmt.name().to_string(),
@@ -67,6 +68,7 @@ impl Document {
     pub(crate) fn new(bytes: Vec<u8>, filename: PathBuf) -> Self {
         let file_fmt = FileFormat::from_bytes(&bytes);
         let file_format = FileInfoData {
+            kind: format!("{:?}", file_fmt.kind()),
             file_type: file_fmt.media_type().to_string(),
             extension: file_fmt.extension().to_string(),
             name: file_fmt.name().to_string(),
@@ -97,6 +99,7 @@ impl Document {
     pub(crate) fn stale(&mut self) {
         let file_fmt = FileFormat::from_bytes(&*self.binary_file);
         self.file_format = FileInfoData {
+            kind: format!("{:?}", file_fmt.kind()),
             file_type: file_fmt.media_type().to_string(),
             extension: file_fmt.extension().to_string(),
             name: file_fmt.name().to_string(),

@@ -60,15 +60,13 @@ impl WombatApp {
                 self.show_detection_inner_ui(ui, error_manager, current_idx);
             }
             DataView::Previewer => {
-                let format =
-                    file_format::FileFormat::from_extension(&document.file_format.extension)[0];
                 document.windows_data.previewer.inner_ui(
                     ui,
                     error_manager,
                     &mut self.fonts_definitions,
                     &document.filename,
                     &document.binary_file,
-                    format.kind(),
+                    &document.file_format.kind,
                 );
             }
             DataView::Parsing => {
