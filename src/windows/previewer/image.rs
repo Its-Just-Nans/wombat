@@ -83,10 +83,11 @@ impl ImagePreview {
             }
         }
         let img_max_width = &mut self.size;
-        let img_max = self.texture.size()[0];
+        let [width, height] = self.texture.size();
+        ui.label(format!("Image: {width}x{height}"));
         ui.horizontal(|ui| {
-            ui.label("Max width: ");
-            ui.add(egui::DragValue::new(img_max_width).range(0..=img_max));
+            ui.label("Current width:");
+            ui.add(egui::DragValue::new(img_max_width).range(0..=width));
         });
         ui.add(egui::Image::new(&self.texture).max_width(*img_max_width));
     }

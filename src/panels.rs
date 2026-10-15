@@ -99,7 +99,7 @@ impl BladvakPanel for FileInfo {
             egui::ComboBox::from_id_salt("data_view_combo_box")
                 .selected_text(app.display_settings.data_view.title())
                 .show_ui(ui, |ui| {
-                    for one_view in DataView::all() {
+                    for one_view in DataView::all_non_empty() {
                         ui.selectable_value(
                             &mut app.display_settings.data_view,
                             one_view.clone(),

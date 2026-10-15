@@ -96,7 +96,7 @@ impl DataView {
     }
 
     /// all data views
-    pub(crate) fn all() -> Iter<'static, DataView> {
+    pub(crate) fn all_non_empty() -> Iter<'static, DataView> {
         [
             DataView::Hex,
             DataView::Histogram,
@@ -160,6 +160,24 @@ impl WindowsData {
     pub(crate) fn selection_stale(&mut self) {
         #[cfg(feature = "hashing")]
         self.hashing.selection_stale();
+    }
+
+    /// Open the windows
+    pub(crate) fn open(&mut self, data_view: &DataView) {
+        match data_view {
+            DataView::Empty => {}
+            DataView::Hex => self.hex.is_open = true,
+            DataView::Previewer => self.previewer.is_open = true,
+            #[cfg(feature = "hashing")]
+            DataView::Hashing => self.hashing.is_open = true,
+            #[cfg(feature = "parsing")]
+            DataView::Parsing => self.parsing.is_open = true,
+            DataView::Searcher => self.searcher.is_open = true,
+            DataView::Histogram => self.histogram.is_open = true,
+            DataView::Forensics => self.detection.is_open = true,
+            #[cfg(feature = "yara")]
+            DataView::Yara => self.yara.is_open = true,
+        }
     }
 
     /// Ui top bar
@@ -284,7 +302,7 @@ impl WombatApp {
     /// Display windows
     pub(crate) fn ui_windows(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
         let current_idx = self.documents.get_current_index();
-        for view_type in DataView::all() {
+        for view_type in DataView::all_non_empty() {
             if &self.display_settings.data_view != view_type {
                 self.show_view_window(ui, current_idx, error_manager, view_type);
             }
