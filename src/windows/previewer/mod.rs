@@ -53,8 +53,7 @@ impl Previewer {
                     Ok(data) => PreviewData::Image(data),
                     Err(err) => PreviewData::Error(err),
                 }
-            }
-            if kind == format!("{:?}", Kind::Font) {
+            } else if kind == format!("{:?}", Kind::Font) {
                 self.data = PreviewData::Font(FontPreview::prepare_ui(
                     ui,
                     binary_file,
