@@ -2,8 +2,8 @@
 
 use bladvak::AppError;
 
+use cms::der::{Decode, Encode, asn1::OctetString};
 use cms::{content_info::ContentInfo, signed_data::SignedData};
-use der::{Decode, Encode};
 use rsa::{
     RsaPublicKey,
     pkcs1v15::{Signature, VerifyingKey},
@@ -129,12 +129,7 @@ fn verify_pdf_signature(
                 .next()
                 .ok_or("messageDigest attribute has no value")?;
 
-            expected_digest = Some(
-                value
-                    .decode_as::<der::asn1::OctetString>()?
-                    .as_bytes()
-                    .to_vec(),
-            );
+            expected_digest = Some(value.decode_as::<OctetString>()?.as_bytes().to_vec());
             break;
         }
     }

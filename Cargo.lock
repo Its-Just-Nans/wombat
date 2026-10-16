@@ -7411,7 +7411,6 @@ dependencies = [
  "bladvak",
  "bzip2",
  "cms",
- "der 0.8.2",
  "digest 0.11.3",
  "file-format",
  "flate2",
