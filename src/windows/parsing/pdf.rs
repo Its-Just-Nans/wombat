@@ -20,7 +20,7 @@ impl PdfData {
         let Ok(file) = Pdf::new(binary_file) else {
             return Err("Cannot parse pdf".to_string());
         };
-        let page_number = file.pages().iter().count();
+        let page_number = file.pages().len();
         Ok(Self {
             page_number,
             info_dict: file.metadata().clone(),
