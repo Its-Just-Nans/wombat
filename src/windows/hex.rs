@@ -331,7 +331,7 @@ impl HexViewer {
 
                 let resp = ui.interact(
                     byte_rect,
-                    ui.id().with(("hex", line, idx)),
+                    ui.scope_id().with(("hex", line, idx)),
                     egui::Sense::click(),
                 );
                 if debug {
@@ -370,7 +370,7 @@ impl HexViewer {
 
                 let resp = ui.interact(
                     byte_rect,
-                    ui.id().with(("ascii", line, idx)),
+                    ui.scope_id().with(("ascii", line, idx)),
                     egui::Sense::click(),
                 );
                 if debug {
@@ -428,7 +428,7 @@ impl HexViewer {
 
         let resp = ui.interact(
             byte_rect,
-            ui.id().with(("offset_hex", line, 0)),
+            ui.scope_id().with(("offset_hex", line, 0)),
             egui::Sense::click(),
         );
         if let Some(painter) = painter {

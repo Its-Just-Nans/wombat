@@ -5,7 +5,7 @@ use bladvak::AppError;
 use cms::der::{Decode, Encode, asn1::OctetString};
 use cms::{content_info::ContentInfo, signed_data::SignedData};
 use rsa::{
-    RsaPublicKey,
+    PublicKey,
     pkcs1v15::{Signature, VerifyingKey},
     pkcs8::DecodePublicKey,
 };
@@ -164,7 +164,7 @@ fn verify_pdf_signature(
             let tbs_certificate = certificate.tbs_certificate();
             let spki_der = tbs_certificate.subject_public_key_info().to_der()?;
 
-            let is_valid = if let Ok(public_key) = RsaPublicKey::from_public_key_der(&spki_der) {
+            let is_valid = if let Ok(public_key) = PublicKey::from_public_key_der(&spki_der) {
                 // 8. Verify the authenticated attributes signature.
                 // CMS signatures cover the DER encoding of SignedAttributes as SET OF.
                 let attrs_der = attrs.to_der()?;

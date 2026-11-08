@@ -152,7 +152,7 @@ impl FontPreview {
 
 /// Available characters
 pub(crate) fn available_characters(ui: &egui::Ui, family: &egui::FontFamily) -> BTreeSet<char> {
-    ui.fonts_mut(|f| f.fonts.font(family).characters().keys().copied().collect())
+    ui.fonts_mut(|f| f.characters(family).keys().copied().collect())
 }
 
 /// Show info on the char
