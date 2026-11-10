@@ -149,7 +149,7 @@ impl BladvakPanel for PanelSelection {
         }
         app.ui_selection(ui);
         if mark_stale {
-            app.stale();
+            app.stale_app();
         }
         if mark_selection_stale {
             app.stale_selection();

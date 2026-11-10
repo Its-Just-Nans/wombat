@@ -64,7 +64,7 @@ impl WombatApp {
     }
 
     /// Mark data as stale
-    pub(crate) fn stale(&mut self) {
+    pub(crate) fn stale_app(&mut self) {
         self.importer.reset();
         self.exporter.reset();
         if let Some(document) = self.documents.get_current_doc_mut() {
@@ -97,7 +97,7 @@ impl BladvakApp<'_> for WombatApp {
     fn handle_file(&mut self, file: File) -> Result<(), AppError> {
         let mut document = Document::new(file.data, file.path);
         let file_len = document.binary_file.len();
-        self.stale();
+        self.stale_app();
         self.stale_selection();
 
         if document.binary_file.is_empty() {
