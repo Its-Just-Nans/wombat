@@ -294,7 +294,7 @@ pub(crate) fn do_acropalypse(
         6 => {
             // we force some transparent pixels
             let data = data
-                .chunks_exact(4)
+                .as_chunks::<4>().0.iter()
                 .flat_map(|pixel| [pixel[0], pixel[1], pixel[2], 0xFF])
                 .collect();
             let Some(img) = RgbaImage::from_raw(orig_width, orig_height, data) else {

@@ -400,10 +400,7 @@ impl HexViewer {
             }
             y += row_height;
         }
-        if mark_selection_stale {
-            return true;
-        }
-        false
+        mark_selection_stale
     }
 
     /// Interact the offset
