@@ -293,12 +293,11 @@ pub(crate) fn do_acropalypse(
         }
         6 => {
             // we force some transparent pixels
-            let data = data
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .flat_map(|pixel| [pixel[0], pixel[1], pixel[2], 0xFF])
-                .collect();
+            // the option is available in the previewer
+            // let mut data = data;
+            // data.as_chunks_mut::<4>().0.iter_mut().for_each(|pixel| {
+            //     pixel[3] = 0xFF;
+            // });
             let Some(img) = RgbaImage::from_raw(orig_width, orig_height, data) else {
                 return Err("Cannot convert RGBA from_raw".into());
             };

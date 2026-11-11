@@ -49,7 +49,7 @@ impl Previewer {
     ) {
         if self.data == PreviewData::None {
             if kind == format!("{:?}", Kind::Image) {
-                self.data = match ImagePreview::prepare_ui(ui, binary_file) {
+                self.data = match ImagePreview::prepare_ui(ui, binary_file, None) {
                     Ok(data) => PreviewData::Image(data),
                     Err(err) => PreviewData::Error(err),
                 }
@@ -62,6 +62,14 @@ impl Previewer {
                 ));
             } else {
                 self.data = PreviewData::Error(format!("Cannot preview '{kind:?}' for the moment"));
+            }
+        }
+        if let PreviewData::Image(img) = &mut self.data
+            && img.need_reload
+        {
+            self.data = match ImagePreview::prepare_ui(ui, binary_file, Some(img.params.clone())) {
+                Ok(data) => PreviewData::Image(data),
+                Err(err) => PreviewData::Error(err),
             }
         }
     }

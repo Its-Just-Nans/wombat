@@ -11,25 +11,51 @@ pub(crate) struct ImagePreview {
     pub(crate) texture: egui::TextureHandle,
     /// texture size
     pub(crate) size: f32,
+    /// need reload
+    pub(crate) need_reload: bool,
+    /// params
+    pub(crate) params: RenderParams,
+}
+
+/// Render params
+#[derive(PartialEq, Debug, Default, Clone)]
+pub(crate) struct RenderParams {
+    /// transparency
+    pub(crate) transparency: Option<u8>,
 }
 
 impl std::fmt::Debug for ImagePreview {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ImagePreview")
             .field("size", &self.size)
+            .field("params", &self.params)
             .finish_non_exhaustive()
     }
 }
 
 impl ImagePreview {
     /// Create the preview data
-    pub(crate) fn prepare_ui(ui: &egui::Ui, binary_file: &Arc<Vec<u8>>) -> Result<Self, String> {
+    pub(crate) fn prepare_ui(
+        ui: &egui::Ui,
+        binary_file: &Arc<Vec<u8>>,
+        params_opt: Option<RenderParams>,
+    ) -> Result<Self, String> {
         let img = match image::load_from_memory(binary_file) {
             Ok(img) => img,
             Err(err) => return Err(format!("Failed to load image from memory: {err}")),
         };
-        let img = img.to_rgba8();
+        let mut img = img.to_rgba8();
         let size = [img.width() as usize, img.height() as usize];
+
+        if let Some(params) = &params_opt
+            && let Some(trans) = params.transparency
+        {
+            img.pixels_mut().for_each(|p| {
+                if p.0[3] == 0 {
+                    p.0[3] = trans;
+                }
+            });
+        }
 
         let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &img);
 
@@ -47,6 +73,8 @@ impl ImagePreview {
         Ok(Self {
             texture,
             size: width,
+            need_reload: false,
+            params: params_opt.unwrap_or_default(),
         })
     }
 
@@ -85,10 +113,28 @@ impl ImagePreview {
         }
         let img_max_width = &mut self.size;
         let [width, height] = self.texture.size();
+
         ui.label(format!("Image: {width}x{height}"));
         ui.horizontal(|ui| {
             ui.label("Current width:");
             ui.add(egui::DragValue::new(img_max_width).range(0..=width));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Force transparency:");
+            if let Some(t) = &mut self.params.transparency {
+                if ui.add(egui::DragValue::new(t).range(0..=255)).changed() {
+                    self.need_reload = true;
+                }
+            } else {
+                let mut v = 0;
+                if ui
+                    .add(egui::DragValue::new(&mut v).range(0..=255))
+                    .changed()
+                {
+                    self.need_reload = true;
+                    self.params.transparency = Some(v);
+                }
+            }
         });
         ui.add(egui::Image::new(&self.texture).max_width(*img_max_width));
     }
