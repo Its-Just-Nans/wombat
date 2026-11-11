@@ -32,7 +32,7 @@ use pmtiles::PmTilesData;
 
 /// Histogram data cache
 #[derive(Default, Debug)]
-enum ParsingCache {
+pub(crate) enum ParsingCache {
     /// png data cached
     Png(PngData),
     /// jpg data cached
@@ -158,7 +158,7 @@ pub(crate) struct Parsing {
 
     #[serde(skip)]
     /// cached data
-    cache: ParsingCache,
+    pub(crate) cache: ParsingCache,
 }
 
 impl Parsing {

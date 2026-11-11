@@ -20,6 +20,9 @@ pub(crate) struct PngChunk {
     crc_valid: bool,
 }
 
+/// Invalid chunk
+pub(crate) const INVALID_PNG_CHUNK: &str = "Invalid";
+
 /// png data
 #[derive(Debug)]
 pub(crate) struct PngData {
@@ -65,7 +68,7 @@ impl PngData {
             if offset + 12 + length > binary_data.len() {
                 let new_chunk = PngChunk {
                     size: 0,
-                    chunk_type: "Invalid".to_string(),
+                    chunk_type: INVALID_PNG_CHUNK.to_string(),
                     start: chunk_start,
                     end: binary_data.len(),
                     crc: "Out of bound".to_string(),
@@ -131,7 +134,7 @@ impl PngData {
     }
 }
 /// CRC32 (IEEE) implementation
-fn crc32(data: &[u8]) -> u32 {
+pub(crate) fn crc32(data: &[u8]) -> u32 {
     let mut crc: u32 = 0xFFFF_FFFF;
     for &byte in data {
         crc ^= u32::from(byte);

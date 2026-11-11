@@ -24,29 +24,30 @@ impl std::fmt::Debug for ImagePreview {
 impl ImagePreview {
     /// Create the preview data
     pub(crate) fn prepare_ui(ui: &egui::Ui, binary_file: &Arc<Vec<u8>>) -> Result<Self, String> {
+        let img = match image::load_from_memory(binary_file) {
+            Ok(img) => img,
+            Err(err) => return Err(format!("Failed to load image from memory: {err}")),
+        };
+        let img = img.to_rgba8();
+        let size = [img.width() as usize, img.height() as usize];
+
+        let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &img);
+
+        let texture = ui
+            .ctx()
+            .load_texture("image", color_image, egui::TextureOptions::LINEAR);
         #[allow(clippy::cast_precision_loss)]
-        if let Ok(img) = image::load_from_memory(binary_file) {
-            let img = img.to_rgba8();
-            let size = [img.width() as usize, img.height() as usize];
-
-            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &img);
-
-            let texture = ui
-                .ctx()
-                .load_texture("image", color_image, egui::TextureOptions::LINEAR);
-            let width = texture.size()[0] as f32;
-            let available_width = ui.available_width();
-            let width = if available_width < width && available_width > 0.0 {
-                available_width.floor()
-            } else {
-                width
-            };
-            return Ok(Self {
-                texture,
-                size: width,
-            });
-        }
-        Err("Failed to load image from memory".to_string())
+        let width = texture.size()[0] as f32;
+        let available_width = ui.available_width();
+        let width = if available_width < width && available_width > 0.0 {
+            available_width.floor()
+        } else {
+            width
+        };
+        Ok(Self {
+            texture,
+            size: width,
+        })
     }
 
     /// Show the ui

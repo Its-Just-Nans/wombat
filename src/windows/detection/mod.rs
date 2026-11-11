@@ -5,6 +5,7 @@ pub(crate) mod gif;
 pub(crate) mod pdf;
 pub(crate) mod pdf_image;
 pub(crate) mod pdf_signature;
+pub(crate) mod png;
 
 use std::path::PathBuf;
 use std::time::{Duration, UNIX_EPOCH};
@@ -16,18 +17,19 @@ use time::OffsetDateTime;
 
 use crate::WombatApp;
 use crate::document::Document;
-use crate::panels::FileInfoData;
 use crate::windows::detection::exif::ExifData;
 use crate::windows::detection::gif::extract_gif_images;
 use crate::windows::detection::pdf::{extract_pdf_all_pages, extract_pdf_page};
 use crate::windows::detection::pdf_signature::{ByteRangeResult, extract_pdf_signatures};
-use crate::windows::parsing::png::PngData;
+use crate::windows::detection::png::do_acropalypse;
+use crate::windows::parsing::ParsingCache;
+use crate::windows::parsing::png::{INVALID_PNG_CHUNK, PngData};
 
 /// Possible actions
 #[derive(Debug)]
 pub enum Action {
     /// Acropalypse issue
-    Acropalypse,
+    Acropalypse(u32, u32, bool),
     /// Extract images
     PdfExtractImages,
     /// Extract page
@@ -61,36 +63,72 @@ impl Detection {
         self.exif_data = None;
         self.actions = Vec::new();
     }
-
-    /// prepare ui
-    pub(crate) fn prepare_ui(&mut self, binary_file: &[u8], format: &FileInfoData) {
-        self.exif_data = Some(ExifData::parse(binary_file, &format.extension));
-        if format.extension == "png" {
-            let parsed_data = PngData::parse(binary_file);
-            match parsed_data {
-                Ok(png_data) => {
-                    if png_data
-                        .chunks
-                        .iter()
-                        .find(|chunk| chunk.chunk_type == "Invalid")
-                        .is_some()
-                    {
-                        self.actions.push(Action::Acropalypse);
-                    }
-                }
-                Err(_err) => {}
-            }
-        } else if format.extension == "pdf" {
-            self.actions.push(Action::PdfExtractImages);
-            self.actions.push(Action::PdfExtractPage(0));
-            self.actions.push(Action::PdfExtractSignature(None));
-        } else if format.extension == "gif" {
-            self.actions.push(Action::ExtractGif);
-        }
-    }
 }
 
 impl WombatApp {
+    /// detection prepare ui
+    pub(crate) fn detection_prepare_ui(&mut self, error_manager: &mut ErrorManager) {
+        let Some(document) = self.documents.get_current_doc_mut() else {
+            return;
+        };
+        let format = document.get_file_format().clone();
+        document.windows_data.detection.exif_data =
+            Some(ExifData::parse(&document.binary_file, &format.extension));
+
+        if format.extension == "png" {
+            if let ParsingCache::Empty = document.windows_data.parsing.cache {
+                match PngData::parse(&document.binary_file) {
+                    Ok(data) => {
+                        document.windows_data.parsing.cache = ParsingCache::Png(data);
+                    }
+                    Err(err) => {
+                        error_manager.add_error(format!("Failed to parse the PNG: {err}"));
+                    }
+                }
+            }
+            match &document.windows_data.parsing.cache {
+                ParsingCache::Png(png_data) => {
+                    if png_data
+                        .chunks
+                        .iter()
+                        .find(|chunk| chunk.chunk_type == INVALID_PNG_CHUNK)
+                        .is_some()
+                    {
+                        document
+                            .windows_data
+                            .detection
+                            .actions
+                            .push(Action::Acropalypse(1920, 1080, true));
+                    }
+                }
+                _ => {
+                    error_manager.add_error("Document is a png but the data is not a PNG");
+                }
+            }
+        } else if format.extension == "pdf" {
+            document
+                .windows_data
+                .detection
+                .actions
+                .push(Action::PdfExtractImages);
+            document
+                .windows_data
+                .detection
+                .actions
+                .push(Action::PdfExtractPage(0));
+            document
+                .windows_data
+                .detection
+                .actions
+                .push(Action::PdfExtractSignature(None));
+        } else if format.extension == "gif" {
+            document
+                .windows_data
+                .detection
+                .actions
+                .push(Action::ExtractGif);
+        }
+    }
     /// show inner ui
     #[allow(clippy::too_many_lines)]
     pub(crate) fn show_detection_inner_ui(
@@ -103,10 +141,8 @@ impl WombatApp {
         let Some(document) = self.documents.get_mut(current_idx) else {
             return;
         };
-        let file_info_data = document.get_file_format().clone();
-        let detection = &mut document.windows_data.detection;
-        if detection.exif_data.is_none() {
-            detection.prepare_ui(&document.binary_file, &file_info_data);
+        if document.windows_data.detection.exif_data.is_none() {
+            self.detection_prepare_ui(error_manager);
         }
         self.show_detection_exif(ui, error_manager);
 
@@ -118,8 +154,37 @@ impl WombatApp {
         let mut go_to_range = None;
         for one_action in &mut document.windows_data.detection.actions {
             match one_action {
-                Action::Acropalypse => {
-                    ui.label("Possible to acropalypse");
+                Action::Acropalypse(width, height, reconstruct_only) => {
+                    ui.horizontal(|ui| {
+                        ui.label("Width");
+                        ui.add(egui::DragValue::new(width));
+                        ui.label("Height");
+                        ui.add(egui::DragValue::new(height));
+                        ui.checkbox(reconstruct_only, "Reconstruct only");
+                        if ui.button("Run acropalyse").clicked() {
+                            match &document.windows_data.parsing.cache {
+                                ParsingCache::Png(png_data) => {
+                                    match do_acropalypse(
+                                        &document.binary_file,
+                                        png_data,
+                                        (*width, *height),
+                                        *reconstruct_only,
+                                    ) {
+                                        Ok(doc) => {
+                                            new_docs.push(doc);
+                                        }
+                                        Err(err) => {
+                                            error_manager.add_error(err);
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    error_manager
+                                        .add_error("Document is a png but the data is not a PNG");
+                                }
+                            }
+                        }
+                    });
                 }
                 Action::ExtractGif => {
                     if ui.button("Extract gif").clicked() {
