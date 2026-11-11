@@ -5,3 +5,4 @@
 [default.extend-words]
 egui = "egui" # Example for how to ignore a false positive
 trak = "trak"
+Paeth = "Paeth" # Alan W. Paeth
