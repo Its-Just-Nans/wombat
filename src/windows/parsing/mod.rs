@@ -12,7 +12,7 @@ mod raw;
 mod xml;
 mod zip;
 
-use bladvak::eframe::egui::{self};
+use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
 use std::ops::RangeInclusive;
 use std::path::Path;
@@ -24,7 +24,7 @@ use crate::windows::parsing::cert::CertData;
 use crate::windows::parsing::jpg::JpgData;
 use crate::windows::parsing::mp4::Mp4Data;
 use crate::windows::parsing::pdf::PdfData;
-use crate::windows::parsing::png::PngData;
+use crate::windows::parsing::png::{PngData, PngDataViewer};
 use crate::windows::parsing::raw::RawType;
 use crate::windows::parsing::xml::XmlData;
 use crate::windows::parsing::zip::ZipData;
@@ -34,7 +34,7 @@ use pmtiles::PmTilesData;
 #[derive(Default, Debug)]
 pub(crate) enum ParsingCache {
     /// png data cached
-    Png(PngData),
+    Png((PngDataViewer, PngData)),
     /// jpg data cached
     Jpg(JpgData),
     /// xml data cached
@@ -85,7 +85,7 @@ impl ParsingCache {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
-                ParsingCache::Png(parsed)
+                ParsingCache::Png((PngDataViewer::default(), parsed))
             }
             "xml" | "svg" | "html" => {
                 let parsed = XmlData::parse(binary_data);
@@ -196,9 +196,9 @@ impl WombatApp {
             document.windows_data.parsing.cache =
                 ParsingCache::parse(binary_file, file_info, &document.filename);
         }
-        let parsing_cache = &document.windows_data.parsing.cache;
+        let parsing_cache = &mut document.windows_data.parsing.cache;
         match parsing_cache {
-            ParsingCache::Png(data) => data.ui(ui),
+            ParsingCache::Png((viewer, data)) => viewer.ui(ui, data, &document.binary_file),
             ParsingCache::Jpg(data) => data.ui(ui),
             ParsingCache::Xml(data) => data.ui(ui),
             ParsingCache::Cert(data) => data.ui(ui),
@@ -208,11 +208,11 @@ impl WombatApp {
             ParsingCache::Pdf(data) => data.ui(ui),
             ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
             ParsingCache::Message(str) => {
-                ui.label(str);
+                ui.label(&*str);
                 None
             }
             ParsingCache::ErrorMessage(err) => {
-                ui.label(err);
+                ui.label(&*err);
                 None
             }
             ParsingCache::Empty => {

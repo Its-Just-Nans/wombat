@@ -23,7 +23,7 @@ use crate::windows::detection::pdf::{extract_pdf_all_pages, extract_pdf_page};
 use crate::windows::detection::pdf_signature::{ByteRangeResult, extract_pdf_signatures};
 use crate::windows::detection::png::do_acropalypse;
 use crate::windows::parsing::ParsingCache;
-use crate::windows::parsing::png::{INVALID_PNG_CHUNK, PngData};
+use crate::windows::parsing::png::{INVALID_PNG_CHUNK, PngData, PngDataViewer};
 
 /// Possible actions
 #[derive(Debug)]
@@ -79,7 +79,8 @@ impl WombatApp {
             if let ParsingCache::Empty = document.windows_data.parsing.cache {
                 match PngData::parse(&document.binary_file) {
                     Ok(data) => {
-                        document.windows_data.parsing.cache = ParsingCache::Png(data);
+                        document.windows_data.parsing.cache =
+                            ParsingCache::Png((PngDataViewer::default(), data));
                     }
                     Err(err) => {
                         error_manager.add_error(format!("Failed to parse the PNG: {err}"));
@@ -89,6 +90,7 @@ impl WombatApp {
             match &document.windows_data.parsing.cache {
                 ParsingCache::Png(png_data) => {
                     if png_data
+                        .1
                         .chunks
                         .iter()
                         .find(|chunk| chunk.chunk_type == INVALID_PNG_CHUNK)
@@ -166,7 +168,7 @@ impl WombatApp {
                                 ParsingCache::Png(png_data) => {
                                     match do_acropalypse(
                                         &document.binary_file,
-                                        png_data,
+                                        &png_data.1,
                                         (*width, *height),
                                         *reconstruct_only,
                                     ) {

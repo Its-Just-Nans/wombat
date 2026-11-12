@@ -1,6 +1,6 @@
 //! PNG
 
-use bladvak::eframe::egui;
+use bladvak::eframe::egui::{self, CollapsingHeader};
 use std::ops::RangeInclusive;
 
 /// png chunk
@@ -127,12 +127,27 @@ impl PngData {
         }
         Ok(png_data)
     }
+}
 
+/// PNG data viewer
+#[derive(Default, Debug)]
+pub(crate) struct PngDataViewer {
+    /// show details
+    details: bool,
+}
+
+impl PngDataViewer {
     /// Show the ui
-    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
-        show_png_chunks(ui, self)
+    pub(crate) fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        png_data: &PngData,
+        binary_file: &[u8],
+    ) -> Option<RangeInclusive<usize>> {
+        show_png_chunks(ui, self, png_data, binary_file)
     }
 }
+
 /// CRC32 (IEEE) implementation
 pub(crate) fn crc32(data: &[u8]) -> u32 {
     let mut crc: u32 = 0xFFFF_FFFF;
@@ -147,7 +162,13 @@ pub(crate) fn crc32(data: &[u8]) -> u32 {
 }
 
 /// show PNG chunks
-pub fn show_png_chunks(ui: &mut egui::Ui, png_data: &PngData) -> Option<RangeInclusive<usize>> {
+#[allow(clippy::too_many_lines)]
+pub fn show_png_chunks(
+    ui: &mut egui::Ui,
+    png_data_viewer: &mut PngDataViewer,
+    png_data: &PngData,
+    binary_file: &[u8],
+) -> Option<RangeInclusive<usize>> {
     let mut return_range = None;
 
     ui.horizontal(|ui| {
@@ -158,7 +179,25 @@ pub fn show_png_chunks(ui: &mut egui::Ui, png_data: &PngData) -> Option<RangeInc
         }
     });
 
-    ui.label("PNG Chunks:");
+    ui.horizontal(|ui| {
+        ui.label("PNG Chunks:");
+        ui.checkbox(&mut png_data_viewer.details, "Details");
+    });
+    if png_data_viewer.details {
+        return_range = show_png_chunks_details(ui, png_data, binary_file);
+    } else {
+        return_range = show_png_chunks_grid(ui, png_data);
+    }
+    return_range
+}
+
+/// Show png chunks
+pub(crate) fn show_png_chunks_grid(
+    ui: &mut egui::Ui,
+    png_data: &PngData,
+) -> Option<RangeInclusive<usize>> {
+    let mut return_range = None;
+
     egui::Grid::new("png_chunks_table")
         .striped(true)
         .show(ui, |ui| {
@@ -179,6 +218,7 @@ pub fn show_png_chunks(ui: &mut egui::Ui, png_data: &PngData) -> Option<RangeInc
                     crc,
                     crc_valid,
                 } = one_chunk;
+
                 ui.label(index.to_string());
                 ui.label(size.to_string());
                 ui.label(chunk_type);
@@ -199,5 +239,107 @@ pub fn show_png_chunks(ui: &mut egui::Ui, png_data: &PngData) -> Option<RangeInc
                 ui.end_row();
             }
         });
+
+    return_range
+}
+
+/// Show png chunks with details
+pub(crate) fn show_png_chunks_details(
+    ui: &mut egui::Ui,
+    png_data: &PngData,
+    binary_file: &[u8],
+) -> Option<RangeInclusive<usize>> {
+    let mut return_range = None;
+    for (index, one_chunk) in png_data.chunks.iter().enumerate() {
+        let PngChunk {
+            size,
+            chunk_type,
+            start,
+            end,
+            crc,
+            crc_valid,
+        } = one_chunk;
+
+        egui::Grid::new(format!("png_chunks_table_{index}"))
+            .striped(true)
+            .show(ui, |ui| {
+                if index == 0 {
+                    ui.label("Index");
+                    ui.label("Data size");
+                    ui.label("Chunk");
+                    ui.label("Start");
+                    ui.label("End");
+                    ui.label("CRC");
+                    ui.end_row();
+                }
+                ui.label(index.to_string());
+                ui.label(size.to_string());
+                ui.label(chunk_type);
+                ui.label(start.to_string());
+                ui.label(end.to_string());
+                ui.colored_label(
+                    if *crc_valid {
+                        egui::Color32::GREEN
+                    } else {
+                        egui::Color32::RED
+                    },
+                    crc,
+                );
+                if ui.button("Show").clicked() {
+                    let range = *start..=*end;
+                    return_range = Some(range);
+                }
+            });
+        if chunk_type == "IHDR"
+            && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+        {
+            let width = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            let height = u32::from_be_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+            let bit_depth = chunk[8];
+            let color_type = chunk[9];
+            let compression = chunk[10];
+            let filter = chunk[11];
+            let interlace = chunk[12];
+            CollapsingHeader::new("Details")
+                .id_salt("details_ihdr")
+                .show(ui, |ui| {
+                    ui.label(format!("width = {width}"));
+                    ui.label(format!("height = {height}"));
+                    ui.label(format!("bit depth = {bit_depth}"));
+                    ui.label(format!("color type = {color_type}"));
+                    ui.label(format!("compression = {compression}"));
+                    ui.label(format!("filter = {filter}"));
+                    ui.label(format!("interlace = {interlace}"));
+                });
+        }
+        if chunk_type == "tIME"
+            && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+        {
+            let year = u16::from_be_bytes([chunk[0], chunk[1]]);
+            let month = chunk[2];
+            let day = chunk[3];
+            let hours = chunk[4];
+            let minutes = chunk[5];
+            let seconds = chunk[6];
+            CollapsingHeader::new("Details")
+                .id_salt("details_time")
+                .show(ui, |ui| {
+                    ui.label(format!("{year}-{month}-{day} {hours}h{minutes}m{seconds}s"));
+                });
+        }
+        if chunk_type == "tEXt"
+            && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+        {
+            CollapsingHeader::new("Details")
+                .id_salt("details_text")
+                .show(ui, |ui| {
+                    if let Ok(utf_str) = std::str::from_utf8(chunk) {
+                        ui.label(utf_str);
+                    } else {
+                        ui.label(format!("{chunk:?}"));
+                    }
+                });
+        }
+    }
     return_range
 }
