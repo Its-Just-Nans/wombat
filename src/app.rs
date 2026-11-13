@@ -94,7 +94,11 @@ impl BladvakApp<'_> for WombatApp {
         true
     }
 
-    fn handle_file(&mut self, file: File) -> Result<(), AppError> {
+    fn handle_file(
+        &mut self,
+        file: File,
+        _error_manager: &mut ErrorManager,
+    ) -> Result<(), AppError> {
         let mut document = Document::new(file.data, file.path);
         let file_len = document.binary_file.len();
         self.stale_app();
@@ -154,10 +158,13 @@ impl BladvakApp<'_> for WombatApp {
             );
         }
         if let Some((filename, data)) = self.importer.ui(ui, error_manager)
-            && let Err(e) = self.handle_file(File {
-                data,
-                path: filename,
-            })
+            && let Err(e) = self.handle_file(
+                File {
+                    data,
+                    path: filename,
+                },
+                error_manager,
+            )
         {
             error_manager.add_error(e);
         }

@@ -69,7 +69,7 @@ impl BladvakPanel for FileInfo {
     ) {
         if ui.button("Load default file").clicked() {
             let default_file = WombatApp::load_default_file();
-            if let Err(err) = app.handle_file(default_file) {
+            if let Err(err) = app.handle_file(default_file, error_manager) {
                 error_manager.add_error(err);
             }
         }
@@ -78,7 +78,7 @@ impl BladvakPanel for FileInfo {
                 data: (0..=255).collect(),
                 path: PathBuf::from("ascii.bin"),
             };
-            if let Err(err) = app.handle_file(ascii_file) {
+            if let Err(err) = app.handle_file(ascii_file, error_manager) {
                 error_manager.add_error(err);
             }
         }
