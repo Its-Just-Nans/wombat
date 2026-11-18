@@ -12,12 +12,16 @@ use image::ImagePreview;
 
 mod font;
 use font::FontPreview;
+mod document;
+use document::DocumentPreview;
 
 /// Preview data
 #[derive(Default, PartialEq, Debug)]
 enum PreviewData {
     /// image data
     Image(ImagePreview),
+    /// document data
+    Document(DocumentPreview),
     /// Font data
     Font(FontPreview),
     /// Error
@@ -53,6 +57,11 @@ impl Previewer {
                     Ok(data) => PreviewData::Image(data),
                     Err(err) => PreviewData::Error(err),
                 }
+            } else if kind == format!("{:?}", Kind::Document) {
+                self.data = match DocumentPreview::prepare_ui(ui, binary_file, None) {
+                    Ok(data) => PreviewData::Document(data),
+                    Err(err) => PreviewData::Error(err),
+                }
             } else if kind == format!("{:?}", Kind::Font) {
                 self.data = PreviewData::Font(FontPreview::prepare_ui(
                     ui,
@@ -72,6 +81,15 @@ impl Previewer {
                 Err(err) => PreviewData::Error(err),
             }
         }
+        if let PreviewData::Document(doc) = &mut self.data
+            && doc.need_reload
+        {
+            self.data = match DocumentPreview::prepare_ui(ui, binary_file, Some(doc.params.clone()))
+            {
+                Ok(data) => PreviewData::Document(data),
+                Err(err) => PreviewData::Error(err),
+            }
+        }
     }
 
     /// inner ui
@@ -87,6 +105,9 @@ impl Previewer {
         match &mut self.data {
             PreviewData::Image(image_preview) => {
                 image_preview.ui(ui, binary_file, filename, error_manager);
+            }
+            PreviewData::Document(doc) => {
+                doc.ui(ui, binary_file, filename, error_manager);
             }
             PreviewData::Font(font) => {
                 font.ui(ui);

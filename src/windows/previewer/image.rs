@@ -1,6 +1,6 @@
 //! Image previewer
 
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 use bladvak::{ErrorManager, eframe::egui, image};
 
@@ -28,6 +28,7 @@ impl std::fmt::Debug for ImagePreview {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ImagePreview")
             .field("size", &self.size)
+            .field("need_reload", &self.need_reload)
             .field("params", &self.params)
             .finish_non_exhaustive()
     }
@@ -37,7 +38,7 @@ impl ImagePreview {
     /// Create the preview data
     pub(crate) fn prepare_ui(
         ui: &egui::Ui,
-        binary_file: &Arc<Vec<u8>>,
+        binary_file: &[u8],
         params_opt: Option<RenderParams>,
     ) -> Result<Self, String> {
         let img = match image::load_from_memory(binary_file) {
