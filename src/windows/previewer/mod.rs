@@ -114,6 +114,9 @@ impl Previewer {
             }
             PreviewData::Error(err) => {
                 ui.label(err.as_str());
+                ui.button("⟳").clicked().then(|| {
+                    self.data = PreviewData::None;
+                });
             }
             PreviewData::None => {}
         }
