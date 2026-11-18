@@ -83,10 +83,13 @@ impl WombatApp {
 
 impl BladvakApp<'_> for WombatApp {
     fn panel_list(&self) -> Vec<Box<dyn BladvakPanel<App = WombatApp>>> {
-        vec![Box::new(FileInfo), Box::new(PanelSelection)]
+        vec![
+            Box::new(FileInfo::default()),
+            Box::new(PanelSelection::default()),
+        ]
     }
 
-    fn is_side_panel(&self) -> bool {
+    fn is_side_panel(&self, _panel_list: &mut [Box<dyn BladvakPanel<App = Self>>]) -> bool {
         self.documents.is_some()
     }
 
@@ -143,7 +146,12 @@ impl BladvakApp<'_> for WombatApp {
         }
     }
 
-    fn central_panel(&mut self, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+    fn central_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+        _panel_list: &mut [Box<dyn BladvakPanel<App = Self>>],
+    ) {
         self.app_central_panel(ui, error_manager);
         self.ui_windows(ui, error_manager);
         self.ui_bulk(ui, error_manager);

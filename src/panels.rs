@@ -1,6 +1,6 @@
 //! Side panel
 
-use bladvak::app::BladvakPanel;
+use bladvak::app::{BladvakPanel, PanelState};
 use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
 use bladvak::{BladvakApp, File};
@@ -13,7 +13,10 @@ use crate::windows::hex::hex_viewer_settings;
 
 /// File info
 #[derive(Debug, Default)]
-pub(crate) struct FileInfo;
+pub(crate) struct FileInfo {
+    /// state
+    state: PanelState,
+}
 
 /// File info
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -32,6 +35,12 @@ impl BladvakPanel for FileInfo {
     type App = WombatApp;
     fn name(&self) -> &'static str {
         "File info"
+    }
+    fn state(&self) -> &PanelState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut PanelState {
+        &mut self.state
     }
     fn has_ui(&self) -> bool {
         true

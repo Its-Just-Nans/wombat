@@ -4,7 +4,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use bladvak::{
     ErrorManager,
-    app::BladvakPanel,
+    app::{BladvakPanel, PanelState},
     eframe::egui::{self, Color32, Theme},
 };
 
@@ -123,13 +123,22 @@ impl WombatApp {
 }
 
 /// selection panel
-#[derive(Debug)]
-pub(crate) struct PanelSelection;
+#[derive(Default, Debug)]
+pub(crate) struct PanelSelection {
+    /// state
+    state: PanelState,
+}
 
 impl BladvakPanel for PanelSelection {
     type App = WombatApp;
     fn name(&self) -> &'static str {
         "File selection"
+    }
+    fn state(&self) -> &PanelState {
+        &self.state
+    }
+    fn state_mut(&mut self) -> &mut PanelState {
+        &mut self.state
     }
     fn has_ui(&self) -> bool {
         true
