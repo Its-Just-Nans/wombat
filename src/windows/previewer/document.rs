@@ -36,10 +36,21 @@ impl std::fmt::Debug for DocumentPreview {
 }
 
 /// Render params
-#[derive(PartialEq, Debug, Default, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 pub(crate) struct RenderParams {
     /// page number
     pub(crate) page_num: usize,
+    /// scale
+    pub(crate) scale: f32,
+}
+
+impl Default for RenderParams {
+    fn default() -> Self {
+        Self {
+            page_num: 0,
+            scale: 1.0,
+        }
+    }
 }
 
 impl DocumentPreview {
@@ -51,16 +62,13 @@ impl DocumentPreview {
     ) -> Result<Self, String> {
         let pdf = Pdf::new(binary_file.clone()).map_err(|_e| "Failed to load PDF")?;
         let total_page = pdf.pages().len();
-        let page_number = if let Some(p) = &params_opt {
-            p.page_num
-        } else {
-            0
-        };
+        let options = params_opt.unwrap_or_default();
+        let page_number = options.page_num;
         let page = pdf
             .pages()
             .get(page_number)
             .ok_or_else(|| format!("Cannot get page {page_number}"))?;
-        let scale = 1.0;
+        let scale = options.scale;
         let img = hayro::render(
             page,
             &RenderCache::default(),
@@ -95,7 +103,7 @@ impl DocumentPreview {
             size: width,
             total_page_len: total_page,
             need_reload: false,
-            params: params_opt.unwrap_or_default(),
+            params: options,
         })
     }
 
@@ -148,6 +156,15 @@ impl DocumentPreview {
                 }
             });
             ui.label(format!("/ {max}"));
+        });
+        ui.horizontal(|ui| {
+            ui.label("Scale: ");
+            if ui
+                .add(egui::DragValue::new(&mut self.params.scale).range(0.5..=4.0))
+                .changed()
+            {
+                self.need_reload = true;
+            }
         });
         ui.add(egui::Image::new(&self.texture).max_width(*img_max_width));
     }
