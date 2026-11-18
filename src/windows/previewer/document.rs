@@ -103,35 +103,18 @@ impl DocumentPreview {
     pub(crate) fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        binary_file: &[u8],
-        filename: &Path,
-        error_manager: &mut ErrorManager,
+        _binary_file: &[u8],
+        _filename: &Path,
+        _error_manager: &mut ErrorManager,
     ) {
-        if ui.button("Open in tarsier").clicked() {
-            bladvak::utils::open_external(
-                binary_file.to_vec(),
-                filename,
-                error_manager,
-                "https://tarsier.n4n5.dev",
-            );
-        }
-        if ui.button("Copy to clipboard").clicked() {
-            match image::load_from_memory(binary_file) {
-                Ok(img) => {
-                    if let Err(err) = bladvak::utils::set_image_in_clipboard(
-                        ui.ctx(),
-                        img.width() as usize,
-                        img.height() as usize,
-                        img.to_rgba8().as_flat_samples().as_slice(),
-                    ) {
-                        error_manager.add_error(err);
-                    }
-                }
-                Err(err) => {
-                    error_manager.add_error(err.to_string());
-                }
-            }
-        }
+        // if ui.button("Open in tarsier").clicked() {
+        //     bladvak::utils::open_external(
+        //         binary_file.to_vec(),
+        //         filename,
+        //         error_manager,
+        //         "https://tarsier.n4n5.dev",
+        //     );
+        // }
         let img_max_width = &mut self.size;
         let [width, height] = self.texture.size();
 
