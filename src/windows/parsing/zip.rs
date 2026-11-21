@@ -6,16 +6,18 @@ use std::{
     path::PathBuf,
 };
 
-use bladvak::eframe::egui;
-use zip::HasZipMetadata;
+use bladvak::eframe::egui::{self, Color32};
+use zip::{HasZipMetadata, System, unstable::format::compression::Compression};
 
 use crate::{WombatApp, document::Document, windows::parsing::ParsingCache};
 
 /// Entry type
 #[derive(Debug)]
 pub(crate) enum EntryType {
-    /// filej
+    /// file
     File,
+    /// symlink
+    Symlink,
     /// dir
     Directory,
 }
@@ -33,18 +35,6 @@ pub(crate) struct ZipFile {
     pub(crate) entry_type: EntryType,
     /// filename
     pub(crate) filename: PathBuf,
-    /// compression
-    pub(crate) compression: String,
-    /// uncompressed size
-    pub(crate) uncompressed_size: u64,
-    /// compressed size
-    pub(crate) compressed_size: u64,
-    /// unix mode
-    pub(crate) unix_mode: Option<u32>,
-    /// last modified date
-    pub(crate) last_modified: Option<String>,
-    /// comment
-    pub(crate) comment: String,
 }
 
 /// zip data
@@ -77,15 +67,10 @@ impl ZipData {
             let Some(filename) = file.enclosed_name() else {
                 continue;
             };
-            let uncompressed_size = file.size();
-            let compressed_size = file.compressed_size();
-            let compression = file.compression().to_string();
-            let unix_mode = file.unix_mode();
-            let last_modified = file.last_modified().map(|lm| lm.to_string());
-
-            let comment = file.comment().to_string();
             let entry_type = if file.is_dir() {
                 EntryType::Directory
+            } else if file.is_symlink() {
+                EntryType::Symlink
             } else {
                 EntryType::File
             };
@@ -99,12 +84,6 @@ impl ZipData {
                 central_header_start,
                 entry_type,
                 filename,
-                compression,
-                uncompressed_size,
-                compressed_size,
-                unix_mode,
-                last_modified,
-                comment,
             });
         }
         Ok(Self { files })
@@ -113,6 +92,7 @@ impl ZipData {
 
 impl WombatApp {
     /// show zip data
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn parsing_ui_zip(&mut self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
         let mut extracted_file = None;
         let Some(document) = self.documents.get_current_doc_mut() else {
@@ -133,10 +113,10 @@ impl WombatApp {
             egui::CollapsingHeader::new(format!(
                 "{}: {} {}",
                 one_file.index,
-                if let EntryType::File = one_file.entry_type {
-                    "🗋"
-                } else {
-                    "🗀"
+                match one_file.entry_type {
+                    EntryType::File => "🗋",
+                    EntryType::Symlink => "S",
+                    EntryType::Directory => "🗀",
                 },
                 one_file.filename.display(),
             ))
@@ -144,62 +124,268 @@ impl WombatApp {
             .show(ui, |ui| {
                 egui::Grid::new(format!("grid_{one_idx}"))
                     .striped(true)
+                    .num_columns(3)
                     .show(ui, |ui| {
-                        ui.label("Type");
-                        ui.label(format!("{:?}", one_file.entry_type));
+                        ui.horizontal(|ui| {
+                            if let EntryType::File = one_file.entry_type
+                                && ui.button("Extract").clicked()
+                            {
+                                let reader = Cursor::new(&*document.binary_file);
+                                let Ok(mut archive) = zip::ZipArchive::new(reader) else {
+                                    return;
+                                };
+
+                                if let Ok(mut file) = archive.by_index(one_file.index) {
+                                    let mut buffer = Vec::new();
+                                    if file.read_to_end(&mut buffer).is_ok() {
+                                        extracted_file =
+                                            Some(Document::new(buffer, one_file.filename.clone()));
+                                    }
+                                }
+                            }
+                        });
+                        ui.horizontal(|ui| {
+                            if ui.button("Local block").clicked() {
+                                let start = one_file.local_header_start;
+                                let end = start + (30 - 1);
+                                go_to_range = Some(start..=end);
+                            }
+                            ui.label(format!("{}", one_file.local_header_start));
+                        });
+                        ui.horizontal(|ui| {
+                            if ui.button("Central block").clicked() {
+                                let start = one_file.central_header_start;
+                                let end = start + (46 - 1);
+                                go_to_range = Some(start..=end);
+                            }
+                            ui.label(format!("{}", one_file.central_header_start));
+                        });
                         ui.end_row();
-                        ui.label("Compression");
-                        ui.label(&one_file.compression);
+                        ui.label("Signature");
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.local_header_start,
+                            ui,
+                            print_byte,
+                        );
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.central_header_start,
+                            ui,
+                            print_byte,
+                        );
                         ui.end_row();
-                        ui.label("Uncompressed size");
-                        ui.label(one_file.uncompressed_size.to_string());
+                        ui.label("Version made by");
+                        ui.label("");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 4,
+                            ui,
+                            |ui, r| {
+                                let value = u16::from_le_bytes([r[0], r[1]]);
+                                let s = System::from_version_made_by(value);
+                                ui.label(format!("{:?} - 0x{}", s, get_byte_repr(r)));
+                            },
+                        );
                         ui.end_row();
-                        ui.label("Compressed size");
-                        ui.label(one_file.compressed_size.to_string());
+                        ui.label("Version needed to extract");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.local_header_start + 4,
+                            ui,
+                            print_byte,
+                        );
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 6,
+                            ui,
+                            print_byte,
+                        );
                         ui.end_row();
-                        ui.label("Unix mode");
-                        if let Some(mode) = one_file.unix_mode {
-                            ui.label(format!("0o{mode:o}"));
-                        } else {
-                            ui.label("No UNIX mode");
-                        }
+                        ui.label("General purpose bit flag");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.local_header_start + 6,
+                            ui,
+                            print_byte,
+                        );
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 8,
+                            ui,
+                            print_byte,
+                        );
+                        ui.end_row();
+                        ui.label("Compression method");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.local_header_start + 8,
+                            ui,
+                            print_compression,
+                        );
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 10,
+                            ui,
+                            print_compression,
+                        );
+                        ui.end_row();
+                        ui.label("Last modified time");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.local_header_start + 10,
+                            ui,
+                            print_byte,
+                        );
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 12,
+                            ui,
+                            print_byte,
+                        );
                         ui.end_row();
                         ui.label("Last modified date");
-                        if let Some(lm) = &one_file.last_modified {
-                            ui.label(lm);
-                        } else {
-                            ui.label("No modified date");
-                        }
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.local_header_start + 12,
+                            ui,
+                            print_byte,
+                        );
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 14,
+                            ui,
+                            print_byte,
+                        );
+                        ui.end_row();
+                        ui.label("CRC-32");
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.local_header_start + 14,
+                            ui,
+                            print_byte,
+                        );
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.central_header_start + 16,
+                            ui,
+                            print_byte,
+                        );
+                        ui.end_row();
+                        ui.label("Compressed size");
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.local_header_start + 18,
+                            ui,
+                            print_size,
+                        );
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.central_header_start + 20,
+                            ui,
+                            print_size,
+                        );
+                        ui.end_row();
+                        ui.label("Uncompressed size");
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.local_header_start + 22,
+                            ui,
+                            print_size,
+                        );
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.central_header_start + 24,
+                            ui,
+                            print_size,
+                        );
+                        ui.end_row();
+                        ui.label("File name length");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.local_header_start + 26,
+                            ui,
+                            print_size_2,
+                        );
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 28,
+                            ui,
+                            print_size_2,
+                        );
+                        ui.end_row();
+                        ui.label("Extra field length");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.local_header_start + 28,
+                            ui,
+                            print_size_2,
+                        );
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 30,
+                            ui,
+                            print_size_2,
+                        );
+                        ui.end_row();
+                        ui.label("File comment length");
+                        ui.label("");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 32,
+                            ui,
+                            print_size_2,
+                        );
+                        ui.end_row();
+                        ui.label("Disk number start");
+                        ui.label("");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 34,
+                            ui,
+                            print_size_2,
+                        );
+                        ui.end_row();
+                        ui.label("Internal file attributes");
+                        ui.label("");
+                        get_from_file::<2>(
+                            &document.binary_file,
+                            one_file.central_header_start + 36,
+                            ui,
+                            print_byte,
+                        );
+                        ui.end_row();
+                        ui.label("External file attributes");
+                        ui.label("");
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.central_header_start + 38,
+                            ui,
+                            print_byte,
+                        );
+                        ui.end_row();
+                        ui.label("Relative offset of local header");
+                        ui.label("");
+                        get_from_file::<4>(
+                            &document.binary_file,
+                            one_file.central_header_start + 42,
+                            ui,
+                            |ui, r| {
+                                let value = u32::from_le_bytes(r) as usize;
+                                ui.colored_label(
+                                    if value == one_file.local_header_start {
+                                        Color32::GREEN
+                                    } else {
+                                        Color32::RED
+                                    },
+                                    format!("{value} (0x{})", get_byte_repr(r)),
+                                );
+                            },
+                        );
                         ui.end_row();
                         ui.label("Comment");
-                        ui.label(one_file.comment.clone());
                         ui.end_row();
                     });
-                if ui.button("Local block").clicked() {
-                    let start = one_file.local_header_start;
-                    let end = start + (30 - 1);
-                    go_to_range = Some(start..=end);
-                }
-                if ui.button("Central block").clicked() {
-                    let start = one_file.central_header_start;
-                    let end = start + (46 - 1);
-                    go_to_range = Some(start..=end);
-                }
-                if let EntryType::File = one_file.entry_type
-                    && ui.button("Extract").clicked()
-                {
-                    let reader = Cursor::new(&*document.binary_file);
-                    let Ok(mut archive) = zip::ZipArchive::new(reader) else {
-                        return;
-                    };
-
-                    if let Ok(mut file) = archive.by_index(one_file.index) {
-                        let mut buffer = Vec::new();
-                        if file.read_to_end(&mut buffer).is_ok() {
-                            extracted_file = Some(Document::new(buffer, one_file.filename.clone()));
-                        }
-                    }
-                }
             });
         }
         if let Some(range) = go_to_range {
@@ -210,4 +396,62 @@ impl WombatApp {
         }
         None
     }
+}
+
+/// Get from the file
+fn get_from_file<const N: usize>(
+    file: &[u8],
+    index: usize,
+    ui: &mut egui::Ui,
+    fn_ui: impl FnOnce(&mut egui::Ui, [u8; N]),
+) {
+    let Some(bytes) = file.get(index..).and_then(|s| s.get(..N)) else {
+        ui.label("");
+        return;
+    };
+
+    let Ok(data): Result<[u8; N], _> = bytes.try_into() else {
+        ui.label("");
+        return;
+    };
+
+    fn_ui(ui, data);
+}
+
+/// get byte representation
+fn get_byte_repr<const N: usize>(r: [u8; N]) -> String {
+    r.iter().fold(String::new(), |mut acc, b| {
+        use std::fmt::Write;
+        write!(acc, "{b:02X}").unwrap_or_default();
+        acc
+    })
+}
+
+/// Print a byte
+fn print_byte<const N: usize>(ui: &mut egui::Ui, r: [u8; N]) {
+    ui.label(format!("0x{}", get_byte_repr(r)));
+}
+
+/// print compression
+fn print_compression(ui: &mut egui::Ui, data: [u8; 2]) {
+    ui.horizontal(|ui| {
+        let value = u16::from_le_bytes([data[0], data[1]]);
+        ui.label(format!(
+            "{:?} (0x{})",
+            Compression::from(value),
+            get_byte_repr(data)
+        ));
+    });
+}
+
+/// print size
+fn print_size_2(ui: &mut egui::Ui, data: [u8; 2]) {
+    let value = u16::from_le_bytes([data[0], data[1]]);
+    ui.label(format!("{value}"));
+}
+
+/// print size
+fn print_size(ui: &mut egui::Ui, data: [u8; 4]) {
+    let value = u32::from_le_bytes(data);
+    ui.label(format!("{value}"));
 }
