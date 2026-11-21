@@ -7,7 +7,7 @@ use std::{
 };
 
 use bladvak::eframe::egui::{self, Color32};
-use zip::{HasZipMetadata, System, unstable::format::compression::Compression};
+use zip::{DateTime, HasZipMetadata, System, unstable::format::compression::Compression};
 
 use crate::{WombatApp, document::Document, windows::parsing::ParsingCache};
 
@@ -225,33 +225,87 @@ fn show_zip_file(
                     print_compression,
                 );
                 ui.end_row();
+                let local_time =
+                    get_bytes_from_file::<2>(binary_file, one_file.local_header_start + 10)
+                        .unwrap_or([0, 0]);
+                let central_time =
+                    get_bytes_from_file::<2>(binary_file, one_file.central_header_start + 12)
+                        .unwrap_or([0, 0]);
+                let local_date =
+                    get_bytes_from_file::<2>(binary_file, one_file.local_header_start + 12)
+                        .unwrap_or([0, 0]);
+                let central_date =
+                    get_bytes_from_file::<2>(binary_file, one_file.central_header_start + 14)
+                        .unwrap_or([0, 0]);
                 ui.label("Last modified time");
-                get_from_file::<2>(
-                    binary_file,
-                    one_file.local_header_start + 10,
-                    ui,
-                    print_byte,
-                );
-                get_from_file::<2>(
-                    binary_file,
-                    one_file.central_header_start + 12,
-                    ui,
-                    print_byte,
-                );
+                ui.horizontal(|ui| {
+                    match DateTime::try_from_msdos(
+                        u16::from_le_bytes(local_date),
+                        u16::from_le_bytes(local_time),
+                    ) {
+                        Ok(d) => {
+                            ui.label(format!(
+                                "{:02}h{:02}m{:02}s",
+                                d.hour(),
+                                d.minute(),
+                                d.second()
+                            ));
+                        }
+                        Err(_) => {
+                            ui.label("Invalid");
+                        }
+                    }
+                    ui.label(format!("(0x{})", get_byte_repr(local_time)));
+                });
+                ui.horizontal(|ui| {
+                    match DateTime::try_from_msdos(
+                        u16::from_le_bytes(central_date),
+                        u16::from_le_bytes(central_time),
+                    ) {
+                        Ok(d) => {
+                            ui.label(format!(
+                                "{:02}h{:02}m{:02}s",
+                                d.hour(),
+                                d.minute(),
+                                d.second()
+                            ));
+                        }
+                        Err(_) => {
+                            ui.label("Invalid");
+                        }
+                    }
+                    ui.label(format!("(0x{})", get_byte_repr(local_time)));
+                });
                 ui.end_row();
                 ui.label("Last modified date");
-                get_from_file::<2>(
-                    binary_file,
-                    one_file.local_header_start + 12,
-                    ui,
-                    print_byte,
-                );
-                get_from_file::<2>(
-                    binary_file,
-                    one_file.central_header_start + 14,
-                    ui,
-                    print_byte,
-                );
+                ui.horizontal(|ui| {
+                    match DateTime::try_from_msdos(
+                        u16::from_le_bytes(local_date),
+                        u16::from_le_bytes(local_time),
+                    ) {
+                        Ok(d) => {
+                            ui.label(format!("{}-{:02}-{:02}", d.year(), d.month(), d.day()));
+                        }
+                        Err(_) => {
+                            ui.label("Invalid");
+                        }
+                    }
+                    ui.label(format!("(0x{})", get_byte_repr(local_date)));
+                });
+                ui.horizontal(|ui| {
+                    match DateTime::try_from_msdos(
+                        u16::from_le_bytes(central_date),
+                        u16::from_le_bytes(central_time),
+                    ) {
+                        Ok(d) => {
+                            ui.label(format!("{}-{:02}-{:02}", d.year(), d.month(), d.day()));
+                        }
+                        Err(_) => {
+                            ui.label("Invalid");
+                        }
+                    }
+                    ui.label(format!("(0x{})", get_byte_repr(central_date)));
+                });
                 ui.end_row();
                 ui.label("CRC-32");
                 get_from_file::<4>(
