@@ -158,24 +158,7 @@ fn show_zip_file(
             .striped(true)
             .num_columns(3)
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    if let EntryType::File = one_file.entry_type
-                        && ui.button("Extract").clicked()
-                    {
-                        let reader = Cursor::new(binary_file);
-                        let Ok(mut archive) = zip::ZipArchive::new(reader) else {
-                            return;
-                        };
-
-                        if let Ok(mut file) = archive.by_index(one_file.index) {
-                            let mut buffer = Vec::new();
-                            if file.read_to_end(&mut buffer).is_ok() {
-                                extracted_file =
-                                    Some(Document::new(buffer, one_file.filename.clone()));
-                            }
-                        }
-                    }
-                });
+                ui.label("");
                 ui.horizontal(|ui| {
                     if ui.button("Local block").clicked() {
                         let start = one_file.local_header_start;
@@ -204,7 +187,7 @@ fn show_zip_file(
                     one_file.central_header_start + 4,
                     ui,
                     |ui, r| {
-                        let value = u16::from_le_bytes([r[0], r[1]]);
+                        let value = u16::from_le_bytes(r);
                         let s = System::from_version_made_by(value);
                         ui.label(format!("{:?} - 0x{}", s, get_byte_repr(r)));
                     },
@@ -291,12 +274,10 @@ fn show_zip_file(
                     ui,
                     print_size,
                 );
-                get_from_file::<4>(
-                    binary_file,
-                    one_file.central_header_start + 20,
-                    ui,
-                    print_size,
-                );
+                let central_compressed_size =
+                    get_bytes_from_file(binary_file, one_file.central_header_start + 20)
+                        .unwrap_or([0, 0, 0, 0]);
+                print_size(ui, central_compressed_size);
                 ui.end_row();
                 ui.label("Uncompressed size");
                 get_from_file::<4>(
@@ -450,8 +431,36 @@ fn show_zip_file(
                     ui.label("");
                 }
                 ui.end_row();
+                ui.horizontal(|ui| {
+                    if let EntryType::File = one_file.entry_type
+                        && ui.button("Extract").clicked()
+                    {
+                        let reader = Cursor::new(binary_file);
+                        let Ok(mut archive) = zip::ZipArchive::new(reader) else {
+                            return;
+                        };
+
+                        if let Ok(mut file) = archive.by_index(one_file.index) {
+                            let mut buffer = Vec::new();
+                            if file.read_to_end(&mut buffer).is_ok() {
+                                extracted_file =
+                                    Some(Document::new(buffer, one_file.filename.clone()));
+                            }
+                        }
+                    }
+                    if ui.button("Show content").clicked() {
+                        let size = u32::from_le_bytes(central_compressed_size);
+                        let start = one_file.local_header_start
+                            + 30
+                            + local_file_name_len as usize
+                            + local_extra_fields_len as usize;
+                        let end = (start + size as usize).saturating_sub(1);
+                        go_to_range = Some(start..=end);
+                    }
+                });
             });
     });
+
     (go_to_range, extracted_file)
 }
 
@@ -497,7 +506,7 @@ fn print_byte<const N: usize>(ui: &mut egui::Ui, r: [u8; N]) {
 /// print compression
 fn print_compression(ui: &mut egui::Ui, data: [u8; 2]) {
     ui.horizontal(|ui| {
-        let value = u16::from_le_bytes([data[0], data[1]]);
+        let value = u16::from_le_bytes(data);
         ui.label(format!(
             "{:?} (0x{})",
             Compression::from(value),
@@ -508,7 +517,7 @@ fn print_compression(ui: &mut egui::Ui, data: [u8; 2]) {
 
 /// print size
 fn print_size_2(ui: &mut egui::Ui, data: [u8; 2]) {
-    let value = u16::from_le_bytes([data[0], data[1]]);
+    let value = u16::from_le_bytes(data);
     ui.label(format!("{value}"));
 }
 
