@@ -5,10 +5,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use bladvak::utils::document::DocumentTrait;
-use file_format::FileFormat;
 
+use crate::format::FileFormat;
 use crate::offset::Offset;
-use crate::panels::FileInfoData;
 use crate::selection::Selection;
 use crate::windows::WindowsData;
 
@@ -26,7 +25,7 @@ pub(crate) struct Document {
     /// Scroll area offset
     pub(crate) offset: Offset,
     /// File info
-    pub(crate) file_format: FileInfoData,
+    pub(crate) file_format: FileFormat,
     /// Bytes per line
     pub(crate) bytes_per_line: usize,
     /// Windows
@@ -36,13 +35,7 @@ pub(crate) struct Document {
 impl Default for Document {
     fn default() -> Self {
         let (data, path) = Self::load_default_file();
-        let file_fmt = FileFormat::from_bytes(&data);
-        let file_format = FileInfoData {
-            kind: format!("{:?}", file_fmt.kind()),
-            file_type: file_fmt.media_type().to_string(),
-            extension: file_fmt.extension().to_string(),
-            name: file_fmt.name().to_string(),
-        };
+        let file_format = FileFormat::from_bytes(&data);
         Self {
             binary_file: Arc::new(data),
             filename: path,
@@ -66,13 +59,7 @@ impl Document {
 
     /// create a new document
     pub(crate) fn new(bytes: Vec<u8>, filename: PathBuf) -> Self {
-        let file_fmt = FileFormat::from_bytes(&bytes);
-        let file_format = FileInfoData {
-            kind: format!("{:?}", file_fmt.kind()),
-            file_type: file_fmt.media_type().to_string(),
-            extension: file_fmt.extension().to_string(),
-            name: file_fmt.name().to_string(),
-        };
+        let file_format = FileFormat::from_bytes(&bytes);
         Self {
             binary_file: Arc::new(bytes),
             filename,
@@ -84,10 +71,6 @@ impl Document {
         }
     }
 
-    /// Get file info - load if needed
-    pub(crate) fn get_file_format(&mut self) -> &FileInfoData {
-        &self.file_format
-    }
     /// Go to the selected range
     pub(crate) fn go_to_range(&mut self, range: RangeInclusive<usize>) {
         let start = *range.start();
@@ -98,12 +81,7 @@ impl Document {
     /// Mark document as stale
     pub(crate) fn stale(&mut self) {
         let file_fmt = FileFormat::from_bytes(&*self.binary_file);
-        self.file_format = FileInfoData {
-            kind: format!("{:?}", file_fmt.kind()),
-            file_type: file_fmt.media_type().to_string(),
-            extension: file_fmt.extension().to_string(),
-            name: file_fmt.name().to_string(),
-        };
+        self.file_format = file_fmt;
     }
 
     /// Handle selection click
@@ -179,7 +157,7 @@ impl DocumentTrait for Document {
             filename: self.filename.clone(),
             selection: self.selection.clone(),
             offset: self.offset.clone(),
-            file_format: self.file_format.clone(),
+            file_format: self.file_format,
             bytes_per_line: self.bytes_per_line,
             windows_data: WindowsData::new(),
         }

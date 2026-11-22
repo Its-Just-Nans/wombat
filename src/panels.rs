@@ -4,7 +4,6 @@ use bladvak::app::{BladvakPanel, PanelState};
 use bladvak::eframe::egui;
 use bladvak::errors::ErrorManager;
 use bladvak::{BladvakApp, File};
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::WombatApp;
@@ -16,19 +15,6 @@ use crate::windows::hex::hex_viewer_settings;
 pub(crate) struct FileInfo {
     /// state
     state: PanelState,
-}
-
-/// File info
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct FileInfoData {
-    /// Kind of file
-    pub(crate) kind: String,
-    /// Type of file
-    pub(crate) file_type: String,
-    /// Extension of file format
-    pub(crate) extension: String,
-    /// format name
-    pub(crate) name: String,
 }
 
 impl BladvakPanel for FileInfo {
@@ -57,10 +43,10 @@ impl BladvakPanel for FileInfo {
 
         let fmt = &document.file_format;
         ui.collapsing("File info", |ui| {
-            ui.label(format!("Kind: {}", fmt.kind));
-            ui.label(format!("Type: {}", fmt.file_type));
-            ui.label(format!("Name: {}", fmt.name));
-            ui.label(format!("Extension: .{}", fmt.extension));
+            ui.label(format!("Kind: {}", fmt.kind()));
+            ui.label(format!("Type: {}", fmt.mime()));
+            ui.label(format!("Name: {}", fmt.name()));
+            ui.label(format!("Extension: .{}", fmt.extension()));
         });
 
         let is_global_hex_viewer = app.display_settings.data_view == DataView::Hex;

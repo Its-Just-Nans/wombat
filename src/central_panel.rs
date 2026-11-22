@@ -66,7 +66,7 @@ impl WombatApp {
                     &mut self.fonts_definitions,
                     &document.filename,
                     &document.binary_file,
-                    &document.file_format.kind,
+                    document.file_format,
                 );
             }
             DataView::Parsing => {

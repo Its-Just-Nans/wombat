@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use bladvak::ErrorManager;
 use bladvak::eframe::egui;
-use file_format::Kind;
 
 mod image;
 use image::ImagePreview;
@@ -14,6 +13,8 @@ mod font;
 use font::FontPreview;
 mod document;
 use document::DocumentPreview;
+
+use crate::format::{FileFormat, FileKind};
 
 /// Preview data
 #[derive(Default, PartialEq, Debug)]
@@ -49,20 +50,21 @@ impl Previewer {
         fonts_definitions: &mut egui::FontDefinitions,
         filename: &Path,
         binary_file: &Arc<Vec<u8>>,
-        kind: &str,
+        file_format: FileFormat,
     ) {
+        let kind = file_format.kind();
         if self.data == PreviewData::None {
-            if kind == format!("{:?}", Kind::Image) {
+            if kind == FileKind::Image {
                 self.data = match ImagePreview::prepare_ui(ui, binary_file, None) {
                     Ok(data) => PreviewData::Image(data),
                     Err(err) => PreviewData::Error(err),
                 }
-            } else if kind == format!("{:?}", Kind::Document) {
+            } else if kind == FileKind::Document {
                 self.data = match DocumentPreview::prepare_ui(ui, binary_file, None) {
                     Ok(data) => PreviewData::Document(data),
                     Err(err) => PreviewData::Error(err),
                 }
-            } else if kind == format!("{:?}", Kind::Font) {
+            } else if kind == FileKind::Font {
                 self.data = PreviewData::Font(FontPreview::prepare_ui(
                     ui,
                     binary_file,
@@ -100,7 +102,7 @@ impl Previewer {
         fonts_definitions: &mut egui::FontDefinitions,
         filename: &Path,
         binary_file: &Arc<Vec<u8>>,
-        kind: &str,
+        file_format: FileFormat,
     ) {
         match &mut self.data {
             PreviewData::Image(image_preview) => {
@@ -120,7 +122,7 @@ impl Previewer {
             }
             PreviewData::None => {}
         }
-        self.prepare_ui(ui, fonts_definitions, filename, binary_file, kind);
+        self.prepare_ui(ui, fonts_definitions, filename, binary_file, file_format);
     }
     /// ui
     pub(crate) fn window_ui(
@@ -130,7 +132,7 @@ impl Previewer {
         fonts_definitions: &mut egui::FontDefinitions,
         filename: &Path,
         binary_file: &Arc<Vec<u8>>,
-        kind: &str,
+        file_format: FileFormat,
     ) {
         if self.is_open {
             let mut is_open = self.is_open;
@@ -144,7 +146,7 @@ impl Previewer {
                         fonts_definitions,
                         filename,
                         binary_file,
-                        kind,
+                        file_format,
                     );
                 });
             self.is_open = is_open;

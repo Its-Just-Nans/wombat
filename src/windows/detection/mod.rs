@@ -17,6 +17,7 @@ use time::OffsetDateTime;
 
 use crate::WombatApp;
 use crate::document::Document;
+use crate::format::FileFormat;
 use crate::windows::detection::exif::ExifData;
 use crate::windows::detection::gif::extract_gif_images;
 use crate::windows::detection::pdf::{extract_pdf_all_pages, extract_pdf_page};
@@ -71,11 +72,12 @@ impl WombatApp {
         let Some(document) = self.documents.get_current_doc_mut() else {
             return;
         };
-        let format = document.get_file_format().clone();
-        document.windows_data.detection.exif_data =
-            Some(ExifData::parse(&document.binary_file, &format.extension));
+        document.windows_data.detection.exif_data = Some(ExifData::parse(
+            &document.binary_file,
+            document.file_format.extension(),
+        ));
 
-        if format.extension == "png" {
+        if document.file_format == FileFormat::PortableNetworkGraphics {
             if let ParsingCache::Empty = document.windows_data.parsing.cache {
                 match PngData::parse(&document.binary_file) {
                     Ok(data) => {
@@ -107,7 +109,7 @@ impl WombatApp {
                     error_manager.add_error("Document is a png but the data is not a PNG");
                 }
             }
-        } else if format.extension == "pdf" {
+        } else if document.file_format == FileFormat::PortableDocumentFormat {
             document
                 .windows_data
                 .detection
@@ -123,7 +125,7 @@ impl WombatApp {
                 .detection
                 .actions
                 .push(Action::PdfExtractSignature(None));
-        } else if format.extension == "gif" {
+        } else if document.file_format == FileFormat::GraphicsInterchangeFormat {
             document
                 .windows_data
                 .detection

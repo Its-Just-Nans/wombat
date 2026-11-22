@@ -31,6 +31,7 @@ mod central_panel;
 mod display_settings;
 mod document;
 mod export_file;
+mod format;
 mod offset;
 mod panels;
 mod selection;
