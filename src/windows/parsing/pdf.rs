@@ -34,7 +34,7 @@ impl PdfData {
         ui.label(format!("Creation date: {:?}", self.info_dict.creation_date));
         ui.label(format!(
             "Modification date: {:?}",
-            &self.info_dict.modification_date
+            self.info_dict.modification_date
         ));
         ui.label(format!(
             "Title: {:?}",
@@ -77,7 +77,9 @@ fn print_value(v: Option<&[u8]>) -> String {
                 _ => (true, bytes),
             };
             let utf16: Vec<u16> = data
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|c| {
                     if encoding {
                         u16::from_le_bytes([c[0], c[1]])
