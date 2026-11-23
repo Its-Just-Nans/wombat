@@ -2,10 +2,12 @@
 
 use std::path::Path;
 
-use bladvak::{ErrorManager, eframe::egui, image};
+use bladvak::{
+    ErrorManager,
+    eframe::egui::{self, Color32},
+};
 
 /// Image preview
-#[derive(PartialEq)]
 pub(crate) struct ImagePreview {
     /// texture
     pub(crate) texture: egui::TextureHandle,
@@ -15,6 +17,10 @@ pub(crate) struct ImagePreview {
     pub(crate) need_reload: bool,
     /// params
     pub(crate) params: RenderParams,
+    /// Scene
+    pub(crate) scene: (egui::Rect, Color32),
+    // /// Grid
+    // grid: bladvak::utils::grid::Grid,
 }
 
 /// Render params
@@ -71,11 +77,18 @@ impl ImagePreview {
         } else {
             width
         };
+        let default_color = if ui.ctx().global_style().visuals.dark_mode {
+            Color32::BLACK
+        } else {
+            Color32::WHITE
+        };
         Ok(Self {
             texture,
             size: width,
             need_reload: false,
             params: params_opt.unwrap_or_default(),
+            scene: (egui::Rect::ZERO, default_color),
+            // grid: bladvak::utils::grid::Grid::default(),
         })
     }
 
@@ -136,7 +149,20 @@ impl ImagePreview {
                     self.params.transparency = Some(v);
                 }
             }
+            ui.color_edit_button_srgba(&mut self.scene.1);
         });
-        ui.add(egui::Image::new(&self.texture).max_width(*img_max_width));
+        egui::Frame::NONE.fill(self.scene.1).show(ui, |ui| {
+            egui::Scene::new()
+                .zoom_range(0.0..=f32::INFINITY)
+                .show(ui, &mut self.scene.0, |ui| {
+                    // let painter = ui.painter();
+                    // let bg_r: egui::Response = ui.response();
+                    // if bg_r.rect.is_finite() {
+                    //     self.grid.draw(&bg_r.rect, painter);
+                    // }
+
+                    ui.add(egui::Image::new(&self.texture));
+                });
+        });
     }
 }
