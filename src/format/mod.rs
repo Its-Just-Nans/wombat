@@ -2309,6 +2309,18 @@ define_format! {
     ]
     kind = Other
 
+    format = KeePassDataBase
+    signatures = [
+        signature = b"\x03\xD9\xA2\x9A\x67\xFB\x4B\xB5"
+    ]
+    name = "KeePass DataBase"
+    short_name = "KDBX"
+    mime = "application/x-keepass2"
+    extensions = [
+        "kdbx"
+    ]
+    kind = Database
+
     format = KeyholeMarkupLanguage
     signatures = [
         signature = b"\xEF\xBB\xBF<kml"
