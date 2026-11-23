@@ -5,22 +5,21 @@ use std::path::Path;
 use bladvak::{
     ErrorManager,
     eframe::egui::{self, Color32},
+    utils,
 };
 
 /// Image preview
 pub(crate) struct ImagePreview {
     /// texture
     pub(crate) texture: egui::TextureHandle,
-    /// texture size
-    pub(crate) size: f32,
     /// need reload
     pub(crate) need_reload: bool,
     /// params
     pub(crate) params: RenderParams,
     /// Scene
     pub(crate) scene: (egui::Rect, Color32),
-    // /// Grid
-    // grid: bladvak::utils::grid::Grid,
+    /// Grid
+    grid: Option<bladvak::utils::grid::Grid>,
 }
 
 /// Render params
@@ -33,7 +32,6 @@ pub(crate) struct RenderParams {
 impl std::fmt::Debug for ImagePreview {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ImagePreview")
-            .field("size", &self.size)
             .field("need_reload", &self.need_reload)
             .field("params", &self.params)
             .finish_non_exhaustive()
@@ -69,14 +67,6 @@ impl ImagePreview {
         let texture = ui
             .ctx()
             .load_texture("image", color_image, egui::TextureOptions::NEAREST);
-        #[allow(clippy::cast_precision_loss)]
-        let width = texture.size()[0] as f32;
-        let available_width = ui.available_width();
-        let width = if available_width < width && available_width > 0.0 {
-            available_width.floor()
-        } else {
-            width
-        };
         let default_color = if ui.ctx().global_style().visuals.dark_mode {
             Color32::BLACK
         } else {
@@ -84,11 +74,10 @@ impl ImagePreview {
         };
         Ok(Self {
             texture,
-            size: width,
             need_reload: false,
             params: params_opt.unwrap_or_default(),
             scene: (egui::Rect::ZERO, default_color),
-            // grid: bladvak::utils::grid::Grid::default(),
+            grid: None,
         })
     }
 
@@ -125,41 +114,50 @@ impl ImagePreview {
                 }
             }
         }
-        let img_max_width = &mut self.size;
         let [width, height] = self.texture.size();
 
         ui.label(format!("Image: {width}x{height}"));
-        ui.horizontal(|ui| {
-            ui.label("Current width:");
-            ui.add(egui::DragValue::new(img_max_width).range(0..=width));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Force transparency:");
-            if let Some(t) = &mut self.params.transparency {
-                if ui.add(egui::DragValue::new(t).range(0..=255)).changed() {
-                    self.need_reload = true;
+        ui.collapsing("Preview settings", |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Force transparency:");
+                if let Some(t) = &mut self.params.transparency {
+                    if ui.add(egui::DragValue::new(t).range(0..=255)).changed() {
+                        self.need_reload = true;
+                    }
+                } else {
+                    let mut v = 0;
+                    if ui
+                        .add(egui::DragValue::new(&mut v).range(0..=255))
+                        .changed()
+                    {
+                        self.need_reload = true;
+                        self.params.transparency = Some(v);
+                    }
                 }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Background color");
+                ui.color_edit_button_srgba(&mut self.scene.1);
+            });
+            let mut is_some_grid = self.grid.is_some();
+            ui.checkbox(&mut is_some_grid, "Show grid");
+            self.grid = if is_some_grid {
+                Some(utils::grid::Grid::default())
             } else {
-                let mut v = 0;
-                if ui
-                    .add(egui::DragValue::new(&mut v).range(0..=255))
-                    .changed()
-                {
-                    self.need_reload = true;
-                    self.params.transparency = Some(v);
-                }
-            }
-            ui.color_edit_button_srgba(&mut self.scene.1);
+                None
+            };
         });
         egui::Frame::NONE.fill(self.scene.1).show(ui, |ui| {
             egui::Scene::new()
                 .zoom_range(0.0..=f32::INFINITY)
                 .show(ui, &mut self.scene.0, |ui| {
-                    // let painter = ui.painter();
-                    // let bg_r: egui::Response = ui.response();
-                    // if bg_r.rect.is_finite() {
-                    //     self.grid.draw(&bg_r.rect, painter);
-                    // }
+                    if let Some(grid) = &self.grid {
+                        let painter = ui.painter();
+                        let bg_r: egui::Response = ui.response();
+                        if bg_r.rect.is_finite() {
+                            grid.draw(&bg_r.rect, painter);
+                        }
+                    }
 
                     ui.add(egui::Image::new(&self.texture));
                 });
