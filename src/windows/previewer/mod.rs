@@ -17,7 +17,7 @@ use document::DocumentPreview;
 use crate::format::{FileFormat, FileKind};
 
 /// Preview data
-#[derive(Default, PartialEq, Debug)]
+#[derive(Default, Debug)]
 enum PreviewData {
     /// image data
     Image(ImagePreview),
@@ -30,6 +30,13 @@ enum PreviewData {
     /// No data
     #[default]
     None,
+}
+
+impl PreviewData {
+    /// is none
+    fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
 }
 
 /// Previewer
@@ -53,7 +60,7 @@ impl Previewer {
         file_format: FileFormat,
     ) {
         let kind = file_format.kind();
-        if self.data == PreviewData::None {
+        if self.data.is_none() {
             if kind == FileKind::Image {
                 self.data = match ImagePreview::prepare_ui(ui, binary_file, None) {
                     Ok(data) => PreviewData::Image(data),
@@ -84,13 +91,13 @@ impl Previewer {
             }
         }
         if let PreviewData::Document(doc) = &mut self.data
-            && doc.need_reload
+            && doc.params().need_reload
         {
-            self.data = match DocumentPreview::prepare_ui(ui, binary_file, Some(doc.params.clone()))
-            {
-                Ok(data) => PreviewData::Document(data),
-                Err(err) => PreviewData::Error(err),
-            }
+            self.data =
+                match DocumentPreview::prepare_ui(ui, binary_file, Some(doc.params().clone())) {
+                    Ok(data) => PreviewData::Document(data),
+                    Err(err) => PreviewData::Error(err),
+                }
         }
     }
 
