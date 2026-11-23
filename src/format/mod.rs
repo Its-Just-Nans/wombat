@@ -3985,6 +3985,18 @@ define_format! {
     ]
     kind = Archive
 
+    format = PMTiles
+    signatures = [
+        signature = b"PMTiles"
+    ]
+    name = "PMTiles"
+    short_name = "PMTiles"
+    mime = "application/vnd.pmtiles"
+    extensions = [
+        "pmtiles"
+    ]
+    kind = Geospatial
+
     format = PolygonAscii
     signatures = [
         signature = b"ply\r\nformat ascii"

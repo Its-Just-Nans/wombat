@@ -2,7 +2,10 @@
 
 use std::ops::RangeInclusive;
 
-use bladvak::eframe::egui;
+use bladvak::{
+    eframe::egui,
+    egui_extras::{Column, TableBuilder},
+};
 use flate2::read::GzDecoder;
 use serde_json::Value;
 
@@ -618,40 +621,67 @@ pub(crate) fn show_pmtiles_ui(
             match &data.root_directory {
                 Ok(root) => {
                     ui.label(format!("Num entries: {}", root.len()));
-                    egui::Grid::new("entries_info")
-                        .num_columns(5)
+                    let table = TableBuilder::new(ui)
                         .striped(true)
-                        .show(ui, |ui| {
-                            ui.label("Tile Id");
-                            ui.label("Offset");
-                            ui.label("Length");
-                            ui.label("RunLength");
-                            ui.label("");
-                            ui.end_row();
-                            for one_entry in root {
-                                ui.label(format!("{}", one_entry.tile_id))
-                                    .on_hover_ui(|ui| {
-                                        let (z, x, y) = tileid_to_zxy(one_entry.tile_id);
+                        .column(Column::remainder())
+                        .column(Column::remainder())
+                        .column(Column::remainder())
+                        .column(Column::remainder())
+                        .column(Column::remainder());
+                    table
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.label("Tile Id");
+                            });
+                            header.col(|ui| {
+                                ui.label("Offset");
+                            });
+                            header.col(|ui| {
+                                ui.label("Length");
+                            });
+                            header.col(|ui| {
+                                ui.label("RunLength");
+                            });
+                            header.col(|ui| {
+                                ui.label("");
+                            });
+                        })
+                        .body(|body| {
+                            body.rows(20.0, root.len(), |mut row| {
+                                let one_entry = &root[row.index()];
+                                row.col(|ui| {
+                                    ui.label(format!("{}", one_entry.tile_id))
+                                        .on_hover_ui(|ui| {
+                                            let (z, x, y) = tileid_to_zxy(one_entry.tile_id);
 
-                                        ui.label(format!("z={z} x={x} y={y}"));
-                                    });
-                                ui.label(format!("{}", one_entry.offset));
-                                ui.label(format!("{}", one_entry.length));
-                                ui.label(format!("{}", one_entry.run_length));
-                                #[allow(clippy::cast_possible_truncation)]
-                                if ui.button("Show").clicked() {
-                                    if one_entry.run_length == 0 {
-                                        // TODO
-                                    } else {
-                                        let start = (data.header.tile_data_offset
-                                            + one_entry.offset)
-                                            as usize;
-                                        let end = start + one_entry.length as usize;
-                                        return_range = Some(start..=end);
+                                            ui.label(format!("z={z} x={x} y={y}"));
+                                        });
+                                });
+
+                                row.col(|ui| {
+                                    ui.label(format!("{}", one_entry.offset));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format!("{}", one_entry.length));
+                                });
+                                row.col(|ui| {
+                                    ui.label(format!("{}", one_entry.run_length));
+                                });
+                                row.col(|ui| {
+                                    #[allow(clippy::cast_possible_truncation)]
+                                    if ui.button("Show").clicked() {
+                                        if one_entry.run_length == 0 {
+                                            // TODO
+                                        } else {
+                                            let start = (data.header.tile_data_offset
+                                                + one_entry.offset)
+                                                as usize;
+                                            let end = start + one_entry.length as usize;
+                                            return_range = Some(start..=end);
+                                        }
                                     }
-                                }
-                                ui.end_row();
-                            }
+                                });
+                            });
                         });
                 }
                 Err(err) => {
