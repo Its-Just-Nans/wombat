@@ -184,9 +184,13 @@ pub fn show_png_chunks(
         ui.checkbox(&mut png_data_viewer.details, "Details");
     });
     if png_data_viewer.details {
-        return_range = show_png_chunks_details(ui, png_data, binary_file);
+        if let Some(rr) = show_png_chunks_details(ui, png_data, binary_file) {
+            return_range = Some(rr);
+        }
     } else {
-        return_range = show_png_chunks_grid(ui, png_data);
+        if let Some(rr) = show_png_chunks_grid(ui, png_data) {
+            return_range = Some(rr);
+        }
     }
     return_range
 }
