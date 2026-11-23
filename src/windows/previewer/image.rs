@@ -68,7 +68,7 @@ impl ImagePreview {
 
         let texture = ui
             .ctx()
-            .load_texture("image", color_image, egui::TextureOptions::LINEAR);
+            .load_texture("image", color_image, egui::TextureOptions::NEAREST);
         #[allow(clippy::cast_precision_loss)]
         let width = texture.size()[0] as f32;
         let available_width = ui.available_width();
