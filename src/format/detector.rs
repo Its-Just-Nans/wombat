@@ -148,6 +148,7 @@ impl FileFormat {
         // Searches for the end of central directory record.
         let offset = len.saturating_sub(EOCD_MAX_SIZE as u64);
         reader.seek(SeekFrom::Start(offset))?;
+        #[allow(clippy::cast_possible_truncation)]
         let buf_index = {
             let size = (len as usize).clamp(EOCD_MIN_SIZE, EOCD_MAX_SIZE);
             let mut buf = vec![0; size];
@@ -163,6 +164,7 @@ impl FileFormat {
 
         // Checks for ZIP64 end of central directory locator.
         let mut zip64 = false;
+        #[allow(clippy::cast_possible_truncation)]
         if eocd_offset as usize >= EOCD64_LOCATOR_SIZE {
             // Seeks to the ZIP64 end of central directory locator.
             reader.seek(SeekFrom::Start(eocd_offset - EOCD64_LOCATOR_SIZE as u64))?;
@@ -195,6 +197,7 @@ impl FileFormat {
             let socd_offset = reader.read_u64_le()?;
 
             // Returns the result.
+            #[allow(clippy::cast_possible_truncation)]
             (number_of_entries as usize, socd_offset)
         } else {
             // Reads the number of entries.
@@ -347,7 +350,7 @@ impl FileFormat {
                         return Ok(Self::CircuitDiagramDocument);
                     } else if filename.starts_with("dwf/") {
                         return Ok(Self::DesignWebFormatXps);
-                    } else if filename.ends_with(".fb2") && !filename.contains('/') {
+                    } else if ends_with(&filename, ".fb2") && !filename.contains('/') {
                         return Ok(Self::FictionbookZip);
                     } else if filename.starts_with("FusionAssetName[Active]/") {
                         return Ok(Self::Fusion360);
@@ -361,15 +364,15 @@ impl FileFormat {
                         return Ok(Self::OfficeOpenXmlPresentation);
                     } else if filename.starts_with("xl/") {
                         return Ok(Self::OfficeOpenXmlSpreadsheet);
-                    } else if filename.starts_with("Documents/") && filename.ends_with(".fpage") {
+                    } else if filename.starts_with("Documents/") && ends_with(&filename, ".fpage") {
                         return Ok(Self::Openxps);
                     } else if filename.starts_with("SpaceClaim/") {
                         return Ok(Self::SpaceclaimDocument);
-                    } else if filename.starts_with("3D/") && filename.ends_with(".model") {
+                    } else if filename.starts_with("3D/") && ends_with(&filename, ".model") {
                         return Ok(Self::ThreeDimensionalManufacturingFormat);
-                    } else if (filename.ends_with(".usd")
-                        || filename.ends_with(".usda")
-                        || filename.ends_with(".usdc"))
+                    } else if (ends_with(&filename, ".usd")
+                        || ends_with(&filename, ".usda")
+                        || ends_with(&filename, ".usdc"))
                         && !filename.contains('/')
                     {
                         return Ok(Self::UniversalSceneDescriptionZip);
@@ -386,6 +389,14 @@ impl FileFormat {
     }
 }
 
+/// contains a slice
 fn contains_slice<T: PartialEq>(haystack: &[T], needle: &[T]) -> bool {
     needle.is_empty() || haystack.windows(needle.len()).any(|w| w == needle)
+}
+
+/// ends with no case sensitive
+fn ends_with(f: &str, ends_ext: &str) -> bool {
+    std::path::Path::new(f)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case(ends_ext))
 }
