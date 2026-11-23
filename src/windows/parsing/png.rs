@@ -187,10 +187,8 @@ pub fn show_png_chunks(
         if let Some(rr) = show_png_chunks_details(ui, png_data, binary_file) {
             return_range = Some(rr);
         }
-    } else {
-        if let Some(rr) = show_png_chunks_grid(ui, png_data) {
-            return_range = Some(rr);
-        }
+    } else if let Some(rr) = show_png_chunks_grid(ui, png_data) {
+        return_range = Some(rr);
     }
     return_range
 }
