@@ -181,7 +181,7 @@ pub fn show_png_chunks(
 
     ui.horizontal(|ui| {
         ui.label("PNG Chunks:");
-        ui.checkbox(&mut png_data_viewer.details, "Details");
+        ui.checkbox(&mut png_data_viewer.details, "Show details");
     });
     if png_data_viewer.details {
         if let Some(rr) = show_png_chunks_details(ui, png_data, binary_file) {
@@ -251,6 +251,11 @@ pub(crate) fn show_png_chunks_details(
     png_data: &PngData,
     binary_file: &[u8],
 ) -> Option<RangeInclusive<usize>> {
+    let color_type = png_data.chunks.first().and_then(|c| {
+        binary_file
+            .get((c.start + 8)..=(c.end - 4))
+            .and_then(|c| c.get(9).copied())
+    });
     let mut return_range = None;
     for (index, one_chunk) in png_data.chunks.iter().enumerate() {
         let PngChunk {
@@ -292,56 +297,134 @@ pub(crate) fn show_png_chunks_details(
                     return_range = Some(range);
                 }
             });
-        if chunk_type == "IHDR"
-            && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
-        {
-            let width = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            let height = u32::from_be_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
-            let bit_depth = chunk[8];
-            let color_type = chunk[9];
-            let compression = chunk[10];
-            let filter = chunk[11];
-            let interlace = chunk[12];
-            CollapsingHeader::new("Details")
-                .id_salt("details_ihdr")
-                .show(ui, |ui| {
-                    ui.label(format!("width = {width}"));
-                    ui.label(format!("height = {height}"));
-                    ui.label(format!("bit depth = {bit_depth}"));
-                    ui.label(format!("color type = {color_type}"));
-                    ui.label(format!("compression = {compression}"));
-                    ui.label(format!("filter = {filter}"));
-                    ui.label(format!("interlace = {interlace}"));
-                });
-        }
-        if chunk_type == "tIME"
-            && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
-        {
-            let year = u16::from_be_bytes([chunk[0], chunk[1]]);
-            let month = chunk[2];
-            let day = chunk[3];
-            let hours = chunk[4];
-            let minutes = chunk[5];
-            let seconds = chunk[6];
-            CollapsingHeader::new("Details")
-                .id_salt("details_time")
-                .show(ui, |ui| {
-                    ui.label(format!("{year}-{month}-{day} {hours}h{minutes}m{seconds}s"));
-                });
-        }
-        if chunk_type == "tEXt"
-            && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
-        {
-            CollapsingHeader::new("Details")
-                .id_salt("details_text")
-                .show(ui, |ui| {
-                    if let Ok(utf_str) = std::str::from_utf8(chunk) {
-                        ui.label(utf_str);
-                    } else {
-                        ui.label(format!("{chunk:?}"));
-                    }
-                });
-        }
+        show_chunk_details(ui, binary_file, one_chunk, color_type);
     }
     return_range
+}
+
+/// show chunk details
+#[allow(clippy::too_many_lines)]
+fn show_chunk_details(
+    ui: &mut egui::Ui,
+    binary_file: &[u8],
+    chunk: &PngChunk,
+    color_type: Option<u8>,
+) {
+    let PngChunk {
+        chunk_type,
+        start,
+        end,
+        ..
+    } = chunk;
+
+    if chunk_type == "IHDR"
+        && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+    {
+        let width = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+        let height = u32::from_be_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+        let bit_depth = chunk[8];
+        let color_type = chunk[9];
+        let compression = chunk[10];
+        let filter = chunk[11];
+        let interlace = chunk[12];
+        CollapsingHeader::new("Details of Image header")
+            .id_salt("details_ihdr")
+            .show(ui, |ui| {
+                ui.label(format!("width = {width}"));
+                ui.label(format!("height = {height}"));
+                ui.label(format!("bit depth = {bit_depth}"));
+                ui.label(format!("color type = {color_type}"));
+                ui.label(format!("compression = {compression}"));
+                ui.label(format!("filter = {filter}"));
+                ui.label(format!("interlace = {interlace}"));
+            });
+    }
+    if chunk_type == "tIME"
+        && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+    {
+        let year = u16::from_be_bytes([chunk[0], chunk[1]]);
+        let month = chunk[2];
+        let day = chunk[3];
+        let hours = chunk[4];
+        let minutes = chunk[5];
+        let seconds = chunk[6];
+        CollapsingHeader::new("Details of Image last-modification time")
+            .id_salt("details_time")
+            .show(ui, |ui| {
+                ui.label(format!("{year}-{month}-{day} {hours}h{minutes}m{seconds}s"));
+            });
+    }
+    if chunk_type == "pHYs"
+        && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+    {
+        CollapsingHeader::new("Details of Physical pixel dimensions")
+            .id_salt("details_phys")
+            .show(ui, |ui| {
+                let width = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                let height = u32::from_be_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+                let unit = if chunk[8] == 0 { "Unknown" } else { "Meter" };
+                ui.label(format!("Pixels per unit (X axis) = {width}"));
+                ui.label(format!("Pixels per unit (Y axis) = {height}"));
+                ui.label(format!("Unit = {unit}"));
+            });
+    }
+    if chunk_type == "cHRM"
+        && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+    {
+        CollapsingHeader::new("Details of Primary chromaticities and white point")
+            .id_salt("details_chrm")
+            .show(ui, |ui| {
+                let white_point_x = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+                let white_point_y = u32::from_be_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+                let red_x = u32::from_be_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
+                let red_y = u32::from_be_bytes([chunk[12], chunk[13], chunk[14], chunk[15]]);
+                let green_x = u32::from_be_bytes([chunk[16], chunk[17], chunk[18], chunk[19]]);
+                let green_y = u32::from_be_bytes([chunk[20], chunk[21], chunk[22], chunk[23]]);
+                let blue_x = u32::from_be_bytes([chunk[24], chunk[25], chunk[26], chunk[27]]);
+                let blue_y = u32::from_be_bytes([chunk[28], chunk[29], chunk[30], chunk[31]]);
+                ui.label(format!("White Point = ({white_point_x}, {white_point_y})"));
+                ui.label(format!("Red = ({red_x}, {red_y})"));
+                ui.label(format!("Green = ({green_x}, {green_y})"));
+                ui.label(format!("Blue = ({blue_x}, {blue_y})"));
+            });
+    }
+    if chunk_type == "bKGD"
+        && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+    {
+        CollapsingHeader::new("Details of Background color")
+            .id_salt("details_background")
+            .show(ui, |ui| {
+                if let Some(ct) = color_type {
+                    if ct == 0 || ct == 4 {
+                        let greyscale = u16::from_be_bytes([chunk[0], chunk[1]]);
+                        ui.label(format!("Greyscale: {greyscale}"));
+                    } else if ct == 2 || ct == 6 {
+                        let red = u16::from_be_bytes([chunk[0], chunk[1]]);
+                        let green = u16::from_be_bytes([chunk[2], chunk[3]]);
+                        let blue = u16::from_be_bytes([chunk[4], chunk[5]]);
+                        ui.label(format!("Red: {red}"));
+                        ui.label(format!("Green: {green}"));
+                        ui.label(format!("Blue: {blue}"));
+                    } else if ct == 3 {
+                        let palette_idx = chunk[0];
+                        ui.label(format!("Palette index: {palette_idx}"));
+                    }
+                } else {
+                    ui.label("No color type");
+                }
+            });
+    }
+    if chunk_type == "tEXt"
+        && let Some(chunk) = binary_file.get((*start + 8)..=(*end - 4))
+    {
+        CollapsingHeader::new("Details of Textual data")
+            .id_salt("details_text")
+            .show(ui, |ui| {
+                if let Ok(utf_str) = std::str::from_utf8(chunk) {
+                    ui.label(utf_str);
+                } else {
+                    ui.label(format!("{chunk:?}"));
+                }
+            });
+    }
 }
