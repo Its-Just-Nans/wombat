@@ -75,6 +75,7 @@ impl AscData {
                             let mut doc =
                                 Document::new(res, PathBuf::from("selected_base64_decode.asc"));
                             doc.file_format = FileFormat::PgpPublicKeyBlock;
+                            doc.windows_data.parsing.is_open = true;
                             new_doc = Some(doc);
                         }
                         Err(err) => {
