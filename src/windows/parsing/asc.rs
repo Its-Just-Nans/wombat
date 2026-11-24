@@ -9,20 +9,22 @@ use crate::{document::Document, format::FileFormat};
 /// ASC PGP key
 #[derive(Debug)]
 pub(crate) enum AscData {
+    /// unkown
+    Unknown,
     /// as text
-    Text,
+    Gpg,
     /// as raw
-    Raw,
+    GpgRaw,
 }
 
 impl AscData {
     /// parse data
     pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
         let res = if binary_file.starts_with(b"-----BEGIN PGP PUBLIC KEY BLOCK-----") {
-            AscData::Text
+            AscData::Gpg
         } else {
             // TODO
-            AscData::Raw
+            AscData::GpgRaw
         };
         Ok(res)
     }
@@ -35,7 +37,7 @@ impl AscData {
         error_manager: &mut ErrorManager,
     ) -> (Option<RangeInclusive<usize>>, Option<Document>) {
         match self {
-            Self::Text => {
+            Self::Gpg => {
                 ui.label("Try to parse as Base64 (without spaces)");
                 let mut new_range = None;
                 let mut new_doc = None;
@@ -83,8 +85,12 @@ impl AscData {
                 }
                 (new_range, new_doc)
             }
-            Self::Raw => {
+            Self::GpgRaw => {
                 ui.label("TODO");
+                (None, None)
+            }
+            Self::Unknown => {
+                ui.label("Unknown ASCII file");
                 (None, None)
             }
         }
