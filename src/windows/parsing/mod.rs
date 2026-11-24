@@ -2,6 +2,7 @@
 
 #![cfg(feature = "parsing")]
 
+mod asc;
 mod cert;
 pub(crate) mod jpg;
 mod mp4;
@@ -19,16 +20,18 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::WombatApp;
+use crate::document::Document;
 use crate::format::FileFormat;
+use crate::windows::parsing::asc::AscData;
 use crate::windows::parsing::cert::CertData;
 use crate::windows::parsing::jpg::JpgData;
 use crate::windows::parsing::mp4::Mp4Data;
 use crate::windows::parsing::pdf::PdfData;
+use crate::windows::parsing::pmtiles::PmTilesData;
 use crate::windows::parsing::png::{PngData, PngDataViewer};
 use crate::windows::parsing::raw::RawType;
 use crate::windows::parsing::xml::XmlData;
 use crate::windows::parsing::zip::ZipData;
-use pmtiles::PmTilesData;
 
 /// Histogram data cache
 #[derive(Default, Debug)]
@@ -53,6 +56,8 @@ pub(crate) enum ParsingCache {
     Message(String),
     /// Raw type
     RawType(RawType),
+    /// Raw type
+    Asc(AscData),
     /// Error
     ErrorMessage(String),
     /// no cache
@@ -142,6 +147,13 @@ impl ParsingCache {
                 };
                 ParsingCache::Pdf(parsed)
             }
+            "asc" => {
+                let parsed = match AscData::parse(&binary_file) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
+                ParsingCache::Asc(parsed)
+            }
             _ => {
                 return None;
             }
@@ -182,8 +194,11 @@ impl WombatApp {
         &mut self,
         ui: &mut egui::Ui,
         current_idx: usize,
-    ) -> Option<RangeInclusive<usize>> {
-        let document = self.documents.get_mut(current_idx)?;
+        error_manager: &mut ErrorManager,
+    ) -> (Option<RangeInclusive<usize>>, Option<Document>) {
+        let Some(document) = self.documents.get_mut(current_idx) else {
+            return (None, None);
+        };
         ui.label(format!(
             "Name: {} ({}) - {}",
             document.file_format.name(),
@@ -197,7 +212,7 @@ impl WombatApp {
                 ParsingCache::parse(binary_file, document.file_format, &document.filename);
         }
         let parsing_cache = &mut document.windows_data.parsing.cache;
-        match parsing_cache {
+        let selection = match parsing_cache {
             ParsingCache::Png((viewer, data)) => viewer.ui(ui, data, &document.binary_file),
             ParsingCache::Jpg(data) => data.ui(ui),
             ParsingCache::Xml(data) => data.ui(ui),
@@ -207,6 +222,9 @@ impl WombatApp {
             ParsingCache::PmTiles(data) => data.ui(ui),
             ParsingCache::Pdf(data) => data.ui(ui),
             ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
+            ParsingCache::Asc(data) => {
+                return data.ui(ui, &document.binary_file, error_manager);
+            }
             ParsingCache::Message(str) => {
                 ui.label(&*str);
                 None
@@ -219,36 +237,35 @@ impl WombatApp {
                 ui.label("No data");
                 None
             }
-        }
+        };
+        (selection, None)
     }
 
     /// Show window ui
     pub(crate) fn show_parsing_window_ui(
         &mut self,
         ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
-    ) -> Option<RangeInclusive<usize>> {
+        error_manager: &mut ErrorManager,
+        current_idx: usize,
+    ) -> (Option<RangeInclusive<usize>>, Option<Document>) {
         let is_open = self
             .documents
-            .get_current_doc()?
-            .windows_data
-            .parsing
-            .is_open;
-        let current_index = self.documents.get_current_index();
+            .get_mut(current_idx)
+            .is_some_and(|d| d.windows_data.parsing.is_open);
         if is_open {
             let mut is_open = is_open;
-            let mut ret = None;
+            let mut ret = (None, None);
             egui::Window::new("Parsing")
                 .open(&mut is_open)
                 .vscroll(true)
                 .show(ui.ctx(), |ui| {
-                    ret = self.show_parsing_inner_ui(ui, current_index);
+                    ret = self.show_parsing_inner_ui(ui, current_idx, error_manager);
                 });
-            if let Some(document) = self.documents.get_mut(current_index) {
+            if let Some(document) = self.documents.get_mut(current_idx) {
                 document.windows_data.parsing.is_open = is_open;
             }
             return ret;
         }
-        None
+        (None, None)
     }
 }

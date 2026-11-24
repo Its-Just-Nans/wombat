@@ -229,6 +229,25 @@ pub(crate) fn show_selection(
                         }
                     }
                 }
+                if ui.button("Base64 decode").clicked() {
+                    use base64::{Engine, alphabet::STANDARD, engine};
+                    let engine_config = engine::GeneralPurposeConfig::new()
+                        .with_decode_allow_trailing_bits(true)
+                        .with_decode_padding_mode(engine::DecodePaddingMode::Indifferent);
+                    let process_engine = engine::GeneralPurpose::new(&STANDARD, engine_config);
+                    let decoded = process_engine.decode(selection);
+                    match decoded {
+                        Ok(res) => {
+                            let doc =
+                                Document::new(res, PathBuf::from("selected_base64_decode.bin"));
+                            new_doc = Some(doc);
+                        }
+                        Err(err) => {
+                            error_manager
+                                .add_error(format!("Failed to base64 decode selection: {err}"));
+                        }
+                    }
+                }
             }
         });
     } else {

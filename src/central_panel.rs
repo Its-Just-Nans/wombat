@@ -70,10 +70,15 @@ impl WombatApp {
                 );
             }
             DataView::Parsing => {
-                if let Some(range) = self.show_parsing_inner_ui(ui, current_idx)
-                    && let Some(document) = self.documents.get_current_doc_mut()
+                let (range_opt, doc_opt) =
+                    self.show_parsing_inner_ui(ui, current_idx, error_manager);
+                if let Some(range) = range_opt
+                    && let Some(document) = self.documents.get_mut(current_idx)
                 {
                     document.go_to_range(range);
+                }
+                if let Some(doc) = doc_opt {
+                    self.documents.push(doc);
                 }
             }
             DataView::Hashing => {
