@@ -252,9 +252,12 @@ pub(crate) fn show_png_chunks_details(
     binary_file: &[u8],
 ) -> Option<RangeInclusive<usize>> {
     let color_type = png_data.chunks.first().and_then(|c| {
-        binary_file
-            .get((c.start + 8)..=(c.end - 4))
-            .and_then(|c| c.get(9).copied())
+        if c.chunk_type == "IHDR" {
+            return binary_file
+                .get((c.start + 8)..=(c.end - 4))
+                .and_then(|c| c.get(9).copied());
+        }
+        None
     });
     let mut return_range = None;
     for (index, one_chunk) in png_data.chunks.iter().enumerate() {
@@ -397,20 +400,20 @@ fn show_chunk_details(
                 if let Some(ct) = color_type {
                     if ct == 0 || ct == 4 {
                         let greyscale = u16::from_be_bytes([chunk[0], chunk[1]]);
-                        ui.label(format!("Greyscale: {greyscale}"));
+                        ui.label(format!("Greyscale = {greyscale}"));
                     } else if ct == 2 || ct == 6 {
                         let red = u16::from_be_bytes([chunk[0], chunk[1]]);
                         let green = u16::from_be_bytes([chunk[2], chunk[3]]);
                         let blue = u16::from_be_bytes([chunk[4], chunk[5]]);
-                        ui.label(format!("Red: {red}"));
-                        ui.label(format!("Green: {green}"));
-                        ui.label(format!("Blue: {blue}"));
+                        ui.label(format!("Red = {red}"));
+                        ui.label(format!("Green = {green}"));
+                        ui.label(format!("Blue = {blue}"));
                     } else if ct == 3 {
                         let palette_idx = chunk[0];
-                        ui.label(format!("Palette index: {palette_idx}"));
+                        ui.label(format!("Palette index = {palette_idx}"));
                     }
                 } else {
-                    ui.label("No color type");
+                    ui.label("No color type: cannot parse the chunk");
                 }
             });
     }
