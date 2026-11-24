@@ -4,7 +4,7 @@ use std::{ops::RangeInclusive, path::PathBuf};
 
 use bladvak::{ErrorManager, eframe::egui};
 
-use crate::document::Document;
+use crate::{document::Document, format::FileFormat};
 
 /// ASC PGP key
 #[derive(Debug)]
@@ -36,7 +36,7 @@ impl AscData {
     ) -> (Option<RangeInclusive<usize>>, Option<Document>) {
         match self {
             Self::Text => {
-                ui.label("Try to parse as Base64 (whitout spaces)");
+                ui.label("Try to parse as Base64 (without spaces)");
                 let mut new_range = None;
                 let mut new_doc = None;
                 if ui.button("Decode").clicked() {
@@ -70,8 +70,9 @@ impl AscData {
                     let decoded = process_engine.decode(&selection);
                     match decoded {
                         Ok(res) => {
-                            let doc =
+                            let mut doc =
                                 Document::new(res, PathBuf::from("selected_base64_decode.asc"));
+                            doc.file_format = FileFormat::PgpPublicKeyBlock;
                             new_doc = Some(doc);
                         }
                         Err(err) => {
