@@ -15,18 +15,34 @@ pub(crate) struct ImagePreview {
     /// need reload
     pub(crate) need_reload: bool,
     /// params
-    pub(crate) params: RenderParams,
+    pub(crate) params: ImageRenderParams,
+}
+
+/// Render params
+#[derive(Debug, Clone)]
+pub(crate) struct ImageRenderParams {
+    /// transparency
+    pub(crate) transparency: Option<u8>,
     /// Scene
     pub(crate) scene: (egui::Rect, Color32),
     /// Grid
     grid: Option<bladvak::utils::grid::Grid>,
 }
 
-/// Render params
-#[derive(PartialEq, Debug, Default, Clone)]
-pub(crate) struct RenderParams {
-    /// transparency
-    pub(crate) transparency: Option<u8>,
+impl ImageRenderParams {
+    /// Default from ui
+    pub(crate) fn default_from_ui(ui: &egui::Ui) -> Self {
+        let default_color = if ui.ctx().global_style().visuals.dark_mode {
+            Color32::BLACK
+        } else {
+            Color32::WHITE
+        };
+        Self {
+            transparency: None,
+            scene: (egui::Rect::ZERO, default_color),
+            grid: None,
+        }
+    }
 }
 
 impl std::fmt::Debug for ImagePreview {
@@ -43,8 +59,9 @@ impl ImagePreview {
     pub(crate) fn prepare_ui(
         ui: &egui::Ui,
         binary_file: &[u8],
-        params_opt: Option<RenderParams>,
+        params_opt: Option<ImageRenderParams>,
     ) -> Result<Self, String> {
+        let params = params_opt.unwrap_or_else(|| ImageRenderParams::default_from_ui(ui));
         let img = match image::load_from_memory(binary_file) {
             Ok(img) => img,
             Err(err) => return Err(format!("Failed to load image from memory: {err}")),
@@ -52,9 +69,7 @@ impl ImagePreview {
         let mut img = img.to_rgba8();
         let size = [img.width() as usize, img.height() as usize];
 
-        if let Some(params) = &params_opt
-            && let Some(trans) = params.transparency
-        {
+        if let Some(trans) = params.transparency {
             img.pixels_mut().for_each(|p| {
                 if p.0[3] == 0 {
                     p.0[3] = trans;
@@ -67,17 +82,10 @@ impl ImagePreview {
         let texture = ui
             .ctx()
             .load_texture("image", color_image, egui::TextureOptions::NEAREST);
-        let default_color = if ui.ctx().global_style().visuals.dark_mode {
-            Color32::BLACK
-        } else {
-            Color32::WHITE
-        };
         Ok(Self {
             texture,
             need_reload: false,
-            params: params_opt.unwrap_or_default(),
-            scene: (egui::Rect::ZERO, default_color),
-            grid: None,
+            params,
         })
     }
 
@@ -137,21 +145,22 @@ impl ImagePreview {
             });
             ui.horizontal(|ui| {
                 ui.label("Background color");
-                ui.color_edit_button_srgba(&mut self.scene.1);
+                ui.color_edit_button_srgba(&mut self.params.scene.1);
             });
-            let mut is_some_grid = self.grid.is_some();
+            let mut is_some_grid = self.params.grid.is_some();
             ui.checkbox(&mut is_some_grid, "Show grid");
-            self.grid = if is_some_grid {
+            self.params.grid = if is_some_grid {
                 Some(utils::grid::Grid::default())
             } else {
                 None
             };
         });
-        egui::Frame::NONE.fill(self.scene.1).show(ui, |ui| {
-            egui::Scene::new()
-                .zoom_range(0.0..=f32::INFINITY)
-                .show(ui, &mut self.scene.0, |ui| {
-                    if let Some(grid) = &self.grid {
+        egui::Frame::NONE.fill(self.params.scene.1).show(ui, |ui| {
+            egui::Scene::new().zoom_range(0.0..=f32::INFINITY).show(
+                ui,
+                &mut self.params.scene.0,
+                |ui| {
+                    if let Some(grid) = &self.params.grid {
                         let painter = ui.painter();
                         let bg_r: egui::Response = ui.response();
                         if bg_r.rect.is_finite() {
@@ -160,7 +169,8 @@ impl ImagePreview {
                     }
 
                     ui.add(egui::Image::new(&self.texture));
-                });
+                },
+            );
         });
     }
 }
