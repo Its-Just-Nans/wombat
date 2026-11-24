@@ -9,7 +9,7 @@ use crate::{document::Document, format::FileFormat};
 /// ASC PGP key
 #[derive(Debug)]
 pub(crate) enum AscData {
-    /// unkown
+    /// unknown
     Unknown,
     /// as text
     Gpg,
