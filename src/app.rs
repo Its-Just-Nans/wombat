@@ -16,7 +16,6 @@ use crate::bulk_operations::BulkOperations;
 use crate::display_settings::DisplaySettings;
 use crate::document::Document;
 use crate::panels::FileInfo;
-use crate::selection::PanelSelection;
 use crate::windows::exporter::Exporter;
 use crate::windows::importer::Importer;
 
@@ -83,10 +82,7 @@ impl WombatApp {
 
 impl BladvakApp<'_> for WombatApp {
     fn panel_list(&self) -> Vec<Box<dyn BladvakPanel<App = WombatApp>>> {
-        vec![
-            Box::new(FileInfo::default()),
-            Box::new(PanelSelection::default()),
-        ]
+        vec![Box::new(FileInfo::default())]
     }
 
     fn is_side_panel(&self, _panel_list: &mut [Box<dyn BladvakPanel<App = Self>>]) -> bool {

@@ -8,7 +8,6 @@ use std::path::PathBuf;
 
 use crate::WombatApp;
 use crate::windows::DataView;
-use crate::windows::hex::hex_viewer_settings;
 
 /// File info
 #[derive(Debug, Default)]
@@ -34,8 +33,9 @@ impl BladvakPanel for FileInfo {
     fn has_settings(&self) -> bool {
         true
     }
-    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, _error_manager: &mut ErrorManager) {
-        let Some(document) = app.documents.get_current_doc_mut() else {
+    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
+        let current_idx = app.documents.get_current_index();
+        let Some(document) = app.documents.get_mut(current_idx) else {
             return;
         };
         ui.label(format!("File: {}", document.filename.display()));
@@ -50,9 +50,9 @@ impl BladvakPanel for FileInfo {
         });
 
         let is_global_hex_viewer = app.display_settings.data_view == DataView::Hex;
-        if !is_global_hex_viewer {
+        if is_global_hex_viewer {
             ui.separator();
-            hex_viewer_settings(ui, document);
+            app.show_hex_viewer_side(ui, error_manager, current_idx);
         }
     }
 

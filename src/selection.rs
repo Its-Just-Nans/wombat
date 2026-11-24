@@ -4,7 +4,6 @@ use std::{path::PathBuf, sync::Arc};
 
 use bladvak::{
     ErrorManager,
-    app::{BladvakPanel, PanelState},
     eframe::egui::{self, Color32, Theme},
 };
 
@@ -119,58 +118,6 @@ impl WombatApp {
                 document.selection.range = None;
             }
         }
-    }
-}
-
-/// selection panel
-#[derive(Default, Debug)]
-pub(crate) struct PanelSelection {
-    /// state
-    state: PanelState,
-}
-
-impl BladvakPanel for PanelSelection {
-    type App = WombatApp;
-    fn name(&self) -> &'static str {
-        "File selection"
-    }
-    fn state(&self) -> &PanelState {
-        &self.state
-    }
-    fn state_mut(&mut self) -> &mut PanelState {
-        &mut self.state
-    }
-    fn has_ui(&self) -> bool {
-        true
-    }
-    fn has_settings(&self) -> bool {
-        false
-    }
-
-    fn ui(&self, app: &mut WombatApp, ui: &mut egui::Ui, error_manager: &mut ErrorManager) {
-        let Some(document) = app.documents.get_current_doc_mut() else {
-            return;
-        };
-        let (mark_stale, mark_selection_stale, new_doc) =
-            show_selection(ui, document, error_manager);
-        if let Some(new_document) = new_doc {
-            app.documents.push(new_document);
-        }
-        app.ui_selection(ui);
-        if mark_stale {
-            app.stale_app();
-        }
-        if mark_selection_stale {
-            app.stale_selection();
-        }
-    }
-
-    fn ui_settings(
-        &self,
-        _app: &mut WombatApp,
-        _ui: &mut egui::Ui,
-        _error_manager: &mut ErrorManager,
-    ) {
     }
 }
 

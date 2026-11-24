@@ -11,6 +11,8 @@ use crate::{
     WombatApp,
     display_settings::{Accent, DisplaySettings},
     document::Document,
+    selection::show_selection,
+    windows::DataView,
 };
 
 /// Hex viewer
@@ -29,6 +31,32 @@ impl HexViewer {
 }
 
 impl WombatApp {
+    /// Show the side of the hex viewer
+    pub(crate) fn show_hex_viewer_side(
+        &mut self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+        current_idx: usize,
+    ) {
+        let Some(document) = self.documents.get_mut(current_idx) else {
+            return;
+        };
+        hex_viewer_settings(ui, document);
+        ui.separator();
+        let (mark_stale, mark_selection_stale, new_doc) =
+            show_selection(ui, document, error_manager);
+        if let Some(new_document) = new_doc {
+            self.documents.push(new_document);
+        }
+        self.ui_selection(ui);
+        if mark_stale {
+            self.stale_app();
+        }
+        if mark_selection_stale {
+            self.stale_selection();
+        }
+    }
+
     /// show ui
     pub(crate) fn show_hex_inner_ui(
         &mut self,
@@ -36,40 +64,20 @@ impl WombatApp {
         error_manager: &mut ErrorManager,
         current_idx: usize,
     ) {
-        egui::Panel::right("hex_right_panel")
-            .frame(self.side_panel_frame(ui))
-            .show(ui, |ui| {
-                let Some(document) = self.documents.get_mut(current_idx) else {
-                    return;
-                };
-                egui::Frame::new()
-                    .inner_margin(8)
-                    .fill(ui.ctx().global_style().visuals.panel_fill)
-                    .show(ui, |ui| {
-                        hex_viewer_settings(ui, document);
-                    });
-                // ui.separator();
-                // egui::Frame::new()
-                //     .inner_margin(8)
-                //     .fill(ui.ctx().global_style().visuals.panel_fill)
-                //     .show(ui, |ui| {
-                //         let Some(document) = self.documents.get_mut(current_idx) else {
-                //             return;
-                //         };
-                //         let (mark_stale, mark_selection_stale, new_doc) =
-                //             show_selection(ui, document, error_manager);
-                //         if let Some(new_document) = new_doc {
-                //             self.documents.push(new_document);
-                //         }
-                //         self.ui_selection(ui);
-                //         if mark_stale {
-                //             self.stale();
-                //         }
-                //         if mark_selection_stale {
-                //             self.stale_selection();
-                //         }
-                //     });
-            });
+        let is_global_hex_viewer = self.display_settings.data_view == DataView::Hex;
+        if !is_global_hex_viewer {
+            egui::Panel::right("hex_right_panel")
+                .frame(self.side_panel_frame(ui))
+                .show(ui, |ui| {
+                    egui::Frame::new()
+                        .inner_margin(8)
+                        .fill(ui.ctx().global_style().visuals.panel_fill)
+                        .show(ui, |ui| {
+                            self.show_hex_viewer_side(ui, error_manager, current_idx);
+                        });
+                });
+        }
+
         // Central panel is last
         egui::CentralPanel::no_frame().show(ui, |ui| {
             let Some(document) = self.documents.get_mut(current_idx) else {
