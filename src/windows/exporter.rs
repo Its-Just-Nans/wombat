@@ -12,6 +12,8 @@ use crate::selection::Selection;
 /// export type
 #[derive(Debug, PartialEq, Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) enum ExportType {
+    /// String
+    String,
     /// ASCII
     Ascii,
     /// hex
@@ -31,6 +33,7 @@ pub(crate) enum ExportType {
 impl Display for ExportType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::String => write!(f, "String"),
             Self::Ascii => write!(f, "Ascii"),
             Self::Hex => write!(f, "Hex"),
             Self::Binary => write!(f, "Binary"),
@@ -88,6 +91,11 @@ impl Exporter {
                     &mut self.value_type,
                     ExportType::Ascii,
                     ExportType::Ascii.to_string(),
+                );
+                ui.selectable_value(
+                    &mut self.value_type,
+                    ExportType::String,
+                    ExportType::String.to_string(),
                 );
                 ui.selectable_value(
                     &mut self.value_type,
@@ -204,7 +212,11 @@ impl Exporter {
         });
         if matches!(
             self.value_type,
-            ExportType::Ascii | ExportType::Decimal | ExportType::Base64 | ExportType::Base64Url
+            ExportType::String
+                | ExportType::Ascii
+                | ExportType::Decimal
+                | ExportType::Base64
+                | ExportType::Base64Url
         ) {
             ui.add_enabled_ui(false, |ui| {
                 let mut value = false;
@@ -351,6 +363,7 @@ pub(crate) fn format_export(
             let process_engine = engine::GeneralPurpose::new(&URL_SAFE, engine_config);
             process_engine.encode(selection)
         }
+        ExportType::String => String::from_utf8_lossy(selection).to_string(),
         _ => {
             let tokens = selection
                 .iter()
@@ -368,7 +381,9 @@ pub(crate) fn format_export(
                     ExportType::Binary => format!("{prefix}{one_u8:08b}"),
                     ExportType::Octal => format!("{prefix}{one_u8:03o}"),
                     ExportType::Decimal => format!("{one_u8}"),
-                    ExportType::Base64 | ExportType::Base64Url => String::new(),
+                    ExportType::String | ExportType::Base64 | ExportType::Base64Url => {
+                        String::new()
+                    }
                 })
                 .collect::<Vec<String>>();
             tokens.join(separator)
