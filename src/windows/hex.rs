@@ -104,7 +104,7 @@ impl WombatApp {
         let Some(document) = self.documents.get_mut(current_idx) else {
             return;
         };
-        let mut is_open = document.windows_data.hex.is_open; // TODO
+        let mut is_open = document.windows_data.hex.is_open;
         if is_open {
             egui::Window::new("Hex")
                 .open(&mut is_open)

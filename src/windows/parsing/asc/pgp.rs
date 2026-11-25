@@ -9,6 +9,7 @@ use bladvak::{
 
 use crate::document::Document;
 
+/// PGP Raw data
 #[derive(Debug)]
 pub(crate) struct PgpRawData {
     /// packets
@@ -191,25 +192,32 @@ impl<'a> Stream<'a> {
     }
 
     // RFC 4880 4.2.2, 5.2.3.1
-    pub fn variable_length_length(&mut self, support_partial: bool, mark: bool) -> Option<usize> {
+    pub fn variable_length_length(
+        &mut self,
+        support_partial: bool,
+        mark: bool,
+    ) -> Option<(usize, usize)> {
+        let mut count = 0;
         let mut length = self.octet()? as usize;
+        count += 1;
 
         if mark {
             self.length_headers.push(self.pos - 1);
         }
 
         if length < 192 {
-            return Some(length);
+            return Some((length, count));
         }
 
         if length < if support_partial { 224 } else { 255 } {
             length = ((length - 192) << 8) + self.octet()? as usize + 192;
+            count += 1;
 
             if mark {
                 self.length_headers.push(self.pos - 1);
             }
 
-            return Some(length);
+            return Some((length, count));
         }
 
         // Partial lengths
@@ -219,14 +227,16 @@ impl<'a> Stream<'a> {
 
             self.pos = self.pos.checked_add(next + 1)?;
 
-            let next_jump = self.variable_length_length(support_partial, true)?;
+            let (next_jump, new_count) = self.variable_length_length(support_partial, true)?;
+            count += new_count;
 
             self.pos = current_pos;
 
-            return Some(next + next_jump);
+            return Some((next + next_jump, count));
         }
 
         length = self.uint32()? as usize;
+        count += 1;
 
         if mark {
             self.length_headers.push(self.pos - 1);
@@ -235,7 +245,7 @@ impl<'a> Stream<'a> {
             self.length_headers.push(self.pos - 4);
         }
 
-        Some(length)
+        Some((length, count))
     }
 
     pub fn sub_parse<F>(&mut self, n: usize, f: F) -> bool
@@ -373,10 +383,10 @@ impl Packet {
         }
         let (tag, length, length_size) = if octet & 0x40 == 0x40 {
             // new header
-            let length = stream
+            let (length, length_size) = stream
                 .variable_length_length(true, false)
                 .ok_or("Cannot get len")?;
-            (octet & 0x3f, length, 0)
+            (octet & 0x3f, length, length_size)
         } else {
             // old header
             let size = octet & 0x3;
