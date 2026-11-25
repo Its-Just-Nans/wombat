@@ -42,7 +42,7 @@ impl AscData {
                 return Ok(AscData::Pgp((
                     base_64_start,
                     false,
-                    Some("Checkum not found".to_string()),
+                    Some("Checksum not found".to_string()),
                 )));
             };
             let expected = STANDARD.decode(checksum).map_err(|e| e.to_string())?;
