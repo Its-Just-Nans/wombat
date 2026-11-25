@@ -2,7 +2,10 @@
 
 use std::ops::RangeInclusive;
 
-use bladvak::{ErrorManager, eframe::egui};
+use bladvak::{
+    ErrorManager,
+    eframe::egui::{self},
+};
 
 use crate::document::Document;
 
@@ -40,9 +43,10 @@ impl PgpRawData {
                 tag,
                 length,
                 length_size,
+                inner,
             } = p;
             ui.horizontal(|ui| {
-                ui.label(tag_to_text(*tag));
+                ui.label(inner.name());
                 if ui.button("Show").clicked() {
                     new_range = Some(*start..=*end);
                 }
@@ -61,6 +65,9 @@ impl PgpRawData {
                     new_range = Some(rstart..=end);
                 }
             });
+            if let Some(r) = inner.ui(ui) {
+                new_range = Some(r);
+            };
             ui.label(format!("{p:?}"));
             ui.separator();
         }
@@ -353,6 +360,7 @@ pub struct Packet {
     tag: u8,
     length: usize,
     length_size: usize,
+    inner: InnerPacket,
 }
 
 impl Packet {
@@ -381,11 +389,7 @@ impl Packet {
             };
             (tag, length, length_size)
         };
-        // if stream.sub_parse(length, |s| {
-        //
-        // }) {
-        //
-        // }
+        let inner = InnerPacket::parse_from_tag(stream, tag, length)?;
         let end = start + length_size + length; //stream.pos;
         stream.pos = end + 1;
         Ok(Self {
@@ -394,6 +398,7 @@ impl Packet {
             tag,
             length,
             length_size,
+            inner,
         })
     }
 }
@@ -409,28 +414,7 @@ macro_rules! lookup_fn {
     };
 }
 
-lookup_fn!(tag_to_text, u8, {
-    0 => "Reserved - a packet tag MUST NOT have this value",
-    1 => "Public Key Encrypted Session Key Packet",
-    2 => "Signature Packet",
-    3 => "Symmetric-Key Encrypted Session Key Packet",
-    4 => "One-Pass Signature Packet",
-    5 => "Secret Key Packet",
-    6 => "Public Key Packet",
-    7 => "Secret Subkey Packet",
-    8 => "Compressed Data Packet",
-    9 => "Symmetrically Encrypted Data Packet",
-    10 => "Marker Packet",
-    11 => "Literal Data Packet",
-    12 => "Trust Packet",
-    13 => "User ID Packet",
-    14 => "Public Subkey Packet",
-    17 => "User Attribute Packet",
-    18 => "Sym. Encrypted and Integrity Protected Data Packet",
-    19 => "Reserved (formerly Modification Detection Code Packet)",
-    20 => "Reserved",
-    21 => "Padding Packet",
-});
+lookup_fn!(tag_to_text, u8, {});
 
 lookup_fn!(public_key_algorithm_to_text, u8, {
     0 => "Reserved",
@@ -751,3 +735,117 @@ lookup_fn!(revocation_reason_to_text, u8, {
     109 => "Private Use",
     110 => "Private Use",
 });
+
+#[derive(Debug)]
+pub(crate) enum PublicKey {
+    Rsa((StartPosition, StartPosition)),
+    ElGamal((usize, usize, usize)),
+}
+
+type StartPosition = usize;
+
+type PublicKeyPacket = (u8, Timestamp, Option<u16>, u8, Option<u32>, PublicKey);
+
+#[derive(Debug)]
+pub(crate) enum InnerPacket {
+    PublicKeyPacket((StartPosition, PublicKeyPacket)),
+    UserIdPacket((StartPosition, String)),
+    UnknownPacket,
+}
+
+impl InnerPacket {
+    /// parse from tag id
+    fn parse_from_tag(stream: &mut Stream<'_>, tag: u8, length: usize) -> Result<Self, String> {
+        let start_pos = stream.pos;
+        let res = match tag {
+            // 0 => "Reserved - a packet tag MUST NOT have this value",
+            // 1 => "Public Key Encrypted Session Key Packet",
+            // 2 => "Signature Packet",
+            // 3 => "Symmetric-Key Encrypted Session Key Packet",
+            // 4 => "One-Pass Signature Packet",
+            // 5 => "Secret Key Packet",
+            6 => {
+                let version = stream.octet().ok_or("Cannot get version")?;
+                if version == 6 || version == 4 || version == 3 {
+                    let created_at = stream.time().ok_or("Cannot get creation date")?;
+                    let valid_days = if version == 3 { stream.uint16() } else { None };
+                    let algorithm = stream.octet().ok_or("Cannot get algo")?;
+                    let octet_count = if version == 6 { stream.uint32() } else { None };
+                    let key = PublicKey::Rsa((0, 0));
+                    let public_key_packet =
+                        (version, created_at, valid_days, algorithm, octet_count, key);
+                    Self::PublicKeyPacket((start_pos, public_key_packet))
+                } else {
+                    return Err("Unsupported version".to_string());
+                }
+            }
+            // 7 => "Secret Subkey Packet",
+            // 8 => "Compressed Data Packet",
+            // 9 => "Symmetrically Encrypted Data Packet",
+            // 10 => "Marker Packet",
+            // 11 => "Literal Data Packet",
+            // 12 => "Trust Packet",
+            13 => {
+                let user_id = stream.utf8(length).ok_or("Cannot get string")?;
+                Self::UserIdPacket((start_pos, user_id))
+            }
+            // 14 => "Public Subkey Packet",
+            // 17 => "User Attribute Packet",
+            // 18 => "Sym. Encrypted and Integrity Protected Data Packet",
+            // 19 => "Reserved (formerly Modification Detection Code Packet)",
+            // 20 => "Reserved",
+            // 21 => "Padding Packet",
+            _ => Self::UnknownPacket,
+        };
+        Ok(res)
+    }
+
+    /// Get the name
+    fn name(&self) -> &str {
+        match self {
+            // 0 => "Reserved - a packet tag MUST NOT have this value",
+            // 1 => "Public Key Encrypted Session Key Packet",
+            // 2 => "Signature Packet",
+            // 3 => "Symmetric-Key Encrypted Session Key Packet",
+            // 4 => "One-Pass Signature Packet",
+            // 5 => "Secret Key Packet",
+            Self::PublicKeyPacket(_) => "Public Key Packet",
+            // 7 => "Secret Subkey Packet",
+            // 8 => "Compressed Data Packet",
+            // 9 => "Symmetrically Encrypted Data Packet",
+            // 10 => "Marker Packet",
+            // 11 => "Literal Data Packet",
+            // 12 => "Trust Packet",
+            Self::UserIdPacket(_) => "User ID Packet",
+            // 14 => "Public Subkey Packet",
+            // 17 => "User Attribute Packet",
+            // 18 => "Sym. Encrypted and Integrity Protected Data Packet",
+            // 19 => "Reserved (formerly Modification Detection Code Packet)",
+            // 20 => "Reserved",
+            // 21 => "Padding Packet",
+            _ => "Unknown packet",
+        }
+    }
+
+    /// Show ui
+    fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        let mut range = None;
+        match self {
+            Self::PublicKeyPacket(a) => {}
+            Self::UserIdPacket((pos, user_id)) => {
+                ui.horizontal(|ui| {
+                    ui.label("userId");
+                    ui.label(user_id);
+                    if ui.button("Show").clicked() {
+                        let end = pos.saturating_add(user_id.len()).saturating_sub(1);
+                        range = Some(*pos..=end);
+                    }
+                });
+            }
+            Self::UnknownPacket => {
+                ui.label("Unknown packet");
+            }
+        }
+        range
+    }
+}
