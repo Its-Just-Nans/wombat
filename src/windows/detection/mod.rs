@@ -7,21 +7,15 @@ pub(crate) mod pdf_image;
 pub(crate) mod pdf_signature;
 pub(crate) mod png;
 
-use std::path::PathBuf;
-use std::time::{Duration, UNIX_EPOCH};
-
 use bladvak::ErrorManager;
-use bladvak::eframe::egui::{self, Color32};
-use cms::der::{DateTime, Encode};
-use time::OffsetDateTime;
+use bladvak::eframe::egui;
 
 use crate::WombatApp;
-use crate::document::Document;
 use crate::format::FileFormat;
 use crate::windows::detection::exif::ExifData;
 use crate::windows::detection::gif::extract_gif_images;
 use crate::windows::detection::pdf::{extract_pdf_all_pages, extract_pdf_page};
-use crate::windows::detection::pdf_signature::{ByteRangeResult, extract_pdf_signatures};
+use crate::windows::detection::pdf_signature::PdfSignaturesData;
 use crate::windows::detection::png::do_acropalypse;
 use crate::windows::parsing::ParsingCache;
 use crate::windows::parsing::png::{INVALID_PNG_CHUNK, PngData, PngDataViewer};
@@ -36,7 +30,7 @@ pub enum Action {
     /// Extract page
     PdfExtractPage(usize),
     /// Extract Signature
-    PdfExtractSignature(Option<Vec<ByteRangeResult>>),
+    PdfExtractSignature(Option<PdfSignaturesData>),
     /// Extract gif
     ExtractGif,
 }
@@ -226,116 +220,15 @@ impl WombatApp {
                 }
                 Action::PdfExtractSignature(res) => {
                     if let Some(results) = &res {
-                        if results.is_empty() {
-                            ui.label("No ByteRange found");
+                        let (range, doc) = results.ui(ui, error_manager);
+                        if let Some(r) = range {
+                            go_to_range = Some(r);
                         }
-                        for one_byte_range_res in results {
-                            let head_text = format!("Bytes range {:?}", one_byte_range_res.range);
-                            ui.collapsing(head_text, |ui| {
-                                if ui.button("Show").clicked() {
-                                    let start = one_byte_range_res.range[0].saturating_add(
-                                        one_byte_range_res.range[1].saturating_add(1),
-                                    );
-                                    let end = one_byte_range_res.range[2].saturating_sub(2);
-                                    go_to_range = Some(start..=end);
-                                }
-                                if one_byte_range_res.results.is_empty() {
-                                    ui.label("No signature results");
-                                }
-                                for (idx, one_res) in one_byte_range_res.results.iter().enumerate()
-                                {
-                                    ui.collapsing(format!("Certificate {idx}"), |ui| {
-                                        ui.label(format!(
-                                            "Subject: {}",
-                                            one_res.certificate.tbs_certificate().subject()
-                                        ));
-                                        ui.label(format!(
-                                            "Issuer: {}",
-                                            one_res.certificate.tbs_certificate().issuer()
-                                        ));
-                                        let validity =
-                                            one_res.certificate.tbs_certificate().validity();
-                                        let now = OffsetDateTime::now_utc();
-                                        #[allow(clippy::cast_precision_loss)]
-                                        #[allow(clippy::cast_possible_truncation)]
-                                        #[allow(clippy::cast_sign_loss)]
-                                        let system_time = if now.unix_timestamp_nanos() >= 0 {
-                                            UNIX_EPOCH
-                                                + Duration::from_nanos(
-                                                    now.unix_timestamp_nanos() as u64
-                                                )
-                                        } else {
-                                            UNIX_EPOCH
-                                                - Duration::from_nanos(
-                                                    (-now.unix_timestamp_nanos()) as u64,
-                                                )
-                                        };
-                                        let Ok(current_datetime) =
-                                            DateTime::from_system_time(system_time)
-                                        else {
-                                            ui.label("Error cannot get current time");
-                                            return;
-                                        };
-                                        ui.horizontal(|ui| {
-                                            ui.label(format!(
-                                                "Not before: {} -",
-                                                validity.not_before
-                                            ));
-                                            let is_valid = validity.not_before.to_date_time()
-                                                < current_datetime;
-                                            ui.colored_label(
-                                                if is_valid {
-                                                    Color32::GREEN
-                                                } else {
-                                                    Color32::RED
-                                                },
-                                                if is_valid { "true" } else { "false" },
-                                            );
-                                        });
-                                        ui.horizontal(|ui| {
-                                            ui.label(format!(
-                                                "Not after: {} -",
-                                                validity.not_after
-                                            ));
-                                            let is_valid = validity.not_after.to_date_time()
-                                                > current_datetime;
-                                            ui.colored_label(
-                                                if is_valid {
-                                                    Color32::GREEN
-                                                } else {
-                                                    Color32::RED
-                                                },
-                                                if is_valid { "true" } else { "false" },
-                                            );
-                                        });
-                                        ui.horizontal(|ui| {
-                                            ui.label("Is signature valid:");
-                                            ui.colored_label(
-                                                if one_res.is_valid {
-                                                    Color32::GREEN
-                                                } else {
-                                                    Color32::RED
-                                                },
-                                                if one_res.is_valid { "true" } else { "false" },
-                                            );
-                                        });
-                                        if ui.button("Open in a new document").clicked() {
-                                            match one_res.certificate.to_der() {
-                                                Ok(der) => {
-                                                    let filename = PathBuf::from("certificate.pem");
-                                                    new_docs.push(Document::new(der, filename));
-                                                }
-                                                Err(err) => {
-                                                    error_manager.add_error(err.to_string());
-                                                }
-                                            }
-                                        }
-                                    });
-                                }
-                            });
+                        if let Some(d) = doc {
+                            new_docs.push(d);
                         }
                     } else if ui.button("Extract signatures").clicked() {
-                        match extract_pdf_signatures(document.binary_file.as_slice()) {
+                        match PdfSignaturesData::try_parse(document.binary_file.as_slice()) {
                             Ok(parsed) => {
                                 *res = Some(parsed);
                             }

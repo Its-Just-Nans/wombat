@@ -1,8 +1,9 @@
 //! Pdf signatures
 
-use bladvak::AppError;
+use bladvak::{AppError, ErrorManager};
 
-use cms::der::{Decode, Encode, asn1::OctetString};
+use bladvak::eframe::egui::{self, Color32};
+use cms::der::{DateTime, Decode, Encode, asn1::OctetString};
 use cms::{content_info::ContentInfo, signed_data::SignedData};
 use rsa::{
     PublicKey,
@@ -13,7 +14,13 @@ use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use signature::Verifier;
 use std::error::Error;
+use std::ops::RangeInclusive;
+use std::path::PathBuf;
+use std::time::{Duration, UNIX_EPOCH};
+use time::OffsetDateTime;
 use x509_cert::certificate::CertificateInner;
+
+use crate::document::Document;
 
 /// message digest oid
 const MESSAGE_DIGEST_OID: &str = "1.2.840.113549.1.9.4";
@@ -21,23 +28,6 @@ const MESSAGE_DIGEST_OID: &str = "1.2.840.113549.1.9.4";
 const SHA256_OID: &str = "2.16.840.1.101.3.4.2.1";
 /// sha1 oid
 const SHA1_OID: &str = "1.3.14.3.2.26";
-
-/// extract pdf images
-/// Not all algorithms supported
-pub(crate) fn extract_pdf_signatures(input: &[u8]) -> Result<Vec<ByteRangeResult>, AppError> {
-    let mut range_results = Vec::new();
-    for range in find_byte_ranges(input) {
-        let range = [
-            usize::try_from(range[0]).map_err(|e| e.to_string())?,
-            usize::try_from(range[1]).map_err(|e| e.to_string())?,
-            usize::try_from(range[2]).map_err(|e| e.to_string())?,
-            usize::try_from(range[3]).map_err(|e| e.to_string())?,
-        ];
-        let results = verify_pdf_signature(input, range).map_err(|e| e.to_string())?;
-        range_results.push(ByteRangeResult { range, results });
-    }
-    Ok(range_results)
-}
 
 /// Byte Range result
 #[derive(Debug)]
@@ -299,4 +289,133 @@ fn find_byte_ranges(input: &[u8]) -> Vec<[u64; 4]> {
     }
 
     ranges
+}
+
+#[derive(Debug)]
+pub(crate) struct PdfSignaturesData {
+    /// bytes ranges
+    inner: Vec<ByteRangeResult>,
+}
+
+impl PdfSignaturesData {
+    /// extract pdf images
+    /// Not all algorithms supported
+    pub(crate) fn try_parse(input: &[u8]) -> Result<Self, AppError> {
+        let mut range_results = Vec::new();
+        for range in find_byte_ranges(input) {
+            let range = [
+                usize::try_from(range[0]).map_err(|e| e.to_string())?,
+                usize::try_from(range[1]).map_err(|e| e.to_string())?,
+                usize::try_from(range[2]).map_err(|e| e.to_string())?,
+                usize::try_from(range[3]).map_err(|e| e.to_string())?,
+            ];
+            let results = verify_pdf_signature(input, range).map_err(|e| e.to_string())?;
+            range_results.push(ByteRangeResult { range, results });
+        }
+        Ok(Self {
+            inner: range_results,
+        })
+    }
+
+    /// show ui
+    pub(crate) fn ui(
+        &self,
+        ui: &mut egui::Ui,
+        error_manager: &mut ErrorManager,
+    ) -> (Option<RangeInclusive<usize>>, Option<Document>) {
+        let mut go_to_range = None;
+        let mut new_doc = None;
+        if self.inner.is_empty() {
+            ui.label("No ByteRange found");
+        }
+        for one_byte_range_res in &self.inner {
+            let head_text = format!("Bytes range {:?}", one_byte_range_res.range);
+            ui.collapsing(head_text, |ui| {
+                if ui.button("Show").clicked() {
+                    let start = one_byte_range_res.range[0]
+                        .saturating_add(one_byte_range_res.range[1].saturating_add(1));
+                    let end = one_byte_range_res.range[2].saturating_sub(2);
+                    go_to_range = Some(start..=end);
+                }
+                if one_byte_range_res.results.is_empty() {
+                    ui.label("No signature results");
+                }
+                for (idx, one_res) in one_byte_range_res.results.iter().enumerate() {
+                    ui.collapsing(format!("Certificate {idx}"), |ui| {
+                        ui.label(format!(
+                            "Subject: {}",
+                            one_res.certificate.tbs_certificate().subject()
+                        ));
+                        ui.label(format!(
+                            "Issuer: {}",
+                            one_res.certificate.tbs_certificate().issuer()
+                        ));
+                        let validity = one_res.certificate.tbs_certificate().validity();
+                        let now = OffsetDateTime::now_utc();
+                        #[allow(clippy::cast_precision_loss)]
+                        #[allow(clippy::cast_possible_truncation)]
+                        #[allow(clippy::cast_sign_loss)]
+                        let system_time = if now.unix_timestamp_nanos() >= 0 {
+                            UNIX_EPOCH + Duration::from_nanos(now.unix_timestamp_nanos() as u64)
+                        } else {
+                            UNIX_EPOCH - Duration::from_nanos((-now.unix_timestamp_nanos()) as u64)
+                        };
+                        let Ok(current_datetime) = DateTime::from_system_time(system_time) else {
+                            ui.label("Error cannot get current time");
+                            return;
+                        };
+                        ui.horizontal(|ui| {
+                            ui.label(format!("Not before: {} -", validity.not_before));
+                            let is_valid = validity.not_before.to_date_time() < current_datetime;
+                            ui.colored_label(
+                                if is_valid {
+                                    Color32::GREEN
+                                } else {
+                                    Color32::RED
+                                },
+                                if is_valid { "true" } else { "false" },
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label(format!("Not after: {} -", validity.not_after));
+                            let is_valid = validity.not_after.to_date_time() > current_datetime;
+                            ui.colored_label(
+                                if is_valid {
+                                    Color32::GREEN
+                                } else {
+                                    Color32::RED
+                                },
+                                if is_valid { "true" } else { "false" },
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Is signature valid:");
+                            ui.colored_label(
+                                if one_res.is_valid {
+                                    Color32::GREEN
+                                } else {
+                                    Color32::RED
+                                },
+                                if one_res.is_valid { "true" } else { "false" },
+                            );
+                        });
+                        if ui.button("Open in a new document").clicked() {
+                            match one_res.certificate.to_der() {
+                                Ok(der) => {
+                                    let filename = PathBuf::from("certificate.pem");
+                                    let mut doc = Document::new(der, filename);
+                                    doc.windows_data.parsing.is_open = true;
+                                    new_doc = Some(doc);
+                                }
+                                Err(err) => {
+                                    error_manager.add_error(err.to_string());
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        (go_to_range, new_doc)
+    }
 }

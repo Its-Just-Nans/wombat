@@ -1,5 +1,5 @@
 //! Cert
-use bladvak::eframe::egui;
+use bladvak::eframe::egui::{self, Color32};
 use std::{fmt::Write, ops::RangeInclusive};
 use x509_parser::prelude::X509Certificate;
 use x509_parser::{pem::Pem, prelude::FromDer};
@@ -68,23 +68,27 @@ impl CertData {
                     ui.label("Issuer");
                     ui.label(x509.issuer().to_string());
                     ui.end_row();
-                    let is_valid = if x509.tbs_certificate.validity().is_valid() {
-                        "certificate is currently valid"
+
+                    let validity = x509.tbs_certificate.validity();
+                    let (valid_text, color) = if validity.is_valid() {
+                        ("certificate is currently valid", Color32::GREEN)
                     } else {
-                        "certificate is currently invalid"
+                        ("certificate is currently invalid", Color32::RED)
                     };
                     ui.label("Validity (not before)");
-                    ui.label(format!(
-                        "{} ({is_valid})",
-                        x509.tbs_certificate.validity.not_before
-                    ));
+                    ui.horizontal(|ui| {
+                        ui.label(format!("{} -", x509.tbs_certificate.validity.not_before));
+                        ui.colored_label(color, valid_text)
+                    });
                     ui.end_row();
+
                     ui.label("Validity (not after)");
-                    ui.label(format!(
-                        "{} ({is_valid})",
-                        x509.tbs_certificate.validity.not_after
-                    ));
+                    ui.horizontal(|ui| {
+                        ui.label(format!("{} -", x509.tbs_certificate.validity.not_after));
+                        ui.colored_label(color, valid_text)
+                    });
                     ui.end_row();
+
                     ui.label("Subject");
                     ui.label(x509.subject().to_string());
                     ui.end_row();
