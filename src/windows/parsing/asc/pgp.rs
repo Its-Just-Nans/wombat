@@ -364,12 +364,17 @@ impl LookupResult {
 /// Packet
 #[derive(Debug)]
 pub struct Packet {
-    // Packet fields
+    /// start
     start: usize,
+    /// end
     end: usize,
+    /// tag
     tag: u8,
+    /// length
     length: usize,
+    /// number of bytes for the length
     length_size: usize,
+    /// actual packet
     inner: InnerPacket,
 }
 
