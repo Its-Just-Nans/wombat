@@ -4,27 +4,31 @@ use std::{ops::RangeInclusive, path::PathBuf};
 
 use bladvak::{ErrorManager, eframe::egui};
 
-use crate::{document::Document, format::FileFormat};
+use crate::{document::Document, format::FileFormat, windows::parsing::asc::pgp::PgpRawData};
 
-/// ASC PGP key
+mod pgp;
+
+/// ASC data
 #[derive(Debug)]
 pub(crate) enum AscData {
-    /// unknown
-    Unknown,
     /// as text
-    Gpg,
+    Pgp,
     /// as raw
-    GpgRaw,
+    PgpRaw(PgpRawData),
 }
 
 impl AscData {
     /// parse data
     pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
         let res = if binary_file.starts_with(b"-----BEGIN PGP PUBLIC KEY BLOCK-----") {
-            AscData::Gpg
+            AscData::Pgp
         } else {
-            // TODO
-            AscData::GpgRaw
+            match PgpRawData::parse(binary_file) {
+                Ok(p) => AscData::PgpRaw(p),
+                Err(err) => {
+                    return Err(format!("Unknown ASC {err}"));
+                }
+            }
         };
         Ok(res)
     }
@@ -37,7 +41,7 @@ impl AscData {
         error_manager: &mut ErrorManager,
     ) -> (Option<RangeInclusive<usize>>, Option<Document>) {
         match self {
-            Self::Gpg => {
+            Self::Pgp => {
                 ui.label("Try to parse as Base64 (without spaces)");
                 let mut new_range = None;
                 let mut new_doc = None;
@@ -86,14 +90,7 @@ impl AscData {
                 }
                 (new_range, new_doc)
             }
-            Self::GpgRaw => {
-                ui.label("TODO");
-                (None, None)
-            }
-            Self::Unknown => {
-                ui.label("Unknown ASCII file");
-                (None, None)
-            }
+            Self::PgpRaw(data) => data.ui(ui, binary_file, error_manager),
         }
     }
 }
