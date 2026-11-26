@@ -62,7 +62,7 @@ pub(crate) fn do_acropalypse(
             .filter_map(|(i, window)| (window == idat_signature).then_some(i))
             .collect()
     };
-    if idat_indices.len() > 1 && idat_indices[0] > 4 {
+    if idat_indices.is_empty() || (idat_indices.len() > 1 && idat_indices[0] > 4) {
         idat_indices.insert(0, 0);
     }
     let mut chunks = Vec::new();
@@ -76,7 +76,12 @@ pub(crate) fn do_acropalypse(
                 u32::from_be_bytes(bytes)
             }
             _ => {
-                let size = idat_indices[idx + 1] - start_chunk - idat_signature.len();
+                let next_len = if idat_indices.len() > idx + 1 {
+                    idat_indices[idx + 1]
+                } else {
+                    raw_chunk.len().saturating_sub(4 + 4)
+                };
+                let size = next_len - start_chunk - idat_signature.len();
                 let Ok(len) = u32::try_from(size) else {
                     return Err("Failed calculate the IDAT len to a u32".into());
                 };
@@ -108,17 +113,19 @@ pub(crate) fn do_acropalypse(
 
         // crc
         let crc_start = data_start + (len as usize);
-        let Some(crc) = raw_chunk.get(crc_start..(crc_start + 4)) else {
+        let crc_end = crc_start.saturating_add(4);
+        let Some(crc) = raw_chunk.get(crc_start..crc_end) else {
             return Err("Cannot get crc of sub chunk".into());
         };
         chunks.push((len, chunk_type, data, crc));
     }
     for c in &chunks {
-        log::info!("{} {:x?} {:x?} {}", c.0, c.1, c.3, c.2.len());
+        log::info!("Chunk: {} {:x?} {:x?} {}", c.0, c.1, c.3, c.2.len());
     }
     let full_idat: Vec<u8> = chunks.iter().flat_map(|c| &c.2).copied().collect();
 
-    let data_idat = &full_idat[..(full_idat.len() - 4)]; // remove adler32 checksum
+    let end_idat = full_idat.len().saturating_sub(4);
+    let data_idat = &full_idat[..end_idat]; // remove adler32 checksum
     log::info!("Extracted {} bytes of idat", data_idat.len());
 
     // Convert input bytes into a bitstream (LSB first).
@@ -187,6 +194,7 @@ pub(crate) fn do_acropalypse(
         let Ok(consumed) = usize::try_from(decoder.total_in()) else {
             return Err("Failed convert the decoder total_in into usize".into());
         };
+        log::info!("Zlib decode: consumed {consumed}");
         let cursor = decoder.into_inner();
 
         let unused_data = &cursor.get_ref()[consumed..];
@@ -200,9 +208,11 @@ pub(crate) fn do_acropalypse(
             decompressed_result = Some(decompressed);
             break;
         }
+        log::info!("Zlib decode: no viable parse at bit offset {i}!");
     }
 
     let Some(decompressed) = decompressed_result else {
+        log::info!("Zlib decode: no viable parse found!");
         return Err("Failed to find viable parse".into());
     };
 
@@ -271,7 +281,9 @@ pub(crate) fn do_acropalypse(
     data.extend_from_slice(&iend_chunk);
 
     if reconstruct_only {
-        return Ok(Document::new(data, PathBuf::from("extracted.png")));
+        let mut doc = Document::new(data, PathBuf::from("extracted.png"));
+        doc.windows_data.previewer.is_open = true;
+        return Ok(doc);
     }
     let data = parse_idat(
         &reconstructed_idat,
@@ -311,7 +323,10 @@ pub(crate) fn do_acropalypse(
         .write_to(&mut buffer, ImageFormat::Png)
         .map_err(|e| format!("Error writing the image {e}"))?;
     let data = buffer.into_inner();
-    Ok(Document::new(data, PathBuf::from("rebuild_image.png")))
+    let mut doc = Document::new(data, PathBuf::from("rebuild_image.png"));
+    doc.windows_data.previewer.is_open = true;
+
+    Ok(doc)
 }
 
 /// Paeth predictor function used in PNG filtering.
