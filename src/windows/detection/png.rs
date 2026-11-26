@@ -187,8 +187,14 @@ pub(crate) fn do_acropalypse(
 
         let mut decompressed = Vec::new();
 
-        if decoder.read_to_end(&mut decompressed).is_err() {
-            continue;
+        match decoder.read_to_end(&mut decompressed) {
+            Ok(c) => {
+                log::info!("Zlib decompress succedeed at {i}")
+            }
+            Err(err) => {
+                log::info!("Zlib decompress failed at {i}: {err}");
+                continue;
+            }
         }
 
         let Ok(consumed) = usize::try_from(decoder.total_in()) else {
