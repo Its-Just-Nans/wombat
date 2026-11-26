@@ -2,7 +2,7 @@
 //!
 //! <https://www.color.org/icc_specs2/>
 
-use std::fmt::Display;
+use std::{fmt::Display, ops::RangeInclusive};
 
 use bladvak::eframe::egui;
 
@@ -128,8 +128,14 @@ impl Display for ColourSpace {
 }
 
 #[derive(Debug)]
-#[allow(clippy::missing_docs_in_private_items)]
 pub(crate) struct IccProfileData {
+    header: IccProfileHeader,
+    tags: Vec<([u8; 4], u32, u32)>,
+}
+
+#[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
+pub(crate) struct IccProfileHeader {
     size: u32,
     preferred_cmm: [u8; 4],
     profile_version: u32,
@@ -146,7 +152,7 @@ pub(crate) struct IccProfileData {
     rendering_intent: u32,
     xyz_nums: [u8; 12],
     profile_creator: [u8; 4],
-    profile_id: u64,
+    profile_id: [u8; 16],
     spectral_pcs: [u8; 4],
     spectral_wavelength: [u8; 6],
     bi_spectral_wavelength: [u8; 6],
@@ -155,9 +161,9 @@ pub(crate) struct IccProfileData {
     reserved: u32,
 }
 
-impl IccProfileData {
+impl IccProfileHeader {
     /// Try to parse the profile
-    pub(crate) fn try_parse(binary_file: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_file: &[u8]) -> Result<(&[u8], Self), String> {
         let (buffer, size) = read_u32(binary_file, false)?;
         if (size as usize) != binary_file.len() {
             return Err("Incorrect length of ICC profile".to_string());
@@ -183,7 +189,7 @@ impl IccProfileData {
         let (buffer, rendering_intent) = read_u32(buffer, false)?;
         let (buffer, xyz_nums) = read_buffer::<12>(buffer)?;
         let (buffer, profile_creator) = read_buffer::<4>(buffer)?;
-        let (buffer, profile_id) = read_u64(buffer, false)?;
+        let (buffer, profile_id) = read_buffer::<16>(buffer)?;
         let (buffer, spectral_pcs) = read_buffer::<4>(buffer)?;
         let (buffer, spectral_wavelength) = read_buffer::<6>(buffer)?;
         let (buffer, bi_spectral_wavelength) = read_buffer::<6>(buffer)?;
@@ -193,35 +199,88 @@ impl IccProfileData {
         if reserved != 0 {
             return Err("Reserved should be 0".to_string());
         }
-        Ok(Self {
-            size,
-            preferred_cmm,
-            profile_version,
-            profile_class,
-            colour_space,
-            pcs,
-            date_created,
-            acsp_signature,
-            primary_signature,
-            profile_flag,
-            device_manufacturer,
-            device_model,
-            device_attributes,
-            rendering_intent,
-            xyz_nums,
-            profile_creator,
-            profile_id,
-            spectral_pcs,
-            spectral_wavelength,
-            bi_spectral_wavelength,
-            mcs_signature,
-            profile_sub_class,
-            reserved,
-        })
+        Ok((
+            buffer,
+            Self {
+                size,
+                preferred_cmm,
+                profile_version,
+                profile_class,
+                colour_space,
+                pcs,
+                date_created,
+                acsp_signature,
+                primary_signature,
+                profile_flag,
+                device_manufacturer,
+                device_model,
+                device_attributes,
+                rendering_intent,
+                xyz_nums,
+                profile_creator,
+                profile_id,
+                spectral_pcs,
+                spectral_wavelength,
+                bi_spectral_wavelength,
+                mcs_signature,
+                profile_sub_class,
+                reserved,
+            },
+        ))
+    }
+}
+
+impl IccProfileData {
+    /// Try to parse the profile
+    pub(crate) fn try_parse(binary_file: &[u8]) -> Result<Self, String> {
+        let (buffer, header) = IccProfileHeader::try_parse(binary_file)?;
+        let (mut buffer, tag_table_len) = read_u32(buffer, false)?;
+        let mut tags = Vec::new();
+        let tags_table_end = (tag_table_len as usize).saturating_mul(12);
+        for _idx in (0..tags_table_end).step_by(12) {
+            let (buff, sign) = read_buffer::<4>(buffer)?;
+            buffer = buff;
+            let (buff, offset) = read_u32(buffer, false)?;
+            buffer = buff;
+            let (buff, length) = read_u32(buffer, false)?;
+            buffer = buff;
+            tags.push((sign, offset, length));
+        }
+        Ok(Self { header, tags })
     }
 
     /// Show ui
-    pub(crate) fn ui(&self, ui: &mut egui::Ui) {
-        ui.label(format!("{self:#x?}"));
+    pub(crate) fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
+        ui.label(format!("{:#x?}", self.header));
+        let mut range = None;
+        if self.tags.is_empty() {
+            ui.label("No tags");
+        } else {
+            ui.horizontal(|ui| {
+                let len = self.tags.len();
+                ui.label(format!("Tags: {len}"));
+                if ui.button("Show").clicked() {
+                    let start = 128_usize;
+                    let real_len = len.saturating_mul(12);
+                    let end = 4_usize;
+                    let end = end.saturating_add(start).saturating_add(real_len);
+                    let end = end.saturating_sub(1);
+                    range = Some(start..=end);
+                }
+            });
+            for one_tag in &self.tags {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{:x?}", one_tag.0));
+                    ui.label(format!("offset = {}", one_tag.1));
+                    ui.label(format!("length = {}", one_tag.2));
+                    if ui.button("Show").clicked() {
+                        let start = one_tag.1 as usize;
+                        let end = start.saturating_add(one_tag.2 as usize).saturating_sub(1);
+                        range = Some(start..=end);
+                    }
+                });
+            }
+        }
+        range
     }
 }

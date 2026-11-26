@@ -238,8 +238,7 @@ impl WombatApp {
                 return data.ui(ui, &document.binary_file, error_manager);
             }
             ParsingCache::Icc(data) => {
-                data.ui(ui);
-                None
+                return (data.ui(ui), None);
             }
             ParsingCache::Message(str) => {
                 ui.label(&*str);
