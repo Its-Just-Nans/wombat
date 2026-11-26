@@ -172,7 +172,8 @@ pub(crate) fn do_acropalypse(
     let mut decompressed_result: Option<Vec<u8>> = None;
 
     for i in 0..data_idat.len() {
-        let truncated = &byte_offsets[i % 8][i / 8..];
+        let byte_offset = i / 8;
+        let truncated = &byte_offsets[i % 8][byte_offset..];
 
         // Check for the beginning of a non-final dynamic Huffman block.
         if truncated[0] & 7 != 0b100 {
@@ -189,7 +190,7 @@ pub(crate) fn do_acropalypse(
 
         match decoder.read_to_end(&mut decompressed) {
             Ok(c) => {
-                log::info!("Zlib decompress succedeed at {i}")
+                log::info!("Zlib decompress succedeed at {i}: {c} read")
             }
             Err(err) => {
                 log::info!("Zlib decompress failed at {i}: {err}");
@@ -197,24 +198,22 @@ pub(crate) fn do_acropalypse(
             }
         }
 
-        let Ok(consumed) = usize::try_from(decoder.total_in()) else {
-            return Err("Failed convert the decoder total_in into usize".into());
-        };
-        log::info!("Zlib decode: consumed {consumed}");
-        let cursor = decoder.into_inner();
-
-        let unused_data = &cursor.get_ref()[consumed..];
-
-        if unused_data.is_empty() || unused_data == [0] {
-            log::info!("Found viable parse at bit offset {i}!");
-
-            // Remove the leading padding.
-            decompressed.drain(..0x8000);
-
-            decompressed_result = Some(decompressed);
-            break;
+        // The artificial stored block contributes 0x8000 zero bytes.
+        if decompressed.len() < 0x8000 {
+            continue;
         }
-        log::info!("Zlib decode: no viable parse at bit offset {i}!");
+
+        // Validate the artificial prefix.
+        if decompressed[..0x8000].iter().any(|&b| b != 0) {
+            continue;
+        }
+
+        log::info!("Found viable parse at bit offset {i}!");
+
+        decompressed.drain(..0x8000);
+
+        decompressed_result = Some(decompressed);
+        break;
     }
 
     let Some(decompressed) = decompressed_result else {
