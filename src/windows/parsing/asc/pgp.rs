@@ -752,19 +752,62 @@ lookup_fn!(revocation_reason_to_text, u8, {
 });
 
 #[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub(crate) enum PublicKey {
     Rsa((StartPosition, StartPosition)),
     ElGamal((usize, usize, usize)),
 }
 
+impl PublicKey {
+    /// Show ui
+    fn ui(&self, ui: &mut egui::Ui) {
+        match self {
+            Self::Rsa(d) => {
+                ui.label(format!("{:?}", d));
+            }
+            Self::ElGamal(d) => {
+                ui.label(format!("{:?}", d));
+            }
+        }
+    }
+}
+
 type StartPosition = usize;
 
-type PublicKeyPacket = (u8, Timestamp, Option<u16>, u8, Option<u32>, PublicKey);
+#[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
+pub(crate) struct PublicKeyPacket {
+    version: u8,
+    created_at: Timestamp,
+    valid_days: Option<u16>,
+    algorithm: u8,
+    octet_count: Option<u32>,
+    key: PublicKey,
+}
 
 #[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub(crate) enum InnerPacket {
+    ReservedReally,
+    PublicKeyEncryptedSessionKeyPacket,
+    SignaturePacket,
+    SymmetricKeyEncryptedSessionKeyPacket,
+    OnePassSignaturePacket,
+    SecretKeyPacket,
     PublicKeyPacket((StartPosition, PublicKeyPacket)),
+    SecretSubKeyPacket,
+    CompressedDataPacket,
+    SymmetricallyEncryptedDataPacket,
+    MarkerParket,
+    LiteralDataPacket,
+    TrustPacket,
     UserIdPacket((StartPosition, String)),
+    PublicSubkeyPacket,
+    UserAttributePacket,
+    SymEncryptedIntegrityProtectedDataPacket,
+    ReservedModif,
+    Reserved,
+    PaddingPacket,
     UnknownPacket,
 }
 
@@ -773,12 +816,12 @@ impl InnerPacket {
     fn parse_from_tag(stream: &mut Stream<'_>, tag: u8, length: usize) -> Result<Self, String> {
         let start_pos = stream.pos;
         let res = match tag {
-            // 0 => "Reserved - a packet tag MUST NOT have this value",
-            // 1 => "Public Key Encrypted Session Key Packet",
-            // 2 => "Signature Packet",
-            // 3 => "Symmetric-Key Encrypted Session Key Packet",
-            // 4 => "One-Pass Signature Packet",
-            // 5 => "Secret Key Packet",
+            0 => Self::ReservedReally,
+            1 => Self::PublicKeyEncryptedSessionKeyPacket,
+            2 => Self::SignaturePacket,
+            3 => Self::SymmetricKeyEncryptedSessionKeyPacket,
+            4 => Self::OnePassSignaturePacket,
+            5 => Self::SecretKeyPacket,
             6 => {
                 let version = stream.octet().ok_or("Cannot get version")?;
                 if version == 6 || version == 4 || version == 3 {
@@ -787,29 +830,35 @@ impl InnerPacket {
                     let algorithm = stream.octet().ok_or("Cannot get algo")?;
                     let octet_count = if version == 6 { stream.uint32() } else { None };
                     let key = PublicKey::Rsa((0, 0));
-                    let public_key_packet =
-                        (version, created_at, valid_days, algorithm, octet_count, key);
+                    let public_key_packet = PublicKeyPacket {
+                        version,
+                        created_at,
+                        valid_days,
+                        algorithm,
+                        octet_count,
+                        key,
+                    };
                     Self::PublicKeyPacket((start_pos, public_key_packet))
                 } else {
                     return Err("Unsupported version".to_string());
                 }
             }
-            // 7 => "Secret Subkey Packet",
-            // 8 => "Compressed Data Packet",
-            // 9 => "Symmetrically Encrypted Data Packet",
-            // 10 => "Marker Packet",
-            // 11 => "Literal Data Packet",
-            // 12 => "Trust Packet",
+            7 => Self::SecretSubKeyPacket,
+            8 => Self::CompressedDataPacket,
+            9 => Self::SymmetricallyEncryptedDataPacket,
+            10 => Self::MarkerParket,
+            11 => Self::LiteralDataPacket,
+            12 => Self::TrustPacket,
             13 => {
                 let user_id = stream.utf8(length).ok_or("Cannot get string")?;
                 Self::UserIdPacket((start_pos, user_id))
             }
-            // 14 => "Public Subkey Packet",
-            // 17 => "User Attribute Packet",
-            // 18 => "Sym. Encrypted and Integrity Protected Data Packet",
-            // 19 => "Reserved (formerly Modification Detection Code Packet)",
-            // 20 => "Reserved",
-            // 21 => "Padding Packet",
+            14 => Self::PublicSubkeyPacket,
+            17 => Self::UserAttributePacket,
+            18 => Self::SymEncryptedIntegrityProtectedDataPacket,
+            19 => Self::ReservedModif,
+            20 => Self::Reserved,
+            21 => Self::PaddingPacket,
             _ => Self::UnknownPacket,
         };
         Ok(res)
@@ -818,27 +867,31 @@ impl InnerPacket {
     /// Get the name
     fn name(&self) -> &str {
         match self {
-            // 0 => "Reserved - a packet tag MUST NOT have this value",
-            // 1 => "Public Key Encrypted Session Key Packet",
-            // 2 => "Signature Packet",
-            // 3 => "Symmetric-Key Encrypted Session Key Packet",
-            // 4 => "One-Pass Signature Packet",
-            // 5 => "Secret Key Packet",
+            Self::ReservedReally => "Reserved - a packet tag MUST NOT have this value",
+            Self::PublicKeyEncryptedSessionKeyPacket => "Public Key Encrypted Session Key Packet",
+            Self::SignaturePacket => "Signature Packet",
+            Self::SymmetricKeyEncryptedSessionKeyPacket => {
+                "Symmetric-Key Encrypted Session Key Packet"
+            }
+            Self::OnePassSignaturePacket => "One-Pass Signature Packet",
+            Self::SecretKeyPacket => "Secret Key Packet",
             Self::PublicKeyPacket(_) => "Public Key Packet",
-            // 7 => "Secret Subkey Packet",
-            // 8 => "Compressed Data Packet",
-            // 9 => "Symmetrically Encrypted Data Packet",
-            // 10 => "Marker Packet",
-            // 11 => "Literal Data Packet",
-            // 12 => "Trust Packet",
+            Self::SecretSubKeyPacket => "Secret Subkey Packet",
+            Self::CompressedDataPacket => "Compressed Data Packet",
+            Self::SymmetricallyEncryptedDataPacket => "Symmetrically Encrypted Data Packet",
+            Self::MarkerParket => "Marker Packet",
+            Self::LiteralDataPacket => "Literal Data Packet",
+            Self::TrustPacket => "Trust Packet",
             Self::UserIdPacket(_) => "User ID Packet",
-            // 14 => "Public Subkey Packet",
-            // 17 => "User Attribute Packet",
-            // 18 => "Sym. Encrypted and Integrity Protected Data Packet",
-            // 19 => "Reserved (formerly Modification Detection Code Packet)",
-            // 20 => "Reserved",
-            // 21 => "Padding Packet",
-            _ => "Unknown packet",
+            Self::PublicSubkeyPacket => "Public Subkey Packet",
+            Self::UserAttributePacket => "User Attribute Packet",
+            Self::SymEncryptedIntegrityProtectedDataPacket => {
+                "Sym. Encrypted and Integrity Protected Data Packet"
+            }
+            Self::ReservedModif => "Reserved (formerly Modification Detection Code Packet)",
+            Self::Reserved => "Reserved",
+            Self::PaddingPacket => "Padding Packet",
+            Self::UnknownPacket => "Unknown packet",
         }
     }
 
@@ -846,7 +899,28 @@ impl InnerPacket {
     fn ui(&self, ui: &mut egui::Ui) -> Option<RangeInclusive<usize>> {
         let mut range = None;
         match self {
-            Self::PublicKeyPacket(a) => {}
+            Self::PublicKeyPacket((pos, public_key)) => {
+                let PublicKeyPacket {
+                    version,
+                    created_at,
+                    valid_days,
+                    algorithm,
+                    octet_count,
+                    key,
+                } = public_key;
+                ui.horizontal(|ui| {
+                    ui.label(format!("Version: {version}"));
+                    ui.label(format!("Created at: {created_at:?}"));
+                    if let Some(v) = valid_days {
+                        ui.label(format!("Valid days: {v:?}"));
+                    }
+                    ui.label(format!("Algorithm: {algorithm:?}"));
+                    if let Some(oc) = octet_count {
+                        ui.label(format!("Octed count: {oc:?}"));
+                    }
+                    key.ui(ui);
+                });
+            }
             Self::UserIdPacket((pos, user_id)) => {
                 ui.horizontal(|ui| {
                     ui.label("userId");
@@ -859,6 +933,9 @@ impl InnerPacket {
             }
             Self::UnknownPacket => {
                 ui.label("Unknown packet");
+            }
+            _ => {
+                ui.label("TODO");
             }
         }
         range
