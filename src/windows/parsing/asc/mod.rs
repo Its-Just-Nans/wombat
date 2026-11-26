@@ -22,7 +22,7 @@ pub(crate) enum AscData {
 
 impl AscData {
     /// parse data
-    pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_file: &[u8]) -> Result<Self, String> {
         let res = if binary_file.starts_with(b"-----BEGIN") {
             let Some(base_64_start) = find_base64_start(binary_file) else {
                 return Err("Cannot get start of base64".to_string());
@@ -65,7 +65,7 @@ impl AscData {
 
             return Ok(AscData::Pgp((base_64_start, is_valid, None)));
         } else {
-            match PgpRawData::parse(binary_file) {
+            match PgpRawData::try_parse(binary_file) {
                 Ok(p) => AscData::PgpRaw(p),
                 Err(err) => {
                     return Err(format!("Unknown ASC {err}"));

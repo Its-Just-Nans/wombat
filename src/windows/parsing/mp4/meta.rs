@@ -16,7 +16,7 @@ pub(crate) struct MetaBox {
 
 impl MetaBox {
     /// Parse the meta
-    pub(crate) fn parse(data: &[u8], offset: usize) -> Result<Self, String> {
+    pub(crate) fn try_parse(data: &[u8], offset: usize) -> Result<Self, String> {
         if data.len() < 4 {
             return Err("Invalid len: metabox".to_string());
         }

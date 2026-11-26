@@ -91,7 +91,7 @@ impl ParsingCache {
         let binary_data = &binary_file;
         let parsing_cache = match extension {
             "png" => {
-                let parsed = match PngData::parse(binary_data) {
+                let parsed = match PngData::try_parse(binary_data) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
@@ -102,35 +102,35 @@ impl ParsingCache {
                 ParsingCache::Xml(parsed)
             }
             "crt" => {
-                let parsed = match CertData::parse(binary_data, false) {
+                let parsed = match CertData::try_parse(binary_data, false) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
                 ParsingCache::Cert(parsed)
             }
             "der" => {
-                let parsed = match CertData::parse(binary_data, true) {
+                let parsed = match CertData::try_parse(binary_data, true) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
                 ParsingCache::Cert(parsed)
             }
             "jpg" => {
-                let parsed = match JpgData::parse(binary_data) {
+                let parsed = match JpgData::try_parse(binary_data) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
                 ParsingCache::Jpg(parsed)
             }
             "mp4" => {
-                let parsed = match Mp4Data::parse(binary_data) {
+                let parsed = match Mp4Data::try_parse(binary_data) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
                 ParsingCache::Mp4(parsed)
             }
             "zip" => {
-                let parsed = match ZipData::parse(binary_data) {
+                let parsed = match ZipData::try_parse(binary_data) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
@@ -138,7 +138,7 @@ impl ParsingCache {
             }
             "qoi" => ParsingCache::Message("A QOI (Quite OK Image) image".to_string()),
             "pmtiles" => {
-                let parsed = match PmTilesData::parse(binary_data) {
+                let parsed = match PmTilesData::try_parse(binary_data) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
@@ -146,14 +146,14 @@ impl ParsingCache {
                 ParsingCache::PmTiles(parsed)
             }
             "pdf" => {
-                let parsed = match PdfData::parse(binary_file) {
+                let parsed = match PdfData::try_parse(binary_file) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };
                 ParsingCache::Pdf(parsed)
             }
             "asc" => {
-                let parsed = match AscData::parse(&binary_file) {
+                let parsed = match AscData::try_parse(&binary_file) {
                     Ok(parsed) => parsed,
                     Err(err) => return Some(ParsingCache::ErrorMessage(err)),
                 };

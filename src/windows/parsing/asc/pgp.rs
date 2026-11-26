@@ -18,7 +18,7 @@ pub(crate) struct PgpRawData {
 
 impl PgpRawData {
     /// Parse PGP packets
-    pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_file: &[u8]) -> Result<Self, String> {
         let mut stream = Stream::new(binary_file, 0, binary_file.len());
 
         let mut packets = Vec::new();

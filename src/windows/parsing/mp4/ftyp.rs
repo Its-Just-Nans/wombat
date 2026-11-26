@@ -13,7 +13,7 @@ pub(crate) struct Ftyp {
 
 impl Ftyp {
     /// Parse the Ftyp box
-    pub(crate) fn parse(data: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(data: &[u8]) -> Result<Self, String> {
         let Some(major) = data.get(0..4) else {
             return Err("Cannot get major of ftyp".to_string());
         };

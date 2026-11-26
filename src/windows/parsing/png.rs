@@ -37,7 +37,7 @@ const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
 
 impl PngData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_data: &[u8]) -> Result<Self, String> {
         if binary_data.len() < 8 || &binary_data[..8] != PNG_SIGNATURE {
             return Err("Not a PNG signature".to_string());
         }

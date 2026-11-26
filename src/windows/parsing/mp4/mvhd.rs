@@ -19,7 +19,7 @@ pub(crate) struct Mvhd {
 
 impl Mvhd {
     /// Parse mvhd
-    pub fn parse(data: &[u8]) -> Result<Self, String> {
+    pub fn try_parse(data: &[u8]) -> Result<Self, String> {
         let Some(version) = data.first() else {
             return Err("Cannot get version of mvhd".to_string());
         };

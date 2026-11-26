@@ -13,7 +13,7 @@ pub(crate) struct CertData {
 
 impl CertData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8], is_der: bool) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_data: &[u8], is_der: bool) -> Result<Self, String> {
         let pems: Vec<Pem> = if is_der {
             let mut reader = binary_data;
             let mut pems = Vec::new();

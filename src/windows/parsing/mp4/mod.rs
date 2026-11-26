@@ -72,7 +72,7 @@ pub(crate) struct Mp4Box {
 
 impl Mp4Box {
     /// Parse
-    fn parse(data: &[u8], offset: usize) -> Result<Self, String> {
+    fn try_parse(data: &[u8], offset: usize) -> Result<Self, String> {
         let Some(header) = data.get(..BOX_HEADER_SIZE) else {
             return Err("Invalid len: no header".to_string());
         };
@@ -88,7 +88,7 @@ impl Mp4Box {
         let raw = &data[BOX_HEADER_SIZE..size];
 
         let data = match name.as_str() {
-            "ftyp" => Mp4BoxData::Ftyp(Ftyp::parse(raw)?),
+            "ftyp" => Mp4BoxData::Ftyp(Ftyp::try_parse(raw)?),
             "mdat" => Mp4BoxData::MDat(MDat::parse(raw)),
             "free" => Mp4BoxData::Free(Free::parse(raw)),
 
@@ -98,14 +98,14 @@ impl Mp4Box {
             }
 
             // content
-            "mvhd" => Mp4BoxData::Mvhd(Mvhd::parse(raw)?),
-            "meta" => Mp4BoxData::Meta(MetaBox::parse(raw, offset)?),
-            "stsd" => Mp4BoxData::Stsd(StsdBox::parse(raw)?),
-            "stsz" => Mp4BoxData::Stzs(StszBox::parse(raw)?),
-            "stts" => Mp4BoxData::Stts(SttsBox::parse(raw)?),
-            "stco" => Mp4BoxData::Stco(StcoBox::parse(raw)?),
-            "stsc" => Mp4BoxData::Stsc(StscBox::parse(raw)?),
-            "co64" => Mp4BoxData::Co64(Co64Box::parse(raw)?),
+            "mvhd" => Mp4BoxData::Mvhd(Mvhd::try_parse(raw)?),
+            "meta" => Mp4BoxData::Meta(MetaBox::try_parse(raw, offset)?),
+            "stsd" => Mp4BoxData::Stsd(StsdBox::try_parse(raw)?),
+            "stsz" => Mp4BoxData::Stzs(StszBox::try_parse(raw)?),
+            "stts" => Mp4BoxData::Stts(SttsBox::try_parse(raw)?),
+            "stco" => Mp4BoxData::Stco(StcoBox::try_parse(raw)?),
+            "stsc" => Mp4BoxData::Stsc(StscBox::try_parse(raw)?),
+            "co64" => Mp4BoxData::Co64(Co64Box::try_parse(raw)?),
 
             _ => Mp4BoxData::Unknown(raw.into()),
         };
@@ -124,7 +124,7 @@ impl Mp4Box {
         let mut offset = 0;
 
         while offset + BOX_HEADER_SIZE <= data.len() {
-            let b = Self::parse(&data[offset..], base_offset + offset)?;
+            let b = Self::try_parse(&data[offset..], base_offset + offset)?;
             let Ok(size) = usize::try_from(b.size) else {
                 return Err("Failed to convert usize".to_string());
             };
@@ -150,7 +150,7 @@ pub(crate) struct Mp4Data {
 
 impl Mp4Data {
     /// parse
-    pub(crate) fn parse(binary_data: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_data: &[u8]) -> Result<Self, String> {
         Ok(Self {
             boxes: Mp4Box::parse_all(binary_data, 0)?,
         })

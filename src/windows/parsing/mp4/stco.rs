@@ -12,7 +12,7 @@ pub struct StcoBox {
 impl StcoBox {
     /// parse the stco
     #[allow(clippy::unnecessary_wraps)]
-    pub fn parse(data: &[u8]) -> Result<Self, String> {
+    pub fn try_parse(data: &[u8]) -> Result<Self, String> {
         let mut offset = 0;
 
         // version + flags

@@ -20,7 +20,7 @@ pub struct StsdBox {
 
 impl StsdBox {
     /// parse
-    pub fn parse(data: &[u8]) -> Result<Self, String> {
+    pub fn try_parse(data: &[u8]) -> Result<Self, String> {
         let mut offset = 0;
         // version + flags
         offset += 4;

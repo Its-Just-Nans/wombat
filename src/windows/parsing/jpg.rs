@@ -13,7 +13,7 @@ pub(crate) struct JpgData {
 
 impl JpgData {
     /// parse the data
-    pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_file: &[u8]) -> Result<Self, String> {
         let segments = parse_jpeg(binary_file)?;
         Ok(Self { segments })
     }

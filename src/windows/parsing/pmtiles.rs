@@ -188,7 +188,7 @@ fn hilbert_d2xy(n: u32, mut d: u64) -> (u32, u32) {
 
 impl PmTilesData {
     /// parse the data
-    pub(crate) fn parse(binary_data: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_data: &[u8]) -> Result<Self, String> {
         if binary_data[0..7] != PMTILES_SIGNATURE[..] {
             return Err("Wrong PMTiles Signature".to_string());
         }

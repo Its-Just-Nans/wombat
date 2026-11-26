@@ -16,7 +16,7 @@ pub(crate) struct PdfData {
 
 impl PdfData {
     /// parse the data
-    pub(crate) fn parse(binary_file: Arc<Vec<u8>>) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_file: Arc<Vec<u8>>) -> Result<Self, String> {
         let Ok(file) = Pdf::new(binary_file) else {
             return Err("Cannot parse pdf".to_string());
         };

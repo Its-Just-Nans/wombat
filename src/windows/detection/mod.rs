@@ -66,14 +66,14 @@ impl WombatApp {
         let Some(document) = self.documents.get_current_doc_mut() else {
             return;
         };
-        document.windows_data.detection.exif_data = Some(ExifData::parse(
+        document.windows_data.detection.exif_data = Some(ExifData::try_parse(
             &document.binary_file,
             document.file_format.extension(),
         ));
 
         if document.file_format == FileFormat::PortableNetworkGraphics {
             if let ParsingCache::Empty = document.windows_data.parsing.cache {
-                match PngData::parse(&document.binary_file) {
+                match PngData::try_parse(&document.binary_file) {
                     Ok(data) => {
                         document.windows_data.parsing.cache =
                             ParsingCache::Png((PngDataViewer::default(), data));

@@ -43,7 +43,7 @@ impl std::fmt::Debug for ExifData {
 
 impl ExifData {
     /// parse exif
-    pub(crate) fn parse(binary_file: &[u8], file_extension: &str) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_file: &[u8], file_extension: &str) -> Result<Self, String> {
         let cursor = Cursor::new(binary_file);
         let mut bufreader = std::io::BufReader::new(cursor);
         let parsed_exif = exif::Reader::new().read_from_container(&mut bufreader);
@@ -143,7 +143,7 @@ fn extract_thumbnail_position(
                 }
             } else if file_extension == "png" {
                 let png_size = offset + length;
-                let parsed_data = PngData::parse(binary_file);
+                let parsed_data = PngData::try_parse(binary_file);
                 match parsed_data {
                     Ok(png_data) => {
                         if let Some(chunk) = png_data

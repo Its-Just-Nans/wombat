@@ -46,7 +46,7 @@ pub(crate) struct ZipData {
 
 impl ZipData {
     /// parse zip data
-    pub(crate) fn parse(binary_file: &[u8]) -> Result<Self, String> {
+    pub(crate) fn try_parse(binary_file: &[u8]) -> Result<Self, String> {
         let reader = Cursor::new(binary_file);
         let mut archive = match zip::ZipArchive::new(reader) {
             Ok(ar) => ar,

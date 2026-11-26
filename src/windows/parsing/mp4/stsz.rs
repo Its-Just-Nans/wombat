@@ -17,7 +17,7 @@ pub struct StszBox {
 impl StszBox {
     /// parse stsz
     #[allow(clippy::unnecessary_wraps)]
-    pub fn parse(data: &[u8]) -> Result<StszBox, String> {
+    pub fn try_parse(data: &[u8]) -> Result<StszBox, String> {
         let mut offset = 0;
 
         // version + flags
