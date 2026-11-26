@@ -4,12 +4,14 @@
 
 mod asc;
 mod cert;
+mod icc;
 pub(crate) mod jpg;
 mod mp4;
 mod pdf;
 mod pmtiles;
 pub(crate) mod png;
 mod raw;
+mod utils;
 mod xml;
 mod zip;
 
@@ -24,6 +26,7 @@ use crate::document::Document;
 use crate::format::FileFormat;
 use crate::windows::parsing::asc::AscData;
 use crate::windows::parsing::cert::CertData;
+use crate::windows::parsing::icc::IccProfileData;
 use crate::windows::parsing::jpg::JpgData;
 use crate::windows::parsing::mp4::Mp4Data;
 use crate::windows::parsing::pdf::PdfData;
@@ -58,6 +61,8 @@ pub(crate) enum ParsingCache {
     RawType(RawType),
     /// Raw type
     Asc(AscData),
+    /// ICC
+    Icc(IccProfileData),
     /// Error
     ErrorMessage(String),
     /// no cache
@@ -154,6 +159,13 @@ impl ParsingCache {
                 };
                 ParsingCache::Asc(parsed)
             }
+            "icc" => {
+                let parsed = match IccProfileData::try_parse(&binary_file) {
+                    Ok(parsed) => parsed,
+                    Err(err) => return Some(ParsingCache::ErrorMessage(err)),
+                };
+                ParsingCache::Icc(parsed)
+            }
             _ => {
                 return None;
             }
@@ -224,6 +236,10 @@ impl WombatApp {
             ParsingCache::RawType(data) => data.ui(ui, &document.binary_file),
             ParsingCache::Asc(data) => {
                 return data.ui(ui, &document.binary_file, error_manager);
+            }
+            ParsingCache::Icc(data) => {
+                data.ui(ui);
+                None
             }
             ParsingCache::Message(str) => {
                 ui.label(&*str);
