@@ -58,7 +58,7 @@ enum ColourSpace {
     ClrD,
     ClrE,
     ClrF,
-    Unkown([u8; 4]),
+    Unknown([u8; 4]),
 }
 
 impl ColourSpace {
@@ -89,7 +89,7 @@ impl ColourSpace {
             b"DCLR" => Self::ClrD,
             b"ECLR" => Self::ClrE,
             b"FCLR" => Self::ClrF,
-            _ => Self::Unkown(buffer),
+            _ => Self::Unknown(buffer),
         }
     }
 }
@@ -122,7 +122,7 @@ impl Display for ColourSpace {
             Self::ClrD => write!(f, "13 colour"),
             Self::ClrE => write!(f, "14 colour"),
             Self::ClrF => write!(f, "15 colour"),
-            Self::Unkown(d) => write!(f, "unkown: {d:?}"),
+            Self::Unknown(d) => write!(f, "unknown: {d:?}"),
         }
     }
 }

@@ -190,7 +190,7 @@ pub(crate) fn do_acropalypse(
 
         match decoder.read_to_end(&mut decompressed) {
             Ok(c) => {
-                log::info!("Zlib decompress succedeed at {i}: {c} read")
+                log::info!("Zlib decompress succeeded at {i}: {c} read")
             }
             Err(err) => {
                 log::info!("Zlib decompress failed at {i}: {err}");
