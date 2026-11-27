@@ -751,20 +751,70 @@ lookup_fn!(revocation_reason_to_text, u8, {
 
 #[derive(Debug)]
 #[allow(clippy::missing_docs_in_private_items)]
+pub(crate) struct RsaKey {
+    n: StartPosition,
+    e: StartPosition,
+}
+
+#[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub(crate) enum PublicKey {
-    Rsa((StartPosition, StartPosition)),
+    Reserved,
+    RsaEncryptOrSign(RsaKey),
+    RsaEncryptOnly(RsaKey),
+    RsaSignOnly(RsaKey),
     ElGamal((usize, usize, usize)),
+    Dsa,
+    Ecdh,
+    Ecdsa,
+    ReservedElGamal,
+    ReservedDiffieHellman,
+    EdDsaLegacy,
+    ReservedAeDH,
+    ReservedAeDSA,
+    X25519,
+    X448,
+    Ed25519,
+    Ed448,
+    Unknown(u8),
 }
 
 impl PublicKey {
+    /// parse
+    fn parse_from_tag(buffer: &mut Stream<'_>, tag: u8) -> Self {
+        match tag {
+            0 => Self::Reserved,
+            1 => Self::RsaEncryptOrSign(RsaKey { n: 0, e: 0 }),
+            2 => Self::RsaEncryptOnly(RsaKey { n: 0, e: 0 }),
+            3 => Self::RsaSignOnly(RsaKey { n: 0, e: 0 }),
+            16 => Self::ElGamal((0, 0, 0)),
+            17 => Self::Dsa,
+            18 => Self::Ecdh,
+            19 => Self::Ecdsa,
+            20 => Self::ReservedElGamal,
+            21 => Self::ReservedDiffieHellman,
+            22 => Self::EdDsaLegacy,
+            23 => Self::ReservedAeDH,
+            24 => Self::ReservedAeDSA,
+            25 => Self::X25519,
+            26 => Self::X448,
+            27 => Self::Ed25519,
+            28 => Self::Ed448,
+            _ => Self::Unknown(tag),
+        }
+    }
+
     /// Show ui
     fn ui(&self, ui: &mut egui::Ui) {
         match self {
-            Self::Rsa(d) => {
+            Self::RsaEncryptOrSign(d) | Self::RsaEncryptOnly(d) | Self::RsaSignOnly(d) => {
                 ui.label(format!("{:?}", d));
             }
             Self::ElGamal(d) => {
                 ui.label(format!("{:?}", d));
+            }
+            _ => {
+                ui.label("TODO");
             }
         }
     }
@@ -827,7 +877,7 @@ impl InnerPacket {
                     let valid_days = if version == 3 { stream.uint16() } else { None };
                     let algorithm = stream.octet().ok_or("Cannot get algo")?;
                     let octet_count = if version == 6 { stream.uint32() } else { None };
-                    let key = PublicKey::Rsa((0, 0));
+                    let key = PublicKey::parse_from_tag(stream, algorithm);
                     let public_key_packet = PublicKeyPacket {
                         version,
                         created_at,

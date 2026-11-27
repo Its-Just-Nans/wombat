@@ -4,9 +4,12 @@
 
 use std::{fmt::Display, ops::RangeInclusive};
 
-use bladvak::eframe::egui;
+use bladvak::eframe::egui::{self, Id, collapsing_header::CollapsingState};
 
-use crate::windows::parsing::utils::{read_buffer, read_u32, read_u64};
+use crate::windows::parsing::{
+    icc::InnerTag::ParsingError,
+    utils::{read_buffer, read_buffer_dyn, read_u16, read_u32, read_u64},
+};
 
 #[derive(Debug)]
 #[allow(clippy::missing_docs_in_private_items)]
@@ -129,11 +132,151 @@ impl Display for ColourSpace {
     }
 }
 
+struct XYZType {
+    reserved: [u8; 4],
+    x: u32,
+    y: u32,
+    z: u32,
+}
+
+#[derive(Debug)]
+struct TagSignature([u8; 4]);
+
+impl Display for TagSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}{}{}",
+            self.0[0] as char, self.0[1] as char, self.0[2] as char, self.0[3] as char
+        )
+    }
+}
+
+#[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
+pub(crate) struct Tag {
+    signature: TagSignature,
+    offset: u32,
+    length: u32,
+    inner: InnerTag,
+}
+
+#[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
+struct LocalizedUnicodeData {
+    first_record_lang_code: u16,
+    first_record_country_code: u16,
+    first_record_string_length: u32,
+    first_record_string_offset: u32,
+    value: String,
+}
+
+#[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
+struct MultiLocalizedUnicodeData {
+    reserved: [u8; 4],
+    number_of_records: u32,
+    record_size: u32,
+    values: Vec<LocalizedUnicodeData>,
+}
+
+impl MultiLocalizedUnicodeData {
+    /// Try to parse
+    fn try_parse(buffer: &[u8]) -> Result<(&[u8], Self), &'static str> {
+        let (buffer, reserved) = read_buffer::<4>(buffer)?;
+        if reserved != [0, 0, 0, 0] {
+            return Err("Reserved is not empty");
+        }
+        let (buffer, number_of_records) = read_u32(buffer, false)?;
+        let (mut buffer, record_size) = read_u32(buffer, false)?;
+        if record_size != 12 {
+            return Err("Invalid record size");
+        }
+        let mut values = Vec::new();
+        for _ in 0..number_of_records {
+            let (buff, first_record_lang_code) = read_u16(buffer, false)?;
+            buffer = buff;
+            let (buff, first_record_country_code) = read_u16(buffer, false)?;
+            buffer = buff;
+            let (buff, first_record_string_length) = read_u32(buffer, false)?;
+            buffer = buff;
+            let (buff, first_record_string_offset) = read_u32(buffer, false)?;
+            buffer = buff;
+            let (buff, value) = read_buffer_dyn(buffer, first_record_string_length as usize)?;
+            buffer = buff;
+            let value =
+                String::from_utf8(value.to_vec()).map_err(|_e| "Failed to convert string")?;
+
+            values.push(LocalizedUnicodeData {
+                first_record_lang_code,
+                first_record_country_code,
+                first_record_string_length,
+                first_record_string_offset,
+                value,
+            });
+        }
+        let mluc = Self {
+            reserved,
+            number_of_records,
+            record_size,
+            values,
+        };
+        Ok((buffer, mluc))
+    }
+}
+
+#[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
+enum InnerTag {
+    MultiLocalizedUnicode(MultiLocalizedUnicodeData),
+    Unknown,
+    ParsingError(String),
+}
+
+impl InnerTag {
+    /// ui
+    fn ui(
+        &self,
+        ui: &mut egui::Ui,
+        idx: usize,
+        offset: u32,
+        length: u32,
+    ) -> Option<RangeInclusive<usize>> {
+        let mut range = None;
+        CollapsingState::load_with_default_open(
+            ui.ctx(),
+            Id::unique(("inner_tag", self.signature(), idx)),
+            false,
+        )
+        .show_header(ui, |ui| {
+            ui.label(self.signature());
+            if ui.button("Show").clicked() {
+                let start = offset as usize;
+                let end = start.saturating_add(length as usize).saturating_sub(1);
+                range = Some(start..=end);
+            }
+        })
+        .body(|ui| {
+            ui.label(format!("{self:?}"));
+        });
+        range
+    }
+
+    /// signature
+    fn signature(&self) -> &str {
+        match self {
+            Self::MultiLocalizedUnicode(_) => "mluc",
+            ParsingError(_) => "ERROR",
+            Self::Unknown => "unknown",
+        }
+    }
+}
+
 #[derive(Debug)]
 #[allow(clippy::missing_docs_in_private_items)]
 pub(crate) struct IccProfileData {
     header: IccProfileHeader,
-    tags: Vec<([u8; 4], u32, u32)>,
+    tags: Vec<Tag>,
 }
 
 #[derive(Debug)]
@@ -146,7 +289,7 @@ pub(crate) struct IccProfileHeader {
     colour_space: ColourSpace,
     pcs: [u8; 4],
     date_created: DateTimeNumber,
-    acsp_signature: [u8; 4],
+    acsp_signature: TagSignature,
     primary_signature: [u8; 4],
     profile_flag: u32,
     device_manufacturer: [u8; 4],
@@ -183,6 +326,7 @@ impl IccProfileHeader {
         if &acsp_signature != b"acsp" {
             return Err("Incorrect acsp signature".to_string());
         }
+        let acsp_signature = TagSignature(acsp_signature);
 
         let (buffer, primary_signature) = read_buffer::<4>(buffer)?;
         let (buffer, profile_flag) = read_u32(buffer, false)?;
@@ -241,13 +385,31 @@ impl IccProfileData {
         let mut tags = Vec::new();
         let tags_table_end = (tag_table_len as usize).saturating_mul(12);
         for _idx in (0..tags_table_end).step_by(12) {
-            let (buff, sign) = read_buffer::<4>(buffer)?;
+            let (buff, signature) = read_buffer::<4>(buffer)?;
+            let signature = TagSignature(signature);
             buffer = buff;
             let (buff, offset) = read_u32(buffer, false)?;
             buffer = buff;
             let (buff, length) = read_u32(buffer, false)?;
             buffer = buff;
-            tags.push((sign, offset, length));
+            let start = offset as usize;
+            let end = offset as usize + length as usize;
+            let inner = match binary_file.get(start..end) {
+                Some(tag_section) if &tag_section[0..4] == b"mluc" => {
+                    match MultiLocalizedUnicodeData::try_parse(&tag_section[4..]) {
+                        Ok((buff, mluc)) => InnerTag::MultiLocalizedUnicode(mluc),
+                        Err(err) => InnerTag::ParsingError(err.to_string()),
+                    }
+                }
+                _ => InnerTag::Unknown,
+            };
+            let tag = Tag {
+                signature,
+                offset,
+                length,
+                inner,
+            };
+            tags.push(tag);
         }
         Ok(Self { header, tags })
     }
@@ -271,15 +433,20 @@ impl IccProfileData {
                     range = Some(start..=end);
                 }
             });
-            for one_tag in &self.tags {
+            for (idx, one_tag) in self.tags.iter().enumerate() {
                 ui.horizontal(|ui| {
-                    ui.label(format!("{:x?}", one_tag.0));
-                    ui.label(format!("offset = {}", one_tag.1));
-                    ui.label(format!("length = {}", one_tag.2));
+                    ui.label(format!("{}", one_tag.signature));
+                    ui.label(format!("offset = {}", one_tag.offset));
+                    ui.label(format!("length = {}", one_tag.length));
                     if ui.button("Show").clicked() {
-                        let start = one_tag.1 as usize;
-                        let end = start.saturating_add(one_tag.2 as usize).saturating_sub(1);
+                        let start = 128_usize.saturating_add(4).saturating_add(idx * 12);
+                        let end = start.saturating_add(12).saturating_sub(1);
                         range = Some(start..=end);
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if let Some(r) = one_tag.inner.ui(ui, idx, one_tag.offset, one_tag.length) {
+                        range = Some(r);
                     }
                 });
             }
