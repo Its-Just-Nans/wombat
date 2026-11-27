@@ -62,7 +62,7 @@ impl ImagePreview {
         params_opt: Option<ImageRenderParams>,
     ) -> Result<Self, String> {
         let params = params_opt.unwrap_or_else(|| ImageRenderParams::default_from_ui(ui));
-        let img = match image::load_from_memory(binary_file) {
+        let img = match bladvak::image::load_from_memory(binary_file) {
             Ok(img) => img,
             Err(err) => return Err(format!("Failed to load image from memory: {err}")),
         };
@@ -106,7 +106,7 @@ impl ImagePreview {
             );
         }
         if ui.button("Copy to clipboard").clicked() {
-            match image::load_from_memory(binary_file) {
+            match bladvak::image::load_from_memory(binary_file) {
                 Ok(img) => {
                     if let Err(err) = bladvak::utils::set_image_in_clipboard(
                         ui.ctx(),

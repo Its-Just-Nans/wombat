@@ -155,7 +155,7 @@ impl Exporter {
             }
         }
         if ui.button("Copy QR as image").clicked() {
-            use image::Rgba;
+            use bladvak::image::Rgba;
             match QrCode::new(file_selection) {
                 Ok(code) => {
                     let image = code.render::<Rgba<u8>>().build();

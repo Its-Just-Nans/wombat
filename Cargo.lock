@@ -7479,7 +7479,6 @@ dependencies = [
  "hayro",
  "hayro-write",
  "hex",
- "image",
  "kamadak-exif",
  "md-5",
  "qrcode",

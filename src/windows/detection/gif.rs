@@ -3,9 +3,9 @@
 use std::io::{BufReader, Cursor};
 use std::path::PathBuf;
 
+use bladvak::image::codecs::gif::GifDecoder;
+use bladvak::image::{AnimationDecoder, ImageFormat};
 use bladvak::{AppError, ErrorManager, log};
-use image::codecs::gif::GifDecoder;
-use image::{AnimationDecoder, ImageFormat};
 
 use crate::document::Document;
 

@@ -5,9 +5,9 @@ use std::{
     path::PathBuf,
 };
 
+use bladvak::image::{DynamicImage, ImageFormat, RgbImage, RgbaImage};
 use bladvak::{AppError, log};
 use flate2::{Compression, read::DeflateDecoder, write::ZlibEncoder};
-use image::{DynamicImage, ImageFormat, RgbImage, RgbaImage};
 
 use crate::{
     document::Document,

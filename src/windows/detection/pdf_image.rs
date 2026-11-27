@@ -1,5 +1,6 @@
 //! pdf images
 
+use bladvak::image::{DynamicImage, ImageBuffer, ImageFormat};
 use hayro::hayro_interpret::font::GlyphRun;
 use hayro::hayro_interpret::{
     BlendMode, ClipPath, Context, Device, DrawMode, DrawProps, Image, ImageData, ImageDrawProps,
@@ -7,7 +8,6 @@ use hayro::hayro_interpret::{
 };
 use hayro::kurbo::{Affine, BezPath, Rect};
 
-use image::{DynamicImage, ImageBuffer};
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -55,9 +55,7 @@ pub(crate) fn extract_pdf_images(
             match res {
                 Ok(img) => {
                     let mut data = vec![];
-                    if let Err(err) =
-                        img.write_to(&mut Cursor::new(&mut data), image::ImageFormat::Png)
-                    {
+                    if let Err(err) = img.write_to(&mut Cursor::new(&mut data), ImageFormat::Png) {
                         error_manager.add_error(err.to_string());
                         continue;
                     }

@@ -208,14 +208,14 @@ impl Importer {
         }
         match self.clipboard.image(ui.ctx()) {
             Some(Ok((data, width, height))) => {
-                use image::{ImageBuffer, RgbaImage};
+                use bladvak::image::{ImageBuffer, RgbaImage};
                 use std::io::Cursor;
                 #[allow(clippy::cast_possible_truncation)]
                 let img_buffer: Option<RgbaImage> =
                     ImageBuffer::from_raw(width as u32, height as u32, data);
                 if let Some(img_b) = img_buffer {
                     let mut buffer = Cursor::new(Vec::new());
-                    match img_b.write_to(&mut buffer, image::ImageFormat::Png) {
+                    match img_b.write_to(&mut buffer, bladvak::image::ImageFormat::Png) {
                         Ok(()) => {
                             ret = Some(Ok((
                                 PathBuf::from("imported_image.png"),

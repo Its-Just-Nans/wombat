@@ -9,6 +9,7 @@ use bladvak::eframe::egui;
 use crate::windows::parsing::utils::{read_buffer, read_u32, read_u64};
 
 #[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
 struct DateTimeNumber {
     year: u16,
     month: u16,
@@ -32,6 +33,7 @@ impl DateTimeNumber {
 }
 
 #[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
 enum ColourSpace {
     Xyz,
     Lab,
@@ -128,6 +130,7 @@ impl Display for ColourSpace {
 }
 
 #[derive(Debug)]
+#[allow(clippy::missing_docs_in_private_items)]
 pub(crate) struct IccProfileData {
     header: IccProfileHeader,
     tags: Vec<([u8; 4], u32, u32)>,

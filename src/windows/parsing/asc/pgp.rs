@@ -429,8 +429,6 @@ macro_rules! lookup_fn {
     };
 }
 
-lookup_fn!(tag_to_text, u8, {});
-
 lookup_fn!(public_key_algorithm_to_text, u8, {
     0 => "Reserved",
     1 => "RSA (Encrypt or Sign)",
